@@ -473,12 +473,13 @@
         sbComputedRef.current = sbComputed;
       }, [sbComputed]);
 
-      useEffect(() => {
-        const liveWinner = decideWinner(sbComputed, false);
-        if (liveWinner && timerRunning) {
-          setTimerRunning(false);
-        }
-      }, [sbComputed, timerRunning]);
+useEffect(() => {
+  // Stop the timer only on an immediate win state
+  // (for example Halal / direct win), not on normal scoring.
+  if (sbComputed?.halalWinner && timerRunning) {
+    setTimerRunning(false);
+  }
+}, [sbComputed, timerRunning]);
 
       // Timer effect
       useEffect(() => {
