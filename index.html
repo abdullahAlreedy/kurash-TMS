@@ -88,11 +88,12 @@
   <div id="dashboard" class="card hidden">
     <h2>System Access</h2>
 
-    <div class="links">
-      <a href="scoreboard_v5.html">Scoreboard</a>
-      <a href="player_screenv3.html">Player Screen</a>
-      <a href="referee_screen.html">Referee Screen</a>
-    </div>
+<div class="links">
+  <a href="#" onclick="openMain()">MAIN</a>
+  <a href="scoreboard_v5.html">Scoreboard</a>
+  <a href="player_screenv3.html">Player Screen</a>
+  <a href="referee_screen.html">Referee Screen</a>
+</div>
 
     <button onclick="logout()" style="background:#ef4444;">Logout</button>
 
@@ -115,7 +116,17 @@
         document.getElementById("error").innerText = "Wrong password";
       }
     }
+const MAIN_PASSWORD = "1981"; // 🔴 غيرها
 
+function openMain() {
+  const pass = prompt("Enter MAIN password");
+
+  if (pass === MAIN_PASSWORD) {
+    window.location.href = "main%20-%20web.html";
+  } else if (pass !== null) {
+    alert("Wrong password");
+  }
+}
     function showDashboard() {
       document.getElementById("login").classList.add("hidden");
       document.getElementById("dashboard").classList.remove("hidden");
