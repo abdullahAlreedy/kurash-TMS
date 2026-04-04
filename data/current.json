@@ -1,0 +1,3951 @@
+{
+  "tournamentId": "11111111_1775180646318",
+  "name": "11111111",
+  "date": "1111-11-11",
+  "status": "active",
+  "players": [
+    {
+      "id": "SOM-PLAYER001-N48",
+      "name": "Player 001",
+      "countryFull": "Somalia",
+      "country": "SOM",
+      "sex": "F",
+      "actualKg": 46,
+      "weight": "-48",
+      "seed": 7,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "QAT-PLAYER002-N63",
+      "name": "Player 002",
+      "countryFull": "Qatar",
+      "country": "QAT",
+      "sex": "F",
+      "actualKg": 62.7,
+      "weight": "-63",
+      "seed": 7,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "TUN-PLAYER003-N78",
+      "name": "Player 003",
+      "countryFull": "Tunisia",
+      "country": "TUN",
+      "sex": "F",
+      "actualKg": 74.7,
+      "weight": "-78",
+      "seed": 3,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "ESP-PLAYER004-P100",
+      "name": "Player 004",
+      "countryFull": "Spain",
+      "country": "ESP",
+      "sex": "M",
+      "actualKg": 108.5,
+      "weight": "+100",
+      "seed": 10,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "CHN-PLAYER005-N57",
+      "name": "Player 005",
+      "countryFull": "China",
+      "country": "CHN",
+      "sex": "F",
+      "actualKg": 55.7,
+      "weight": "-57",
+      "seed": 9,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "GER-PLAYER006-N63",
+      "name": "Player 006",
+      "countryFull": "Germany",
+      "country": "GER",
+      "sex": "F",
+      "actualKg": 60.5,
+      "weight": "-63",
+      "seed": 7,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "GER-PLAYER007-P100",
+      "name": "Player 007",
+      "countryFull": "Germany",
+      "country": "GER",
+      "sex": "M",
+      "actualKg": 116.8,
+      "weight": "+100",
+      "seed": 10,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "SUD-PLAYER008-P87",
+      "name": "Player 008",
+      "countryFull": "Sudan",
+      "country": "SUD",
+      "sex": "F",
+      "actualKg": 88,
+      "weight": "+87",
+      "seed": 9,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "TKM-PLAYER009-P100",
+      "name": "Player 009",
+      "countryFull": "Turkmenistan",
+      "country": "TKM",
+      "sex": "M",
+      "actualKg": 118.1,
+      "weight": "+100",
+      "seed": 3,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "AFG-PLAYER010-N57",
+      "name": "Player 010",
+      "countryFull": "Afghanistan",
+      "country": "AFG",
+      "sex": "F",
+      "actualKg": 52.9,
+      "weight": "-57",
+      "seed": 4,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "SOM-PLAYER011-N57",
+      "name": "Player 011",
+      "countryFull": "Somalia",
+      "country": "SOM",
+      "sex": "F",
+      "actualKg": 54.5,
+      "weight": "-57",
+      "seed": 10,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "IRN-PLAYER012-N66",
+      "name": "Player 012",
+      "countryFull": "Iran",
+      "country": "IRN",
+      "sex": "M",
+      "actualKg": 65.2,
+      "weight": "-66",
+      "seed": 1,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "LBA-PLAYER013-P100",
+      "name": "Player 013",
+      "countryFull": "Libya",
+      "country": "LBA",
+      "sex": "M",
+      "actualKg": 105.5,
+      "weight": "+100",
+      "seed": 7,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "TUN-PLAYER014-N81",
+      "name": "Player 014",
+      "countryFull": "Tunisia",
+      "country": "TUN",
+      "sex": "M",
+      "actualKg": 76.3,
+      "weight": "-81",
+      "seed": 7,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "TUN-PLAYER015-N63",
+      "name": "Player 015",
+      "countryFull": "Tunisia",
+      "country": "TUN",
+      "sex": "F",
+      "actualKg": 60.3,
+      "weight": "-63",
+      "seed": 4,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "ALG-PLAYER016-N66",
+      "name": "Player 016",
+      "countryFull": "Algeria",
+      "country": "ALG",
+      "sex": "M",
+      "actualKg": 61.6,
+      "weight": "-66",
+      "seed": 5,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "ITA-PLAYER017-N100",
+      "name": "Player 017",
+      "countryFull": "Italy",
+      "country": "ITA",
+      "sex": "M",
+      "actualKg": 95.7,
+      "weight": "-100",
+      "seed": 9,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "BHR-PLAYER018-N66",
+      "name": "Player 018",
+      "countryFull": "Bahrain",
+      "country": "BHR",
+      "sex": "M",
+      "actualKg": 62,
+      "weight": "-66",
+      "seed": 1,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "KOR-PLAYER019-N87",
+      "name": "Player 019",
+      "countryFull": "Korea",
+      "country": "KOR",
+      "sex": "F",
+      "actualKg": 80.9,
+      "weight": "-87",
+      "seed": 1,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "INA-PLAYER020-N70",
+      "name": "Player 020",
+      "countryFull": "Indonesia",
+      "country": "INA",
+      "sex": "F",
+      "actualKg": 64.6,
+      "weight": "-70",
+      "seed": 2,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "INA-PLAYER021-N90",
+      "name": "Player 021",
+      "countryFull": "Indonesia",
+      "country": "INA",
+      "sex": "M",
+      "actualKg": 82.5,
+      "weight": "-90",
+      "seed": 3,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "IRQ-PLAYER022-N57",
+      "name": "Player 022",
+      "countryFull": "Iraq",
+      "country": "IRQ",
+      "sex": "F",
+      "actualKg": 56.1,
+      "weight": "-57",
+      "seed": 2,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "JOR-PLAYER023-N100",
+      "name": "Player 023",
+      "countryFull": "Jordan",
+      "country": "JOR",
+      "sex": "M",
+      "actualKg": 92.6,
+      "weight": "-100",
+      "seed": 5,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "ETH-PLAYER024-N78",
+      "name": "Player 024",
+      "countryFull": "Ethiopia",
+      "country": "ETH",
+      "sex": "F",
+      "actualKg": 72.7,
+      "weight": "-78",
+      "seed": 4,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "QAT-PLAYER025-N78",
+      "name": "Player 025",
+      "countryFull": "Qatar",
+      "country": "QAT",
+      "sex": "F",
+      "actualKg": 72.8,
+      "weight": "-78",
+      "seed": 1,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "YEM-PLAYER026-N90",
+      "name": "Player 026",
+      "countryFull": "Yemen",
+      "country": "YEM",
+      "sex": "M",
+      "actualKg": 84.7,
+      "weight": "-90",
+      "seed": 3,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "IND-PLAYER027-N51",
+      "name": "Player 027",
+      "countryFull": "India",
+      "country": "IND",
+      "sex": "F",
+      "actualKg": 51,
+      "weight": "-51",
+      "seed": 8,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "IRQ-PLAYER028-N51",
+      "name": "Player 028",
+      "countryFull": "Iraq",
+      "country": "IRQ",
+      "sex": "F",
+      "actualKg": 48.9,
+      "weight": "-51",
+      "seed": 6,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "MAS-PLAYER029-N81",
+      "name": "Player 029",
+      "countryFull": "Malaysia",
+      "country": "MAS",
+      "sex": "M",
+      "actualKg": 76.4,
+      "weight": "-81",
+      "seed": 1,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "LBA-PLAYER030-N48",
+      "name": "Player 030",
+      "countryFull": "Libya",
+      "country": "LBA",
+      "sex": "F",
+      "actualKg": 47,
+      "weight": "-48",
+      "seed": 3,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "KEN-PLAYER031-N87",
+      "name": "Player 031",
+      "countryFull": "Kenya",
+      "country": "KEN",
+      "sex": "F",
+      "actualKg": 81.3,
+      "weight": "-87",
+      "seed": 6,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "NGR-PLAYER032-N90",
+      "name": "Player 032",
+      "countryFull": "Nigeria",
+      "country": "NGR",
+      "sex": "M",
+      "actualKg": 84.2,
+      "weight": "-90",
+      "seed": 2,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "TUR-PLAYER033-N81",
+      "name": "Player 033",
+      "countryFull": "Turkey",
+      "country": "TUR",
+      "sex": "M",
+      "actualKg": 79.8,
+      "weight": "-81",
+      "seed": 4,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "ITA-PLAYER034-N60",
+      "name": "Player 034",
+      "countryFull": "Italy",
+      "country": "ITA",
+      "sex": "M",
+      "actualKg": 55.4,
+      "weight": "-60",
+      "seed": 7,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "OMN-PLAYER035-N57",
+      "name": "Player 035",
+      "countryFull": "Oman",
+      "country": "OMN",
+      "sex": "F",
+      "actualKg": 54.1,
+      "weight": "-57",
+      "seed": 7,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "AFG-PLAYER036-N100",
+      "name": "Player 036",
+      "countryFull": "Afghanistan",
+      "country": "AFG",
+      "sex": "M",
+      "actualKg": 100,
+      "weight": "-100",
+      "seed": 2,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "KAZ-PLAYER037-P87",
+      "name": "Player 037",
+      "countryFull": "Kazakhstan",
+      "country": "KAZ",
+      "sex": "F",
+      "actualKg": 94.4,
+      "weight": "+87",
+      "seed": 4,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "CHN-PLAYER038-N73",
+      "name": "Player 038",
+      "countryFull": "China",
+      "country": "CHN",
+      "sex": "M",
+      "actualKg": 68.8,
+      "weight": "-73",
+      "seed": 2,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "BAN-PLAYER039-N87",
+      "name": "Player 039",
+      "countryFull": "Bangladesh",
+      "country": "BAN",
+      "sex": "F",
+      "actualKg": 84.6,
+      "weight": "-87",
+      "seed": 4,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "AFG-PLAYER040-N81",
+      "name": "Player 040",
+      "countryFull": "Afghanistan",
+      "country": "AFG",
+      "sex": "M",
+      "actualKg": 74.4,
+      "weight": "-81",
+      "seed": 1,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "PAK-PLAYER041-P87",
+      "name": "Player 041",
+      "countryFull": "Pakistan",
+      "country": "PAK",
+      "sex": "F",
+      "actualKg": 87.7,
+      "weight": "+87",
+      "seed": 9,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "YEM-PLAYER042-N78",
+      "name": "Player 042",
+      "countryFull": "Yemen",
+      "country": "YEM",
+      "sex": "F",
+      "actualKg": 76.4,
+      "weight": "-78",
+      "seed": 7,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "LBA-PLAYER043-N87",
+      "name": "Player 043",
+      "countryFull": "Libya",
+      "country": "LBA",
+      "sex": "F",
+      "actualKg": 85.9,
+      "weight": "-87",
+      "seed": 1,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "KEN-PLAYER044-N66",
+      "name": "Player 044",
+      "countryFull": "Kenya",
+      "country": "KEN",
+      "sex": "M",
+      "actualKg": 63.8,
+      "weight": "-66",
+      "seed": 1,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "JOR-PLAYER045-N60",
+      "name": "Player 045",
+      "countryFull": "Jordan",
+      "country": "JOR",
+      "sex": "M",
+      "actualKg": 57.1,
+      "weight": "-60",
+      "seed": 6,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "TUN-PLAYER046-N78",
+      "name": "Player 046",
+      "countryFull": "Tunisia",
+      "country": "TUN",
+      "sex": "F",
+      "actualKg": 72.4,
+      "weight": "-78",
+      "seed": 5,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "INA-PLAYER047-P100",
+      "name": "Player 047",
+      "countryFull": "Indonesia",
+      "country": "INA",
+      "sex": "M",
+      "actualKg": 101.7,
+      "weight": "+100",
+      "seed": 8,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "TJK-PLAYER048-N73",
+      "name": "Player 048",
+      "countryFull": "Tajikistan",
+      "country": "TJK",
+      "sex": "M",
+      "actualKg": 72.8,
+      "weight": "-73",
+      "seed": 7,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "LBA-PLAYER049-N100",
+      "name": "Player 049",
+      "countryFull": "Libya",
+      "country": "LBA",
+      "sex": "M",
+      "actualKg": 93.8,
+      "weight": "-100",
+      "seed": 9,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "OMN-PLAYER050-N81",
+      "name": "Player 050",
+      "countryFull": "Oman",
+      "country": "OMN",
+      "sex": "M",
+      "actualKg": 76.6,
+      "weight": "-81",
+      "seed": 1,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "KUW-PLAYER051-N60",
+      "name": "Player 051",
+      "countryFull": "Kuwait",
+      "country": "KUW",
+      "sex": "M",
+      "actualKg": 58.3,
+      "weight": "-60",
+      "seed": 3,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "INA-PLAYER052-P87",
+      "name": "Player 052",
+      "countryFull": "Indonesia",
+      "country": "INA",
+      "sex": "F",
+      "actualKg": 93.1,
+      "weight": "+87",
+      "seed": 4,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "NGR-PLAYER053-N57",
+      "name": "Player 053",
+      "countryFull": "Nigeria",
+      "country": "NGR",
+      "sex": "F",
+      "actualKg": 56,
+      "weight": "-57",
+      "seed": 6,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "IND-PLAYER054-N73",
+      "name": "Player 054",
+      "countryFull": "India",
+      "country": "IND",
+      "sex": "M",
+      "actualKg": 66.4,
+      "weight": "-73",
+      "seed": 4,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "INA-PLAYER055-P87",
+      "name": "Player 055",
+      "countryFull": "Indonesia",
+      "country": "INA",
+      "sex": "F",
+      "actualKg": 88.9,
+      "weight": "+87",
+      "seed": 7,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "MAR-PLAYER056-N70",
+      "name": "Player 056",
+      "countryFull": "Morocco",
+      "country": "MAR",
+      "sex": "F",
+      "actualKg": 67.5,
+      "weight": "-70",
+      "seed": 1,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "EGY-PLAYER057-P100",
+      "name": "Player 057",
+      "countryFull": "Egypt",
+      "country": "EGY",
+      "sex": "M",
+      "actualKg": 112,
+      "weight": "+100",
+      "seed": 3,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "NGR-PLAYER058-N57",
+      "name": "Player 058",
+      "countryFull": "Nigeria",
+      "country": "NGR",
+      "sex": "F",
+      "actualKg": 54.3,
+      "weight": "-57",
+      "seed": 7,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "SUD-PLAYER059-N73",
+      "name": "Player 059",
+      "countryFull": "Sudan",
+      "country": "SUD",
+      "sex": "M",
+      "actualKg": 68.6,
+      "weight": "-73",
+      "seed": 7,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "MAS-PLAYER060-P100",
+      "name": "Player 060",
+      "countryFull": "Malaysia",
+      "country": "MAS",
+      "sex": "M",
+      "actualKg": 117.2,
+      "weight": "+100",
+      "seed": 7,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "KEN-PLAYER061-N57",
+      "name": "Player 061",
+      "countryFull": "Kenya",
+      "country": "KEN",
+      "sex": "F",
+      "actualKg": 51.8,
+      "weight": "-57",
+      "seed": 10,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "CHN-PLAYER062-N51",
+      "name": "Player 062",
+      "countryFull": "China",
+      "country": "CHN",
+      "sex": "F",
+      "actualKg": 48.6,
+      "weight": "-51",
+      "seed": 2,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "KOR-PLAYER063-P100",
+      "name": "Player 063",
+      "countryFull": "Korea",
+      "country": "KOR",
+      "sex": "M",
+      "actualKg": 109.2,
+      "weight": "+100",
+      "seed": 7,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "IRN-PLAYER064-N70",
+      "name": "Player 064",
+      "countryFull": "Iran",
+      "country": "IRN",
+      "sex": "F",
+      "actualKg": 69.6,
+      "weight": "-70",
+      "seed": 5,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "YEM-PLAYER065-N87",
+      "name": "Player 065",
+      "countryFull": "Yemen",
+      "country": "YEM",
+      "sex": "F",
+      "actualKg": 85.2,
+      "weight": "-87",
+      "seed": 8,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "SRI-PLAYER066-N78",
+      "name": "Player 066",
+      "countryFull": "Sri Lanka",
+      "country": "SRI",
+      "sex": "F",
+      "actualKg": 77.9,
+      "weight": "-78",
+      "seed": 6,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "RUS-PLAYER067-P87",
+      "name": "Player 067",
+      "countryFull": "Russia",
+      "country": "RUS",
+      "sex": "F",
+      "actualKg": 88.2,
+      "weight": "+87",
+      "seed": 6,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "MAR-PLAYER068-N81",
+      "name": "Player 068",
+      "countryFull": "Morocco",
+      "country": "MAR",
+      "sex": "M",
+      "actualKg": 73.5,
+      "weight": "-81",
+      "seed": 1,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "QAT-PLAYER069-N78",
+      "name": "Player 069",
+      "countryFull": "Qatar",
+      "country": "QAT",
+      "sex": "F",
+      "actualKg": 74.4,
+      "weight": "-78",
+      "seed": 7,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "KUW-PLAYER070-N87",
+      "name": "Player 070",
+      "countryFull": "Kuwait",
+      "country": "KUW",
+      "sex": "F",
+      "actualKg": 81.9,
+      "weight": "-87",
+      "seed": 6,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "TJK-PLAYER071-N57",
+      "name": "Player 071",
+      "countryFull": "Tajikistan",
+      "country": "TJK",
+      "sex": "F",
+      "actualKg": 54.8,
+      "weight": "-57",
+      "seed": 8,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "AZE-PLAYER072-P100",
+      "name": "Player 072",
+      "countryFull": "Azerbaijan",
+      "country": "AZE",
+      "sex": "M",
+      "actualKg": 109.7,
+      "weight": "+100",
+      "seed": 8,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "BAN-PLAYER073-P100",
+      "name": "Player 073",
+      "countryFull": "Bangladesh",
+      "country": "BAN",
+      "sex": "M",
+      "actualKg": 108.9,
+      "weight": "+100",
+      "seed": 2,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "LBN-PLAYER074-N66",
+      "name": "Player 074",
+      "countryFull": "Lebanon",
+      "country": "LBN",
+      "sex": "M",
+      "actualKg": 65.5,
+      "weight": "-66",
+      "seed": 6,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "SUD-PLAYER075-N87",
+      "name": "Player 075",
+      "countryFull": "Sudan",
+      "country": "SUD",
+      "sex": "F",
+      "actualKg": 82,
+      "weight": "-87",
+      "seed": 6,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "AFG-PLAYER076-P87",
+      "name": "Player 076",
+      "countryFull": "Afghanistan",
+      "country": "AFG",
+      "sex": "F",
+      "actualKg": 87.4,
+      "weight": "+87",
+      "seed": 7,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "TJK-PLAYER077-N90",
+      "name": "Player 077",
+      "countryFull": "Tajikistan",
+      "country": "TJK",
+      "sex": "M",
+      "actualKg": 81.8,
+      "weight": "-90",
+      "seed": 2,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "USA-PLAYER078-N87",
+      "name": "Player 078",
+      "countryFull": "United States",
+      "country": "USA",
+      "sex": "F",
+      "actualKg": 85.1,
+      "weight": "-87",
+      "seed": 5,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "ESP-PLAYER079-N90",
+      "name": "Player 079",
+      "countryFull": "Spain",
+      "country": "ESP",
+      "sex": "M",
+      "actualKg": 82.4,
+      "weight": "-90",
+      "seed": 4,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "BHR-PLAYER080-N90",
+      "name": "Player 080",
+      "countryFull": "Bahrain",
+      "country": "BHR",
+      "sex": "M",
+      "actualKg": 87.7,
+      "weight": "-90",
+      "seed": 7,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "MAS-PLAYER081-P87",
+      "name": "Player 081",
+      "countryFull": "Malaysia",
+      "country": "MAS",
+      "sex": "F",
+      "actualKg": 94.2,
+      "weight": "+87",
+      "seed": 9,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "RSA-PLAYER082-N57",
+      "name": "Player 082",
+      "countryFull": "South Africa",
+      "country": "RSA",
+      "sex": "F",
+      "actualKg": 54.2,
+      "weight": "-57",
+      "seed": 9,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "BHR-PLAYER083-N100",
+      "name": "Player 083",
+      "countryFull": "Bahrain",
+      "country": "BHR",
+      "sex": "M",
+      "actualKg": 94,
+      "weight": "-100",
+      "seed": 2,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "EGY-PLAYER084-N63",
+      "name": "Player 084",
+      "countryFull": "Egypt",
+      "country": "EGY",
+      "sex": "F",
+      "actualKg": 59.3,
+      "weight": "-63",
+      "seed": 5,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "AZE-PLAYER085-N78",
+      "name": "Player 085",
+      "countryFull": "Azerbaijan",
+      "country": "AZE",
+      "sex": "F",
+      "actualKg": 75.9,
+      "weight": "-78",
+      "seed": 10,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "IRQ-PLAYER086-N63",
+      "name": "Player 086",
+      "countryFull": "Iraq",
+      "country": "IRQ",
+      "sex": "F",
+      "actualKg": 62.1,
+      "weight": "-63",
+      "seed": 3,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "QAT-PLAYER087-N87",
+      "name": "Player 087",
+      "countryFull": "Qatar",
+      "country": "QAT",
+      "sex": "F",
+      "actualKg": 85.7,
+      "weight": "-87",
+      "seed": 5,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "ITA-PLAYER088-N87",
+      "name": "Player 088",
+      "countryFull": "Italy",
+      "country": "ITA",
+      "sex": "F",
+      "actualKg": 85.3,
+      "weight": "-87",
+      "seed": 6,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "NEP-PLAYER089-P87",
+      "name": "Player 089",
+      "countryFull": "Nepal",
+      "country": "NEP",
+      "sex": "F",
+      "actualKg": 91.5,
+      "weight": "+87",
+      "seed": 2,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "AFG-PLAYER090-N57",
+      "name": "Player 090",
+      "countryFull": "Afghanistan",
+      "country": "AFG",
+      "sex": "F",
+      "actualKg": 54.1,
+      "weight": "-57",
+      "seed": 3,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "YEM-PLAYER091-N78",
+      "name": "Player 091",
+      "countryFull": "Yemen",
+      "country": "YEM",
+      "sex": "F",
+      "actualKg": 76.9,
+      "weight": "-78",
+      "seed": 8,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "KAZ-PLAYER092-N73",
+      "name": "Player 092",
+      "countryFull": "Kazakhstan",
+      "country": "KAZ",
+      "sex": "M",
+      "actualKg": 70.4,
+      "weight": "-73",
+      "seed": 2,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "SUD-PLAYER093-N90",
+      "name": "Player 093",
+      "countryFull": "Sudan",
+      "country": "SUD",
+      "sex": "M",
+      "actualKg": 87.2,
+      "weight": "-90",
+      "seed": 10,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "TJK-PLAYER094-P87",
+      "name": "Player 094",
+      "countryFull": "Tajikistan",
+      "country": "TJK",
+      "sex": "F",
+      "actualKg": 94.3,
+      "weight": "+87",
+      "seed": 2,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "ITA-PLAYER095-N100",
+      "name": "Player 095",
+      "countryFull": "Italy",
+      "country": "ITA",
+      "sex": "M",
+      "actualKg": 93.9,
+      "weight": "-100",
+      "seed": 8,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "SUD-PLAYER096-N51",
+      "name": "Player 096",
+      "countryFull": "Sudan",
+      "country": "SUD",
+      "sex": "F",
+      "actualKg": 48.3,
+      "weight": "-51",
+      "seed": 6,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "LBN-PLAYER097-P100",
+      "name": "Player 097",
+      "countryFull": "Lebanon",
+      "country": "LBN",
+      "sex": "M",
+      "actualKg": 117.7,
+      "weight": "+100",
+      "seed": 2,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "INA-PLAYER098-N60",
+      "name": "Player 098",
+      "countryFull": "Indonesia",
+      "country": "INA",
+      "sex": "M",
+      "actualKg": 59.7,
+      "weight": "-60",
+      "seed": 1,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "JOR-PLAYER099-N66",
+      "name": "Player 099",
+      "countryFull": "Jordan",
+      "country": "JOR",
+      "sex": "M",
+      "actualKg": 60.6,
+      "weight": "-66",
+      "seed": 5,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "PLE-PLAYER100-N87",
+      "name": "Player 100",
+      "countryFull": "Palestine",
+      "country": "PLE",
+      "sex": "F",
+      "actualKg": 78.3,
+      "weight": "-87",
+      "seed": 9,
+      "dob": "",
+      "age": ""
+    }
+  ],
+  "refs": [
+    {
+      "id": "REF-001",
+      "refNo": 1,
+      "name": "Referee 01",
+      "countryFull": "Kenya",
+      "country": "KEN",
+      "rank": 3,
+      "assignScope": "pool",
+      "poolGillam": "Gillam A"
+    },
+    {
+      "id": "REF-002",
+      "refNo": 2,
+      "name": "Referee 02",
+      "countryFull": "India",
+      "country": "IND",
+      "rank": 2,
+      "assignScope": "pool",
+      "poolGillam": "Gillam B"
+    },
+    {
+      "id": "REF-003",
+      "refNo": 3,
+      "name": "Referee 03",
+      "countryFull": "Qatar",
+      "country": "QAT",
+      "rank": 2,
+      "assignScope": "pool",
+      "poolGillam": "Gillam A"
+    },
+    {
+      "id": "REF-004",
+      "refNo": 4,
+      "name": "Referee 04",
+      "countryFull": "Lebanon",
+      "country": "LBN",
+      "rank": 2,
+      "assignScope": "pool",
+      "poolGillam": "Gillam B"
+    },
+    {
+      "id": "REF-005",
+      "refNo": 5,
+      "name": "Referee 05",
+      "countryFull": "United Kingdom",
+      "country": "GBR",
+      "rank": 1,
+      "assignScope": "pool",
+      "poolGillam": "Gillam A"
+    },
+    {
+      "id": "REF-006",
+      "refNo": 6,
+      "name": "Referee 18",
+      "countryFull": "Afghanistan",
+      "country": "AFG",
+      "rank": 1,
+      "assignScope": "pool",
+      "poolGillam": "Gillam B"
+    },
+    {
+      "id": "REF-007",
+      "refNo": 7,
+      "name": "Referee 19",
+      "countryFull": "Kyrgyzstan",
+      "country": "KGZ",
+      "rank": 1,
+      "assignScope": "pool",
+      "poolGillam": "Gillam A"
+    },
+    {
+      "id": "REF-008",
+      "refNo": 8,
+      "name": "Referee 20",
+      "countryFull": "France",
+      "country": "FRA",
+      "rank": 1,
+      "assignScope": "pool",
+      "poolGillam": "Gillam B"
+    }
+  ],
+  "schedule": {
+    "bouts": [
+      {
+        "boutNo": 1,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-60",
+        "blueId": "JOR-PLAYER045-N60",
+        "greenId": "ITA-PLAYER034-N60",
+        "stage": "RR",
+        "groupKey": "M|-60",
+        "localId": 6,
+        "isElimination": false,
+        "winner": "blue",
+        "blueScore": {
+          "H": 1,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [
+          {
+            "timeSec": 240,
+            "timeStr": "04:00",
+            "type": "H",
+            "side": "blue",
+            "text": "BLUE H"
+          }
+        ],
+        "durationMs": 240000,
+        "finished": true,
+        "savedAt": "2026-04-03T04:04:57.281Z"
+      },
+      {
+        "boutNo": 2,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-73",
+        "blueId": "IND-PLAYER054-N73",
+        "greenId": "TJK-PLAYER048-N73",
+        "stage": "RR",
+        "groupKey": "M|-73",
+        "localId": 2,
+        "isElimination": false,
+        "winner": "blue",
+        "blueScore": {
+          "H": 1,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [
+          {
+            "timeSec": 240,
+            "timeStr": "04:00",
+            "type": "H",
+            "side": "blue",
+            "text": "BLUE H"
+          }
+        ],
+        "durationMs": 240000,
+        "finished": true,
+        "savedAt": "2026-04-03T04:05:02.578Z"
+      },
+      {
+        "boutNo": 3,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-60",
+        "blueId": "INA-PLAYER098-N60",
+        "greenId": "KUW-PLAYER051-N60",
+        "stage": "RR",
+        "groupKey": "M|-60",
+        "localId": 5,
+        "isElimination": false,
+        "winner": "blue",
+        "blueScore": {
+          "H": 1,
+          "YO": 0,
+          "CH": 1
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 1,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [
+          {
+            "timeSec": 240,
+            "timeStr": "04:00",
+            "type": "CH",
+            "side": "blue",
+            "text": "BLUE CH"
+          },
+          {
+            "timeSec": 240,
+            "timeStr": "04:00",
+            "type": "YO",
+            "side": "green",
+            "text": "GREEN YO"
+          },
+          {
+            "timeSec": 240,
+            "timeStr": "04:00",
+            "type": "H",
+            "side": "blue",
+            "text": "BLUE H"
+          }
+        ],
+        "durationMs": 240000,
+        "finished": true,
+        "savedAt": "2026-04-03T04:05:14.389Z"
+      },
+      {
+        "boutNo": 4,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-73",
+        "blueId": "CHN-PLAYER038-N73",
+        "greenId": "SUD-PLAYER059-N73",
+        "stage": "RR",
+        "groupKey": "M|-73",
+        "localId": 3,
+        "isElimination": false,
+        "winner": "green",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 1
+        },
+        "greenScore": {
+          "H": 1,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [
+          {
+            "timeSec": 240,
+            "timeStr": "04:00",
+            "type": "CH",
+            "side": "blue",
+            "text": "BLUE CH"
+          },
+          {
+            "timeSec": 240,
+            "timeStr": "04:00",
+            "type": "H",
+            "side": "green",
+            "text": "GREEN H"
+          }
+        ],
+        "durationMs": 240000,
+        "finished": true,
+        "savedAt": "2026-04-03T04:05:19.653Z"
+      },
+      {
+        "boutNo": 5,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-90",
+        "blueId": "NGR-PLAYER032-N90",
+        "greenId": "TJK-PLAYER077-N90",
+        "stage": "R1",
+        "groupKey": "M|-90",
+        "localId": 1,
+        "isElimination": true,
+        "winner": "blue",
+        "blueScore": {
+          "H": 1,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [
+          {
+            "timeSec": 240,
+            "timeStr": "04:00",
+            "type": "H",
+            "side": "blue",
+            "text": "BLUE H"
+          }
+        ],
+        "durationMs": 240000,
+        "finished": true,
+        "savedAt": "2026-04-03T04:06:20.342Z"
+      },
+      {
+        "boutNo": 6,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-60",
+        "blueId": "INA-PLAYER098-N60",
+        "greenId": "ITA-PLAYER034-N60",
+        "stage": "RR",
+        "groupKey": "M|-60",
+        "localId": 1,
+        "isElimination": false,
+        "winner": "blue",
+        "blueScore": {
+          "H": 1,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [
+          {
+            "timeSec": 240,
+            "timeStr": "04:00",
+            "type": "H",
+            "side": "blue",
+            "text": "BLUE H"
+          }
+        ],
+        "durationMs": 240000,
+        "finished": true,
+        "savedAt": "2026-04-03T04:06:24.341Z"
+      },
+      {
+        "boutNo": 7,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-73",
+        "blueId": "SUD-PLAYER059-N73",
+        "greenId": "IND-PLAYER054-N73",
+        "stage": "RR",
+        "groupKey": "M|-73",
+        "localId": 6,
+        "isElimination": false
+      },
+      {
+        "boutNo": 8,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-60",
+        "blueId": "KUW-PLAYER051-N60",
+        "greenId": "JOR-PLAYER045-N60",
+        "stage": "RR",
+        "groupKey": "M|-60",
+        "localId": 2,
+        "isElimination": false
+      },
+      {
+        "boutNo": 9,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-73",
+        "blueId": "CHN-PLAYER038-N73",
+        "greenId": "TJK-PLAYER048-N73",
+        "stage": "RR",
+        "groupKey": "M|-73",
+        "localId": 5,
+        "isElimination": false
+      },
+      {
+        "boutNo": 10,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-90",
+        "blueId": "INA-PLAYER021-N90",
+        "greenId": "YEM-PLAYER026-N90",
+        "stage": "R1",
+        "groupKey": "M|-90",
+        "localId": 2,
+        "isElimination": true
+      },
+      {
+        "boutNo": 11,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-60",
+        "blueId": "INA-PLAYER098-N60",
+        "greenId": "JOR-PLAYER045-N60",
+        "stage": "RR",
+        "groupKey": "M|-60",
+        "localId": 3,
+        "isElimination": false
+      },
+      {
+        "boutNo": 12,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-73",
+        "blueId": "TJK-PLAYER048-N73",
+        "greenId": "SUD-PLAYER059-N73",
+        "stage": "RR",
+        "groupKey": "M|-73",
+        "localId": 10,
+        "isElimination": false
+      },
+      {
+        "boutNo": 13,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-60",
+        "blueId": "ITA-PLAYER034-N60",
+        "greenId": "KUW-PLAYER051-N60",
+        "stage": "RR",
+        "groupKey": "M|-60",
+        "localId": 4,
+        "isElimination": false
+      },
+      {
+        "boutNo": 14,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-73",
+        "blueId": "CHN-PLAYER038-N73",
+        "greenId": "IND-PLAYER054-N73",
+        "stage": "RR",
+        "groupKey": "M|-73",
+        "localId": 7,
+        "isElimination": false
+      },
+      {
+        "boutNo": 15,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-90",
+        "blueId": "ESP-PLAYER079-N90",
+        "greenId": "BHR-PLAYER080-N90",
+        "stage": "R1",
+        "groupKey": "M|-90",
+        "localId": 3,
+        "isElimination": true
+      },
+      {
+        "boutNo": 16,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-73",
+        "blueId": "KAZ-PLAYER092-N73",
+        "greenId": "SUD-PLAYER059-N73",
+        "stage": "RR",
+        "groupKey": "M|-73",
+        "localId": 1,
+        "isElimination": false
+      },
+      {
+        "boutNo": 17,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-100",
+        "blueId": "AFG-PLAYER036-N100",
+        "greenId": "BHR-PLAYER083-N100",
+        "stage": "R1",
+        "groupKey": "M|-100",
+        "localId": 1,
+        "isElimination": true
+      },
+      {
+        "boutNo": 18,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-51",
+        "blueId": "SUD-PLAYER096-N51",
+        "greenId": "IND-PLAYER027-N51",
+        "stage": "RR",
+        "groupKey": "F|-51",
+        "localId": 6,
+        "isElimination": false
+      },
+      {
+        "boutNo": 19,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-73",
+        "blueId": "KAZ-PLAYER092-N73",
+        "greenId": "IND-PLAYER054-N73",
+        "stage": "RR",
+        "groupKey": "M|-73",
+        "localId": 4,
+        "isElimination": false
+      },
+      {
+        "boutNo": 20,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-100",
+        "blueId": "JOR-PLAYER023-N100",
+        "greenId": "ITA-PLAYER095-N100",
+        "stage": "R1",
+        "groupKey": "M|-100",
+        "localId": 2,
+        "isElimination": true
+      },
+      {
+        "boutNo": 21,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-51",
+        "blueId": "CHN-PLAYER062-N51",
+        "greenId": "IND-PLAYER027-N51",
+        "stage": "RR",
+        "groupKey": "F|-51",
+        "localId": 1,
+        "isElimination": false
+      },
+      {
+        "boutNo": 22,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-73",
+        "blueId": "TJK-PLAYER048-N73",
+        "greenId": "KAZ-PLAYER092-N73",
+        "stage": "RR",
+        "groupKey": "M|-73",
+        "localId": 8,
+        "isElimination": false
+      },
+      {
+        "boutNo": 23,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-100",
+        "blueId": "ITA-PLAYER017-N100",
+        "greenId": "LBA-PLAYER049-N100",
+        "stage": "R1",
+        "groupKey": "M|-100",
+        "localId": 3,
+        "isElimination": true
+      },
+      {
+        "boutNo": 24,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-51",
+        "blueId": "CHN-PLAYER062-N51",
+        "greenId": "SUD-PLAYER096-N51",
+        "stage": "RR",
+        "groupKey": "F|-51",
+        "localId": 3,
+        "isElimination": false
+      },
+      {
+        "boutNo": 25,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-73",
+        "blueId": "CHN-PLAYER038-N73",
+        "greenId": "KAZ-PLAYER092-N73",
+        "stage": "RR",
+        "groupKey": "M|-73",
+        "localId": 9,
+        "isElimination": false
+      },
+      {
+        "boutNo": 26,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-51",
+        "blueId": "IND-PLAYER027-N51",
+        "greenId": "IRQ-PLAYER028-N51",
+        "stage": "RR",
+        "groupKey": "F|-51",
+        "localId": 4,
+        "isElimination": false
+      },
+      {
+        "boutNo": 27,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-63",
+        "blueId": "EGY-PLAYER084-N63",
+        "greenId": "QAT-PLAYER002-N63",
+        "stage": "RR",
+        "groupKey": "F|-63",
+        "localId": 2,
+        "isElimination": false
+      },
+      {
+        "boutNo": 28,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-78",
+        "blueId": "QAT-PLAYER025-N78",
+        "greenId": "TUN-PLAYER003-N78",
+        "stage": "R1",
+        "groupKey": "F|-78",
+        "localId": 1,
+        "isElimination": true
+      },
+      {
+        "boutNo": 29,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-51",
+        "blueId": "IRQ-PLAYER028-N51",
+        "greenId": "SUD-PLAYER096-N51",
+        "stage": "RR",
+        "groupKey": "F|-51",
+        "localId": 2,
+        "isElimination": false
+      },
+      {
+        "boutNo": 30,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-63",
+        "blueId": "GER-PLAYER006-N63",
+        "greenId": "EGY-PLAYER084-N63",
+        "stage": "RR",
+        "groupKey": "F|-63",
+        "localId": 6,
+        "isElimination": false
+      },
+      {
+        "boutNo": 31,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-78",
+        "blueId": "ETH-PLAYER024-N78",
+        "greenId": "TUN-PLAYER046-N78",
+        "stage": "R1",
+        "groupKey": "F|-78",
+        "localId": 2,
+        "isElimination": true
+      },
+      {
+        "boutNo": 32,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-51",
+        "blueId": "CHN-PLAYER062-N51",
+        "greenId": "IRQ-PLAYER028-N51",
+        "stage": "RR",
+        "groupKey": "F|-51",
+        "localId": 5,
+        "isElimination": false
+      },
+      {
+        "boutNo": 33,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-63",
+        "blueId": "QAT-PLAYER002-N63",
+        "greenId": "GER-PLAYER006-N63",
+        "stage": "RR",
+        "groupKey": "F|-63",
+        "localId": 10,
+        "isElimination": false
+      },
+      {
+        "boutNo": 34,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-78",
+        "blueId": "SRI-PLAYER066-N78",
+        "greenId": "YEM-PLAYER042-N78",
+        "stage": "R1",
+        "groupKey": "F|-78",
+        "localId": 3,
+        "isElimination": true
+      },
+      {
+        "boutNo": 35,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-63",
+        "blueId": "IRQ-PLAYER086-N63",
+        "greenId": "EGY-PLAYER084-N63",
+        "stage": "RR",
+        "groupKey": "F|-63",
+        "localId": 7,
+        "isElimination": false
+      },
+      {
+        "boutNo": 36,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-78",
+        "blueId": "QAT-PLAYER069-N78",
+        "greenId": "YEM-PLAYER091-N78",
+        "stage": "R1",
+        "groupKey": "F|-78",
+        "localId": 4,
+        "isElimination": true
+      },
+      {
+        "boutNo": 37,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-63",
+        "blueId": "TUN-PLAYER015-N63",
+        "greenId": "GER-PLAYER006-N63",
+        "stage": "RR",
+        "groupKey": "F|-63",
+        "localId": 1,
+        "isElimination": false
+      },
+      {
+        "boutNo": 38,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-78",
+        "blueId": null,
+        "greenId": null,
+        "stage": "R2",
+        "groupKey": "F|-78",
+        "localId": 5,
+        "isElimination": true
+      },
+      {
+        "boutNo": 39,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-63",
+        "blueId": "IRQ-PLAYER086-N63",
+        "greenId": "QAT-PLAYER002-N63",
+        "stage": "RR",
+        "groupKey": "F|-63",
+        "localId": 5,
+        "isElimination": false
+      },
+      {
+        "boutNo": 40,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-78",
+        "blueId": null,
+        "greenId": null,
+        "stage": "R2",
+        "groupKey": "F|-78",
+        "localId": 6,
+        "isElimination": true
+      },
+      {
+        "boutNo": 41,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-63",
+        "blueId": "TUN-PLAYER015-N63",
+        "greenId": "EGY-PLAYER084-N63",
+        "stage": "RR",
+        "groupKey": "F|-63",
+        "localId": 4,
+        "isElimination": false
+      },
+      {
+        "boutNo": 42,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-87",
+        "blueId": "KOR-PLAYER019-N87",
+        "greenId": "LBA-PLAYER043-N87",
+        "stage": "R1",
+        "groupKey": "F|-87",
+        "localId": 1,
+        "isElimination": true
+      },
+      {
+        "boutNo": 43,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-63",
+        "blueId": "IRQ-PLAYER086-N63",
+        "greenId": "GER-PLAYER006-N63",
+        "stage": "RR",
+        "groupKey": "F|-63",
+        "localId": 3,
+        "isElimination": false
+      },
+      {
+        "boutNo": 44,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-87",
+        "blueId": "BAN-PLAYER039-N87",
+        "greenId": "USA-PLAYER078-N87",
+        "stage": "R1",
+        "groupKey": "F|-87",
+        "localId": 2,
+        "isElimination": true
+      },
+      {
+        "boutNo": 45,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-63",
+        "blueId": "QAT-PLAYER002-N63",
+        "greenId": "TUN-PLAYER015-N63",
+        "stage": "RR",
+        "groupKey": "F|-63",
+        "localId": 8,
+        "isElimination": false
+      },
+      {
+        "boutNo": 46,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-87",
+        "blueId": "QAT-PLAYER087-N87",
+        "greenId": "KEN-PLAYER031-N87",
+        "stage": "R1",
+        "groupKey": "F|-87",
+        "localId": 3,
+        "isElimination": true
+      },
+      {
+        "boutNo": 47,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-87",
+        "blueId": "KUW-PLAYER070-N87",
+        "greenId": "SUD-PLAYER075-N87",
+        "stage": "R1",
+        "groupKey": "F|-87",
+        "localId": 4,
+        "isElimination": true
+      },
+      {
+        "boutNo": 48,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-63",
+        "blueId": "IRQ-PLAYER086-N63",
+        "greenId": "TUN-PLAYER015-N63",
+        "stage": "RR",
+        "groupKey": "F|-63",
+        "localId": 9,
+        "isElimination": false
+      },
+      {
+        "boutNo": 49,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-87",
+        "blueId": "ITA-PLAYER088-N87",
+        "greenId": "YEM-PLAYER065-N87",
+        "stage": "R1",
+        "groupKey": "F|-87",
+        "localId": 5,
+        "isElimination": true
+      },
+      {
+        "boutNo": 50,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-87",
+        "blueId": null,
+        "greenId": null,
+        "stage": "R2",
+        "groupKey": "F|-87",
+        "localId": 6,
+        "isElimination": true
+      },
+      {
+        "boutNo": 51,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-87",
+        "blueId": null,
+        "greenId": null,
+        "stage": "R2",
+        "groupKey": "F|-87",
+        "localId": 7,
+        "isElimination": true
+      },
+      {
+        "boutNo": 52,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-87",
+        "blueId": null,
+        "greenId": "PLE-PLAYER100-N87",
+        "stage": "R2",
+        "groupKey": "F|-87",
+        "localId": 8,
+        "isElimination": true
+      },
+      {
+        "boutNo": 53,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-78",
+        "blueId": null,
+        "greenId": null,
+        "stage": "Semi-final",
+        "groupKey": "F|-78",
+        "localId": 7,
+        "isElimination": true
+      },
+      {
+        "boutNo": 54,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-87",
+        "blueId": null,
+        "greenId": null,
+        "stage": "Semi-final",
+        "groupKey": "F|-87",
+        "localId": 9,
+        "isElimination": true
+      },
+      {
+        "boutNo": 55,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-90",
+        "blueId": "NGR-PLAYER032-N90",
+        "greenId": null,
+        "stage": "Semi-final",
+        "groupKey": "M|-90",
+        "localId": 4,
+        "isElimination": true
+      },
+      {
+        "boutNo": 56,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-90",
+        "blueId": null,
+        "greenId": "SUD-PLAYER093-N90",
+        "stage": "Semi-final",
+        "groupKey": "M|-90",
+        "localId": 5,
+        "isElimination": true
+      },
+      {
+        "boutNo": 57,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-100",
+        "blueId": null,
+        "greenId": null,
+        "stage": "Semi-final",
+        "groupKey": "M|-100",
+        "localId": 4,
+        "isElimination": true
+      },
+      {
+        "boutNo": 58,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-78",
+        "blueId": null,
+        "greenId": "AZE-PLAYER085-N78",
+        "stage": "Final",
+        "groupKey": "F|-78",
+        "localId": 8,
+        "isElimination": true
+      },
+      {
+        "boutNo": 59,
+        "gillam": "Gillam A",
+        "sex": "F",
+        "weight": "-87",
+        "blueId": null,
+        "greenId": null,
+        "stage": "Final",
+        "groupKey": "F|-87",
+        "localId": 10,
+        "isElimination": true
+      },
+      {
+        "boutNo": 60,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-90",
+        "blueId": null,
+        "greenId": null,
+        "stage": "Final",
+        "groupKey": "M|-90",
+        "localId": 6,
+        "isElimination": true
+      },
+      {
+        "boutNo": 61,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-100",
+        "blueId": null,
+        "greenId": null,
+        "stage": "Final",
+        "groupKey": "M|-100",
+        "localId": 5,
+        "isElimination": true
+      },
+      {
+        "boutNo": 62,
+        "gillam": "Gillam B",
+        "sex": "M",
+        "weight": "-66",
+        "blueId": "IRN-PLAYER012-N66",
+        "greenId": "BHR-PLAYER018-N66",
+        "stage": "R1",
+        "groupKey": "M|-66",
+        "localId": 1,
+        "isElimination": true
+      },
+      {
+        "boutNo": 63,
+        "gillam": "Gillam B",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "MAS-PLAYER029-N81",
+        "greenId": "AFG-PLAYER040-N81",
+        "stage": "R1",
+        "groupKey": "M|-81",
+        "localId": 1,
+        "isElimination": true
+      },
+      {
+        "boutNo": 64,
+        "gillam": "Gillam B",
+        "sex": "M",
+        "weight": "-66",
+        "blueId": "KEN-PLAYER044-N66",
+        "greenId": "ALG-PLAYER016-N66",
+        "stage": "R1",
+        "groupKey": "M|-66",
+        "localId": 2,
+        "isElimination": true
+      },
+      {
+        "boutNo": 65,
+        "gillam": "Gillam B",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "OMN-PLAYER050-N81",
+        "greenId": "MAR-PLAYER068-N81",
+        "stage": "R1",
+        "groupKey": "M|-81",
+        "localId": 2,
+        "isElimination": true
+      },
+      {
+        "boutNo": 66,
+        "gillam": "Gillam B",
+        "sex": "M",
+        "weight": "-66",
+        "blueId": "JOR-PLAYER099-N66",
+        "greenId": "LBN-PLAYER074-N66",
+        "stage": "R1",
+        "groupKey": "M|-66",
+        "localId": 3,
+        "isElimination": true
+      },
+      {
+        "boutNo": 67,
+        "gillam": "Gillam B",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "TUR-PLAYER033-N81",
+        "greenId": "TUN-PLAYER014-N81",
+        "stage": "R1",
+        "groupKey": "M|-81",
+        "localId": 3,
+        "isElimination": true
+      },
+      {
+        "boutNo": 68,
+        "gillam": "Gillam B",
+        "sex": "M",
+        "weight": "+100",
+        "blueId": "BAN-PLAYER073-P100",
+        "greenId": "LBN-PLAYER097-P100",
+        "stage": "R1",
+        "groupKey": "M|+100",
+        "localId": 1,
+        "isElimination": true
+      },
+      {
+        "boutNo": 69,
+        "gillam": "Gillam B",
+        "sex": "F",
+        "weight": "-48",
+        "blueId": "LBA-PLAYER030-N48",
+        "greenId": "SOM-PLAYER001-N48",
+        "stage": "RR",
+        "groupKey": "F|-48",
+        "localId": 1,
+        "isElimination": false
+      },
+      {
+        "boutNo": 70,
+        "gillam": "Gillam B",
+        "sex": "M",
+        "weight": "+100",
+        "blueId": "TKM-PLAYER009-P100",
+        "greenId": "EGY-PLAYER057-P100",
+        "stage": "R1",
+        "groupKey": "M|+100",
+        "localId": 2,
+        "isElimination": true
+      },
+      {
+        "boutNo": 71,
+        "gillam": "Gillam B",
+        "sex": "F",
+        "weight": "-57",
+        "blueId": "IRQ-PLAYER022-N57",
+        "greenId": "AFG-PLAYER090-N57",
+        "stage": "R1",
+        "groupKey": "F|-57",
+        "localId": 1,
+        "isElimination": true
+      },
+      {
+        "boutNo": 72,
+        "gillam": "Gillam B",
+        "sex": "M",
+        "weight": "+100",
+        "blueId": "LBA-PLAYER013-P100",
+        "greenId": "MAS-PLAYER060-P100",
+        "stage": "R1",
+        "groupKey": "M|+100",
+        "localId": 3,
+        "isElimination": true
+      },
+      {
+        "boutNo": 73,
+        "gillam": "Gillam B",
+        "sex": "F",
+        "weight": "-57",
+        "blueId": "AFG-PLAYER010-N57",
+        "greenId": "NGR-PLAYER053-N57",
+        "stage": "R1",
+        "groupKey": "F|-57",
+        "localId": 2,
+        "isElimination": true
+      },
+      {
+        "boutNo": 74,
+        "gillam": "Gillam B",
+        "sex": "M",
+        "weight": "+100",
+        "blueId": "KOR-PLAYER063-P100",
+        "greenId": "INA-PLAYER047-P100",
+        "stage": "R1",
+        "groupKey": "M|+100",
+        "localId": 4,
+        "isElimination": true
+      },
+      {
+        "boutNo": 75,
+        "gillam": "Gillam B",
+        "sex": "F",
+        "weight": "-57",
+        "blueId": "OMN-PLAYER035-N57",
+        "greenId": "NGR-PLAYER058-N57",
+        "stage": "R1",
+        "groupKey": "F|-57",
+        "localId": 3,
+        "isElimination": true
+      },
+      {
+        "boutNo": 76,
+        "gillam": "Gillam B",
+        "sex": "M",
+        "weight": "+100",
+        "blueId": "AZE-PLAYER072-P100",
+        "greenId": "ESP-PLAYER004-P100",
+        "stage": "R1",
+        "groupKey": "M|+100",
+        "localId": 5,
+        "isElimination": true
+      },
+      {
+        "boutNo": 77,
+        "gillam": "Gillam B",
+        "sex": "F",
+        "weight": "-57",
+        "blueId": "TJK-PLAYER071-N57",
+        "greenId": "CHN-PLAYER005-N57",
+        "stage": "R1",
+        "groupKey": "F|-57",
+        "localId": 4,
+        "isElimination": true
+      },
+      {
+        "boutNo": 78,
+        "gillam": "Gillam B",
+        "sex": "M",
+        "weight": "+100",
+        "blueId": null,
+        "greenId": null,
+        "stage": "R2",
+        "groupKey": "M|+100",
+        "localId": 6,
+        "isElimination": true
+      },
+      {
+        "boutNo": 79,
+        "gillam": "Gillam B",
+        "sex": "F",
+        "weight": "-57",
+        "blueId": "RSA-PLAYER082-N57",
+        "greenId": "SOM-PLAYER011-N57",
+        "stage": "R1",
+        "groupKey": "F|-57",
+        "localId": 5,
+        "isElimination": true
+      },
+      {
+        "boutNo": 80,
+        "gillam": "Gillam B",
+        "sex": "M",
+        "weight": "+100",
+        "blueId": null,
+        "greenId": null,
+        "stage": "R2",
+        "groupKey": "M|+100",
+        "localId": 7,
+        "isElimination": true
+      },
+      {
+        "boutNo": 81,
+        "gillam": "Gillam B",
+        "sex": "F",
+        "weight": "-57",
+        "blueId": null,
+        "greenId": null,
+        "stage": "R2",
+        "groupKey": "F|-57",
+        "localId": 6,
+        "isElimination": true
+      },
+      {
+        "boutNo": 82,
+        "gillam": "Gillam B",
+        "sex": "M",
+        "weight": "+100",
+        "blueId": null,
+        "greenId": "GER-PLAYER007-P100",
+        "stage": "R2",
+        "groupKey": "M|+100",
+        "localId": 8,
+        "isElimination": true
+      },
+      {
+        "boutNo": 83,
+        "gillam": "Gillam B",
+        "sex": "F",
+        "weight": "-57",
+        "blueId": null,
+        "greenId": null,
+        "stage": "R2",
+        "groupKey": "F|-57",
+        "localId": 7,
+        "isElimination": true
+      },
+      {
+        "boutNo": 84,
+        "gillam": "Gillam B",
+        "sex": "F",
+        "weight": "-70",
+        "blueId": "MAR-PLAYER056-N70",
+        "greenId": "IRN-PLAYER064-N70",
+        "stage": "RR",
+        "groupKey": "F|-70",
+        "localId": 2,
+        "isElimination": false
+      },
+      {
+        "boutNo": 85,
+        "gillam": "Gillam B",
+        "sex": "F",
+        "weight": "-57",
+        "blueId": null,
+        "greenId": "KEN-PLAYER061-N57",
+        "stage": "R2",
+        "groupKey": "F|-57",
+        "localId": 8,
+        "isElimination": true
+      },
+      {
+        "boutNo": 86,
+        "gillam": "Gillam B",
+        "sex": "F",
+        "weight": "+87",
+        "blueId": "NEP-PLAYER089-P87",
+        "greenId": "TJK-PLAYER094-P87",
+        "stage": "R1",
+        "groupKey": "F|+87",
+        "localId": 1,
+        "isElimination": true
+      },
+      {
+        "boutNo": 87,
+        "gillam": "Gillam B",
+        "sex": "F",
+        "weight": "-70",
+        "blueId": "INA-PLAYER020-N70",
+        "greenId": "IRN-PLAYER064-N70",
+        "stage": "RR",
+        "groupKey": "F|-70",
+        "localId": 1,
+        "isElimination": false
+      },
+      {
+        "boutNo": 88,
+        "gillam": "Gillam B",
+        "sex": "F",
+        "weight": "+87",
+        "blueId": "KAZ-PLAYER037-P87",
+        "greenId": "INA-PLAYER052-P87",
+        "stage": "R1",
+        "groupKey": "F|+87",
+        "localId": 2,
+        "isElimination": true
+      },
+      {
+        "boutNo": 89,
+        "gillam": "Gillam B",
+        "sex": "F",
+        "weight": "+87",
+        "blueId": "RUS-PLAYER067-P87",
+        "greenId": "INA-PLAYER055-P87",
+        "stage": "R1",
+        "groupKey": "F|+87",
+        "localId": 3,
+        "isElimination": true
+      },
+      {
+        "boutNo": 90,
+        "gillam": "Gillam B",
+        "sex": "F",
+        "weight": "-70",
+        "blueId": "MAR-PLAYER056-N70",
+        "greenId": "INA-PLAYER020-N70",
+        "stage": "RR",
+        "groupKey": "F|-70",
+        "localId": 3,
+        "isElimination": false
+      },
+      {
+        "boutNo": 91,
+        "gillam": "Gillam B",
+        "sex": "F",
+        "weight": "+87",
+        "blueId": "AFG-PLAYER076-P87",
+        "greenId": "SUD-PLAYER008-P87",
+        "stage": "R1",
+        "groupKey": "F|+87",
+        "localId": 4,
+        "isElimination": true
+      },
+      {
+        "boutNo": 92,
+        "gillam": "Gillam B",
+        "sex": "F",
+        "weight": "+87",
+        "blueId": "PAK-PLAYER041-P87",
+        "greenId": "MAS-PLAYER081-P87",
+        "stage": "R1",
+        "groupKey": "F|+87",
+        "localId": 5,
+        "isElimination": true
+      },
+      {
+        "boutNo": 93,
+        "gillam": "Gillam B",
+        "sex": "F",
+        "weight": "+87",
+        "blueId": null,
+        "greenId": null,
+        "stage": "R2",
+        "groupKey": "F|+87",
+        "localId": 6,
+        "isElimination": true
+      },
+      {
+        "boutNo": 94,
+        "gillam": "Gillam B",
+        "sex": "F",
+        "weight": "+87",
+        "blueId": null,
+        "greenId": null,
+        "stage": "R2",
+        "groupKey": "F|+87",
+        "localId": 7,
+        "isElimination": true
+      },
+      {
+        "boutNo": 95,
+        "gillam": "Gillam B",
+        "sex": "F",
+        "weight": "-57",
+        "blueId": null,
+        "greenId": null,
+        "stage": "Semi-final",
+        "groupKey": "F|-57",
+        "localId": 9,
+        "isElimination": true
+      },
+      {
+        "boutNo": 96,
+        "gillam": "Gillam B",
+        "sex": "M",
+        "weight": "-66",
+        "blueId": null,
+        "greenId": null,
+        "stage": "Semi-final",
+        "groupKey": "M|-66",
+        "localId": 4,
+        "isElimination": true
+      },
+      {
+        "boutNo": 97,
+        "gillam": "Gillam B",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": null,
+        "greenId": null,
+        "stage": "Semi-final",
+        "groupKey": "M|-81",
+        "localId": 4,
+        "isElimination": true
+      },
+      {
+        "boutNo": 98,
+        "gillam": "Gillam B",
+        "sex": "F",
+        "weight": "+87",
+        "blueId": null,
+        "greenId": null,
+        "stage": "Semi-final",
+        "groupKey": "F|+87",
+        "localId": 8,
+        "isElimination": true
+      },
+      {
+        "boutNo": 99,
+        "gillam": "Gillam B",
+        "sex": "M",
+        "weight": "+100",
+        "blueId": null,
+        "greenId": null,
+        "stage": "Semi-final",
+        "groupKey": "M|+100",
+        "localId": 9,
+        "isElimination": true
+      },
+      {
+        "boutNo": 100,
+        "gillam": "Gillam B",
+        "sex": "F",
+        "weight": "-57",
+        "blueId": null,
+        "greenId": null,
+        "stage": "Final",
+        "groupKey": "F|-57",
+        "localId": 10,
+        "isElimination": true
+      },
+      {
+        "boutNo": 101,
+        "gillam": "Gillam B",
+        "sex": "M",
+        "weight": "-66",
+        "blueId": null,
+        "greenId": null,
+        "stage": "Final",
+        "groupKey": "M|-66",
+        "localId": 5,
+        "isElimination": true
+      },
+      {
+        "boutNo": 102,
+        "gillam": "Gillam B",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": null,
+        "greenId": null,
+        "stage": "Final",
+        "groupKey": "M|-81",
+        "localId": 5,
+        "isElimination": true
+      },
+      {
+        "boutNo": 103,
+        "gillam": "Gillam B",
+        "sex": "F",
+        "weight": "+87",
+        "blueId": null,
+        "greenId": null,
+        "stage": "Final",
+        "groupKey": "F|+87",
+        "localId": 9,
+        "isElimination": true
+      },
+      {
+        "boutNo": 104,
+        "gillam": "Gillam B",
+        "sex": "M",
+        "weight": "+100",
+        "blueId": null,
+        "greenId": null,
+        "stage": "Final",
+        "groupKey": "M|+100",
+        "localId": 10,
+        "isElimination": true
+      }
+    ],
+    "assignments": [
+      {
+        "boutNo": 1,
+        "mainRef": "REF-005",
+        "judge1": "REF-003",
+        "judge2": "REF-007",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 2,
+        "mainRef": "REF-001",
+        "judge1": "REF-005",
+        "judge2": "REF-003",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 3,
+        "mainRef": "REF-007",
+        "judge1": "REF-001",
+        "judge2": "REF-005",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 4,
+        "mainRef": "REF-003",
+        "judge1": "REF-007",
+        "judge2": "REF-001",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 5,
+        "mainRef": "REF-005",
+        "judge1": "REF-003",
+        "judge2": "REF-007",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 6,
+        "mainRef": "REF-001",
+        "judge1": "REF-005",
+        "judge2": "REF-003",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 7,
+        "mainRef": "REF-007",
+        "judge1": "REF-001",
+        "judge2": "REF-005",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 8,
+        "mainRef": "REF-003",
+        "judge1": "REF-007",
+        "judge2": "REF-001",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 9,
+        "mainRef": "REF-005",
+        "judge1": "REF-003",
+        "judge2": "REF-007",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 10,
+        "mainRef": "REF-001",
+        "judge1": "REF-005",
+        "judge2": "REF-003",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 11,
+        "mainRef": "REF-007",
+        "judge1": "REF-001",
+        "judge2": "REF-005",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 12,
+        "mainRef": "REF-003",
+        "judge1": "REF-007",
+        "judge2": "REF-001",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 13,
+        "mainRef": "REF-005",
+        "judge1": "REF-003",
+        "judge2": "REF-007",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 14,
+        "mainRef": "REF-001",
+        "judge1": "REF-005",
+        "judge2": "REF-003",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 15,
+        "mainRef": "REF-007",
+        "judge1": "REF-001",
+        "judge2": "REF-005",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 16,
+        "mainRef": "REF-003",
+        "judge1": "REF-007",
+        "judge2": "REF-001",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 17,
+        "mainRef": "REF-005",
+        "judge1": "REF-003",
+        "judge2": "REF-007",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 18,
+        "mainRef": "REF-001",
+        "judge1": "REF-005",
+        "judge2": "REF-003",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 19,
+        "mainRef": "REF-007",
+        "judge1": "REF-001",
+        "judge2": "REF-005",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 20,
+        "mainRef": "REF-003",
+        "judge1": "REF-007",
+        "judge2": "REF-001",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 21,
+        "mainRef": "REF-005",
+        "judge1": "REF-003",
+        "judge2": "REF-007",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 22,
+        "mainRef": "REF-001",
+        "judge1": "REF-005",
+        "judge2": "REF-003",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 23,
+        "mainRef": "REF-007",
+        "judge1": "REF-001",
+        "judge2": "REF-005",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 24,
+        "mainRef": "REF-003",
+        "judge1": "REF-007",
+        "judge2": "REF-001",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 25,
+        "mainRef": "REF-005",
+        "judge1": "REF-003",
+        "judge2": "REF-007",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 26,
+        "mainRef": "REF-001",
+        "judge1": "REF-005",
+        "judge2": "REF-003",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 27,
+        "mainRef": "REF-007",
+        "judge1": "REF-001",
+        "judge2": "REF-005",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 28,
+        "mainRef": "REF-007",
+        "judge1": "REF-001",
+        "judge2": "REF-005",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 29,
+        "mainRef": "REF-003",
+        "judge1": "REF-007",
+        "judge2": "REF-001",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 30,
+        "mainRef": "REF-005",
+        "judge1": "REF-003",
+        "judge2": "REF-007",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 31,
+        "mainRef": "REF-001",
+        "judge1": "REF-005",
+        "judge2": "REF-003",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 32,
+        "mainRef": "REF-007",
+        "judge1": "REF-001",
+        "judge2": "REF-005",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 33,
+        "mainRef": "REF-007",
+        "judge1": "REF-001",
+        "judge2": "REF-005",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 34,
+        "mainRef": "REF-003",
+        "judge1": "REF-007",
+        "judge2": "REF-001",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 35,
+        "mainRef": "REF-005",
+        "judge1": "REF-003",
+        "judge2": "REF-007",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 36,
+        "mainRef": "REF-001",
+        "judge1": "REF-005",
+        "judge2": "REF-007",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 37,
+        "mainRef": "REF-003",
+        "judge1": "REF-001",
+        "judge2": "REF-005",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 38,
+        "mainRef": "REF-007",
+        "judge1": "REF-003",
+        "judge2": "REF-001",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 39,
+        "mainRef": "REF-005",
+        "judge1": "REF-007",
+        "judge2": "REF-001",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 40,
+        "mainRef": "REF-003",
+        "judge1": "REF-005",
+        "judge2": "REF-007",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 41,
+        "mainRef": "REF-001",
+        "judge1": "REF-003",
+        "judge2": "REF-005",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 42,
+        "mainRef": "REF-007",
+        "judge1": "REF-001",
+        "judge2": "REF-003",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 43,
+        "mainRef": "REF-005",
+        "judge1": "REF-007",
+        "judge2": "REF-001",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 44,
+        "mainRef": "REF-003",
+        "judge1": "REF-005",
+        "judge2": "REF-007",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 45,
+        "mainRef": "REF-001",
+        "judge1": "REF-005",
+        "judge2": "REF-007",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 46,
+        "mainRef": "REF-005",
+        "judge1": "REF-007",
+        "judge2": "REF-003",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 47,
+        "mainRef": "REF-003",
+        "judge1": "REF-001",
+        "judge2": "REF-005",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 48,
+        "mainRef": "REF-007",
+        "judge1": "REF-003",
+        "judge2": "REF-001",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 49,
+        "mainRef": "REF-005",
+        "judge1": "REF-007",
+        "judge2": "REF-003",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 50,
+        "mainRef": "REF-001",
+        "judge1": "REF-005",
+        "judge2": "REF-007",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 51,
+        "mainRef": "REF-003",
+        "judge1": "REF-001",
+        "judge2": "REF-005",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 52,
+        "mainRef": "REF-007",
+        "judge1": "REF-003",
+        "judge2": "REF-001",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 53,
+        "mainRef": "REF-005",
+        "judge1": "REF-007",
+        "judge2": "REF-003",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 54,
+        "mainRef": "REF-001",
+        "judge1": "REF-005",
+        "judge2": "REF-007",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 55,
+        "mainRef": "REF-003",
+        "judge1": "REF-001",
+        "judge2": "REF-005",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 56,
+        "mainRef": "REF-007",
+        "judge1": "REF-003",
+        "judge2": "REF-001",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 57,
+        "mainRef": "REF-005",
+        "judge1": "REF-007",
+        "judge2": "REF-003",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 58,
+        "mainRef": "REF-001",
+        "judge1": "REF-005",
+        "judge2": "REF-007",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 59,
+        "mainRef": "REF-003",
+        "judge1": "REF-001",
+        "judge2": "REF-005",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 60,
+        "mainRef": "REF-007",
+        "judge1": "REF-003",
+        "judge2": "REF-001",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 61,
+        "mainRef": "REF-005",
+        "judge1": "REF-007",
+        "judge2": "REF-003",
+        "manual": false,
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 62,
+        "mainRef": "REF-004",
+        "judge1": "REF-002",
+        "judge2": "REF-008",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 63,
+        "mainRef": "REF-002",
+        "judge1": "REF-004",
+        "judge2": "REF-008",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 64,
+        "mainRef": "REF-006",
+        "judge1": "REF-002",
+        "judge2": "REF-004",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 65,
+        "mainRef": "REF-008",
+        "judge1": "REF-006",
+        "judge2": "REF-002",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 66,
+        "mainRef": "REF-008",
+        "judge1": "REF-006",
+        "judge2": "REF-002",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 67,
+        "mainRef": "REF-004",
+        "judge1": "REF-008",
+        "judge2": "REF-006",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 68,
+        "mainRef": "REF-002",
+        "judge1": "REF-008",
+        "judge2": "REF-006",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 69,
+        "mainRef": "REF-004",
+        "judge1": "REF-002",
+        "judge2": "REF-008",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 70,
+        "mainRef": "REF-006",
+        "judge1": "REF-004",
+        "judge2": "REF-002",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 71,
+        "mainRef": "REF-008",
+        "judge1": "REF-004",
+        "judge2": "REF-002",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 72,
+        "mainRef": "REF-006",
+        "judge1": "REF-008",
+        "judge2": "REF-004",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 73,
+        "mainRef": "REF-002",
+        "judge1": "REF-008",
+        "judge2": "REF-004",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 74,
+        "mainRef": "REF-006",
+        "judge1": "REF-002",
+        "judge2": "REF-008",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 75,
+        "mainRef": "REF-004",
+        "judge1": "REF-006",
+        "judge2": "REF-002",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 76,
+        "mainRef": "REF-008",
+        "judge1": "REF-004",
+        "judge2": "REF-006",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 77,
+        "mainRef": "REF-002",
+        "judge1": "REF-008",
+        "judge2": "REF-004",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 78,
+        "mainRef": "REF-006",
+        "judge1": "REF-002",
+        "judge2": "REF-008",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 79,
+        "mainRef": "REF-004",
+        "judge1": "REF-006",
+        "judge2": "REF-002",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 80,
+        "mainRef": "REF-008",
+        "judge1": "REF-004",
+        "judge2": "REF-006",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 81,
+        "mainRef": "REF-002",
+        "judge1": "REF-008",
+        "judge2": "REF-004",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 82,
+        "mainRef": "REF-006",
+        "judge1": "REF-002",
+        "judge2": "REF-008",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 83,
+        "mainRef": "REF-004",
+        "judge1": "REF-006",
+        "judge2": "REF-002",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 84,
+        "mainRef": "REF-008",
+        "judge1": "REF-004",
+        "judge2": "REF-006",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 85,
+        "mainRef": "REF-002",
+        "judge1": "REF-008",
+        "judge2": "REF-004",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 86,
+        "mainRef": "REF-006",
+        "judge1": "REF-002",
+        "judge2": "REF-008",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 87,
+        "mainRef": "REF-004",
+        "judge1": "REF-006",
+        "judge2": "REF-002",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 88,
+        "mainRef": "REF-008",
+        "judge1": "REF-004",
+        "judge2": "REF-006",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 89,
+        "mainRef": "REF-002",
+        "judge1": "REF-008",
+        "judge2": "REF-004",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 90,
+        "mainRef": "REF-006",
+        "judge1": "REF-002",
+        "judge2": "REF-008",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 91,
+        "mainRef": "REF-004",
+        "judge1": "REF-002",
+        "judge2": "REF-008",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 92,
+        "mainRef": "REF-006",
+        "judge1": "REF-004",
+        "judge2": "REF-002",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 93,
+        "mainRef": "REF-008",
+        "judge1": "REF-006",
+        "judge2": "REF-004",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 94,
+        "mainRef": "REF-002",
+        "judge1": "REF-008",
+        "judge2": "REF-006",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 95,
+        "mainRef": "REF-004",
+        "judge1": "REF-002",
+        "judge2": "REF-008",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 96,
+        "mainRef": "REF-006",
+        "judge1": "REF-004",
+        "judge2": "REF-002",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 97,
+        "mainRef": "REF-008",
+        "judge1": "REF-006",
+        "judge2": "REF-004",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 98,
+        "mainRef": "REF-002",
+        "judge1": "REF-008",
+        "judge2": "REF-006",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 99,
+        "mainRef": "REF-004",
+        "judge1": "REF-002",
+        "judge2": "REF-008",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 100,
+        "mainRef": "REF-006",
+        "judge1": "REF-004",
+        "judge2": "REF-002",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 101,
+        "mainRef": "REF-008",
+        "judge1": "REF-006",
+        "judge2": "REF-004",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 102,
+        "mainRef": "REF-002",
+        "judge1": "REF-008",
+        "judge2": "REF-006",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 103,
+        "mainRef": "REF-004",
+        "judge1": "REF-002",
+        "judge2": "REF-008",
+        "manual": false,
+        "gillam": "Gillam B"
+      },
+      {
+        "boutNo": 104,
+        "mainRef": "REF-006",
+        "judge1": "REF-004",
+        "judge2": "REF-002",
+        "manual": false,
+        "gillam": "Gillam B"
+      }
+    ],
+    "bracketLinks": {
+      "5": [
+        {
+          "toBoutNo": 55,
+          "side": "blue"
+        }
+      ],
+      "10": [
+        {
+          "toBoutNo": 55,
+          "side": "green"
+        }
+      ],
+      "15": [
+        {
+          "toBoutNo": 56,
+          "side": "blue"
+        }
+      ],
+      "17": [
+        {
+          "toBoutNo": 57,
+          "side": "blue"
+        }
+      ],
+      "20": [
+        {
+          "toBoutNo": 57,
+          "side": "green"
+        }
+      ],
+      "23": [
+        {
+          "toBoutNo": 61,
+          "side": "green"
+        }
+      ],
+      "28": [
+        {
+          "toBoutNo": 38,
+          "side": "blue"
+        }
+      ],
+      "31": [
+        {
+          "toBoutNo": 38,
+          "side": "green"
+        }
+      ],
+      "34": [
+        {
+          "toBoutNo": 40,
+          "side": "blue"
+        }
+      ],
+      "36": [
+        {
+          "toBoutNo": 40,
+          "side": "green"
+        }
+      ],
+      "38": [
+        {
+          "toBoutNo": 53,
+          "side": "blue"
+        }
+      ],
+      "40": [
+        {
+          "toBoutNo": 53,
+          "side": "green"
+        }
+      ],
+      "42": [
+        {
+          "toBoutNo": 50,
+          "side": "blue"
+        }
+      ],
+      "44": [
+        {
+          "toBoutNo": 50,
+          "side": "green"
+        }
+      ],
+      "46": [
+        {
+          "toBoutNo": 51,
+          "side": "blue"
+        }
+      ],
+      "47": [
+        {
+          "toBoutNo": 51,
+          "side": "green"
+        }
+      ],
+      "49": [
+        {
+          "toBoutNo": 52,
+          "side": "blue"
+        }
+      ],
+      "50": [
+        {
+          "toBoutNo": 54,
+          "side": "blue"
+        }
+      ],
+      "51": [
+        {
+          "toBoutNo": 54,
+          "side": "green"
+        }
+      ],
+      "52": [
+        {
+          "toBoutNo": 59,
+          "side": "green"
+        }
+      ],
+      "53": [
+        {
+          "toBoutNo": 58,
+          "side": "blue"
+        }
+      ],
+      "54": [
+        {
+          "toBoutNo": 59,
+          "side": "blue"
+        }
+      ],
+      "55": [
+        {
+          "toBoutNo": 60,
+          "side": "blue"
+        }
+      ],
+      "56": [
+        {
+          "toBoutNo": 60,
+          "side": "green"
+        }
+      ],
+      "57": [
+        {
+          "toBoutNo": 61,
+          "side": "blue"
+        }
+      ],
+      "62": [
+        {
+          "toBoutNo": 96,
+          "side": "blue"
+        }
+      ],
+      "63": [
+        {
+          "toBoutNo": 97,
+          "side": "blue"
+        }
+      ],
+      "64": [
+        {
+          "toBoutNo": 96,
+          "side": "green"
+        }
+      ],
+      "65": [
+        {
+          "toBoutNo": 97,
+          "side": "green"
+        }
+      ],
+      "66": [
+        {
+          "toBoutNo": 101,
+          "side": "green"
+        }
+      ],
+      "67": [
+        {
+          "toBoutNo": 102,
+          "side": "green"
+        }
+      ],
+      "68": [
+        {
+          "toBoutNo": 78,
+          "side": "blue"
+        }
+      ],
+      "70": [
+        {
+          "toBoutNo": 78,
+          "side": "green"
+        }
+      ],
+      "71": [
+        {
+          "toBoutNo": 81,
+          "side": "blue"
+        }
+      ],
+      "72": [
+        {
+          "toBoutNo": 80,
+          "side": "blue"
+        }
+      ],
+      "73": [
+        {
+          "toBoutNo": 81,
+          "side": "green"
+        }
+      ],
+      "74": [
+        {
+          "toBoutNo": 80,
+          "side": "green"
+        }
+      ],
+      "75": [
+        {
+          "toBoutNo": 83,
+          "side": "blue"
+        }
+      ],
+      "76": [
+        {
+          "toBoutNo": 82,
+          "side": "blue"
+        }
+      ],
+      "77": [
+        {
+          "toBoutNo": 83,
+          "side": "green"
+        }
+      ],
+      "78": [
+        {
+          "toBoutNo": 99,
+          "side": "blue"
+        }
+      ],
+      "79": [
+        {
+          "toBoutNo": 85,
+          "side": "blue"
+        }
+      ],
+      "80": [
+        {
+          "toBoutNo": 99,
+          "side": "green"
+        }
+      ],
+      "81": [
+        {
+          "toBoutNo": 95,
+          "side": "blue"
+        }
+      ],
+      "82": [
+        {
+          "toBoutNo": 104,
+          "side": "green"
+        }
+      ],
+      "83": [
+        {
+          "toBoutNo": 95,
+          "side": "green"
+        }
+      ],
+      "85": [
+        {
+          "toBoutNo": 100,
+          "side": "green"
+        }
+      ],
+      "86": [
+        {
+          "toBoutNo": 93,
+          "side": "blue"
+        }
+      ],
+      "88": [
+        {
+          "toBoutNo": 93,
+          "side": "green"
+        }
+      ],
+      "89": [
+        {
+          "toBoutNo": 94,
+          "side": "blue"
+        }
+      ],
+      "91": [
+        {
+          "toBoutNo": 94,
+          "side": "green"
+        }
+      ],
+      "92": [
+        {
+          "toBoutNo": 103,
+          "side": "green"
+        }
+      ],
+      "93": [
+        {
+          "toBoutNo": 98,
+          "side": "blue"
+        }
+      ],
+      "94": [
+        {
+          "toBoutNo": 98,
+          "side": "green"
+        }
+      ],
+      "95": [
+        {
+          "toBoutNo": 100,
+          "side": "blue"
+        }
+      ],
+      "96": [
+        {
+          "toBoutNo": 101,
+          "side": "blue"
+        }
+      ],
+      "97": [
+        {
+          "toBoutNo": 102,
+          "side": "blue"
+        }
+      ],
+      "98": [
+        {
+          "toBoutNo": 103,
+          "side": "blue"
+        }
+      ],
+      "99": [
+        {
+          "toBoutNo": 104,
+          "side": "blue"
+        }
+      ]
+    }
+  }
+}
