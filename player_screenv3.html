@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kurash Player Screen</title>
+  <style>
+    :root {
+      --bg: #020617;
+      --panel: #0f172a;
+      --panel-2: #111827;
+      --border: #1e293b;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --done: #475569;
+      --danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: Arial, Helvetica, sans-serif;
+      background: radial-gradient(circle at top, #0f172a, var(--bg));
+      color: var(--text);
+    }
+
+    body { min-height: 100vh; }
+
+    .wrap {
+      width: min(98vw, 1800px);
+      margin: 0 auto;
+      padding: clamp(8px, 1.2vw, 16px);
+    }
+
+    .card {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--border);
+      border-radius: clamp(18px, 2vw, 24px);
+      box-shadow: 0 30px 60px rgba(0,0,0,0.45);
+      overflow: hidden;
+      min-height: calc(100vh - 2 * clamp(8px, 1.2vw, 16px));
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: clamp(10px, 1.4vw, 16px);
+      border-bottom: 1px solid var(--border);
+      background: rgba(2,6,23,0.9);
+    }
+
+    .titleRow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .title h1 {
+      margin: 0;
+      font-size: clamp(22px, 2vw, 32px);
+      text-align: center;
+      line-height: 1.1;
+    }
+
+    .title .sub {
+      margin-top: 4px;
+      font-size: clamp(11px, 0.9vw, 13px);
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    input, select, button {
+      height: clamp(36px, 4.2vh, 42px);
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #020617;
+      color: var(--text);
+      padding: 0 14px;
+      font-size: clamp(13px, 1vw, 14px);
+    }
+
+    input, select { min-width: 180px; }
+    button { cursor: pointer; }
+    button:hover { border-color: var(--accent); }
+
+    .status {
+      font-size: clamp(12px, 0.95vw, 13px);
+      color: var(--muted);
+      padding: 0 8px;
+    }
+
+    .gillamHero {
+      text-align: center;
+      padding: 8px 12px 0;
+    }
+
+    .gillamHero .k {
+      font-size: clamp(12px, 0.8vw, 13px);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .gillamHero .v {
+      margin-top: 4px;
+      font-size: clamp(34px, 5vw, 76px);
+      font-weight: 900;
+      line-height: 0.98;
+      color: #f8fafc;
+      word-break: break-word;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: clamp(8px, 1vw, 12px);
+      padding: 0 clamp(10px, 1.2vw, 16px) clamp(8px, 1vw, 12px);
+    }
+
+    .mini {
+      background: rgba(2,6,23,0.75);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: clamp(10px, 1.2vw, 14px);
+      text-align: center;
+      min-height: clamp(64px, 9vh, 88px);
+    }
+
+    .mini .k { color: var(--muted); font-size: clamp(11px, 0.8vw, 12px); }
+    .mini .v { margin-top: 6px; font-size: clamp(18px, 1.8vw, 28px); font-weight: 700; }
+
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: 1.35fr 1fr 1fr;
+      gap: clamp(10px, 1vw, 16px);
+      padding: 0 clamp(10px, 1.2vw, 16px) 10px;
+    }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(15,23,42,0.98), rgba(2,6,23,0.98));
+      border: 1px solid var(--border);
+      border-radius: clamp(18px, 1.6vw, 24px);
+      padding: clamp(14px, 1.4vw, 20px);
+      min-height: clamp(230px, 38vh, 390px);
+      display: flex;
+      flex-direction: column;
+      gap: clamp(10px, 1vw, 14px);
+      min-width: 0;
+    }
+
+    .panel.current {
+      border-color: rgba(56,189,248,0.6);
+      box-shadow: 0 0 0 1px rgba(56,189,248,0.18) inset;
+    }
+
+    .panel.done {
+      opacity: 0.72;
+      background: linear-gradient(180deg, rgba(71,85,105,0.35), rgba(30,41,59,0.6));
+    }
+
+    .panel.empty {
+      justify-content: center;
+      align-items: center;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .labelRow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .label {
+      font-size: clamp(12px, 0.9vw, 13px);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: bold;
+    }
+
+    .badge {
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      font-size: clamp(11px, 0.9vw, 12px);
+      white-space: nowrap;
+    }
+
+    .badge.current { background: rgba(14,165,233,0.14); color: #7dd3fc; }
+    .badge.next { background: rgba(245,158,11,0.14); color: #fcd34d; }
+    .badge.done { background: rgba(100,116,139,0.18); color: #cbd5e1; }
+
+    .boutNo {
+      font-size: clamp(20px, 2.6vw, 34px);
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: clamp(11px, 0.9vw, 13px);
+      color: var(--muted);
+    }
+
+    .meta span {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(2,6,23,0.8);
+      max-width: 100%;
+    }
+
+    .vs {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: clamp(8px, 1vw, 12px);
+      align-items: stretch;
+      min-height: 120px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .fighter {
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: clamp(12px, 1vw, 16px);
+      background: rgba(2,6,23,0.85);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .fighter .corner {
+      font-size: clamp(11px, 0.8vw, 12px);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .fighter .name {
+      font-size: clamp(18px, 1.8vw, 34px);
+      font-weight: 700;
+      line-height: 1.12;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
+    .fighter .country {
+      font-size: clamp(12px, 1vw, 14px);
+      color: var(--muted);
+      word-break: break-word;
+    }
+
+    .fighter.blue { border-color: rgba(59,130,246,0.45); }
+    .fighter.green { border-color: rgba(34,197,94,0.45); }
+
+    .versus {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      color: var(--muted);
+      font-size: clamp(16px, 1.8vw, 30px);
+      padding: 0 4px;
+    }
+
+    .footerRow {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: auto;
+      font-size: clamp(12px, 0.9vw, 13px);
+      color: var(--muted);
+      flex-wrap: wrap;
+    }
+
+    .previousWrap {
+      padding: 0 clamp(10px, 1.2vw, 16px) clamp(10px, 1.2vw, 16px);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 0;
+      flex: 1;
+    }
+
+    .previousTitle {
+      text-align: center;
+      color: var(--muted);
+      font-size: clamp(12px, 0.95vw, 14px);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border-top: 1px solid rgba(30,41,59,0.9);
+      padding-top: 8px;
+    }
+
+    .previousGrid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: clamp(8px, 0.8vw, 12px);
+      align-content: start;
+      min-height: 0;
+    }
+
+    .resultBox {
+      border: 1px solid var(--border);
+      background: rgba(2,6,23,0.72);
+      border-radius: 16px;
+      padding: clamp(8px, 0.9vw, 12px);
+      min-height: clamp(84px, 13vh, 124px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 6px;
+      opacity: 0.88;
+      min-width: 0;
+    }
+
+    .resultBox.empty {
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      opacity: 0.55;
+    }
+
+    .resultTop {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+      font-size: clamp(10px, 0.8vw, 12px);
+      color: var(--muted);
+    }
+
+    .resultFightNo {
+      color: #cbd5e1;
+      font-weight: 700;
+    }
+
+    .resultStage {
+      padding: 3px 8px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      white-space: nowrap;
+      max-width: 55%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .resultNames {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 6px;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .rName {
+      font-size: clamp(12px, 1vw, 14px);
+      line-height: 1.15;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      min-width: 0;
+    }
+
+    .rVs {
+      color: var(--muted);
+      font-size: clamp(11px, 0.8vw, 12px);
+    }
+
+    .resultBottom {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      font-size: clamp(11px, 0.9vw, 13px);
+    }
+
+    .winnerPill {
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(34,197,94,0.35);
+      background: rgba(34,197,94,0.12);
+      color: #86efac;
+      font-weight: 700;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .winnerUnknown {
+      color: #cbd5e1;
+      border-color: rgba(100,116,139,0.35);
+      background: rgba(100,116,139,0.12);
+    }
+
+    .hint {
+      padding: 0 16px 16px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .fs-hide {
+      transition: opacity .2s ease, max-height .2s ease, margin .2s ease, padding .2s ease;
+    }
+
+    .is-fullscreen .fs-hide {
+      display: none !important;
+    }
+
+    @media (max-width: 1280px) {
+      .previousGrid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .panel {
+        min-height: clamp(220px, 34vh, 330px);
+      }
+      .resultBox {
+        min-height: 90px;
+      }
+    }
+
+    @media (max-width: 1100px) {
+      .board { grid-template-columns: 1fr; }
+      .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .previousGrid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .panel {
+        min-height: 220px;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .wrap { width: 100vw; padding: 8px; }
+      .vs { grid-template-columns: 1fr; }
+      .versus { min-height: 10px; }
+      .summary { grid-template-columns: 1fr; }
+      .controls { width: 100%; }
+      input, select { min-width: 0; width: 100%; }
+      .previousGrid { grid-template-columns: 1fr; }
+      .resultNames { grid-template-columns: 1fr; }
+      .rVs { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card" id="screenRoot">
+      <div class="topbar">
+        <div class="titleRow">
+          <div class="title">
+            <h1>Kurash Player Screen</h1>
+            <div class="sub">Auto-rotates Gillams every 5 seconds and refreshes data on each switch</div>
+          </div>
+          <button id="btnFullscreen">Fullscreen</button>
+        </div>
+        <div class="controls fs-hide">
+          <input id="serverUrl" type="text" placeholder="http://localhost:3000" />
+          <button id="btnTest">Test</button>
+          <select id="gillamSelect">
+            <option value="">-- Load Gillams --</option>
+          </select>
+          <button id="btnGillams">Load Gillams</button>
+          <button id="btnRefresh">Refresh Now</button>
+          <div class="status" id="status">Idle.</div>
+        </div>
+      </div>
+
+      <div class="gillamHero">
+        <div class="k">Gillam</div>
+        <div class="v" id="heroGillam">-</div>
+      </div>
+
+      <div class="summary">
+        <div class="mini"><div class="k">Gillam</div><div class="v" id="sumGillam">-</div></div>
+        <div class="mini"><div class="k">Total fights</div><div class="v" id="sumTotal">0</div></div>
+        <div class="mini"><div class="k">Finished</div><div class="v" id="sumDone">0</div></div>
+        <div class="mini"><div class="k">Remaining</div><div class="v" id="sumRemain">0</div></div>
+      </div>
+
+      <div class="content">
+        <div class="board">
+          <div id="panelCurrent" class="panel current empty"></div>
+          <div id="panelNext" class="panel empty"></div>
+          <div id="panelAfter" class="panel empty"></div>
+        </div>
+
+        <div class="previousWrap">
+          <div class="previousTitle">Previous Fights Results</div>
+          <div id="previousGrid" class="previousGrid"></div>
+        </div>
+      </div>
+
+      <div class="hint fs-hide">
+        This screen uses <code>/api/gillams</code> and <code>/api/gillam/:name/bouts</code>. It refreshes every <strong>5 seconds</strong>. If there is more than one Gillam, the screen switches automatically to the next Gillam on each cycle. If there is only one Gillam, it refreshes the same Gillam every 5 seconds.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const el = {
+      root: document.getElementById('screenRoot'),
+      serverUrl: document.getElementById('serverUrl'),
+      btnTest: document.getElementById('btnTest'),
+      btnGillams: document.getElementById('btnGillams'),
+      btnRefresh: document.getElementById('btnRefresh'),
+      btnFullscreen: document.getElementById('btnFullscreen'),
+      gillamSelect: document.getElementById('gillamSelect'),
+      status: document.getElementById('status'),
+      panelCurrent: document.getElementById('panelCurrent'),
+      panelNext: document.getElementById('panelNext'),
+      panelAfter: document.getElementById('panelAfter'),
+      heroGillam: document.getElementById('heroGillam'),
+      sumGillam: document.getElementById('sumGillam'),
+      sumTotal: document.getElementById('sumTotal'),
+      sumDone: document.getElementById('sumDone'),
+      sumRemain: document.getElementById('sumRemain'),
+      previousGrid: document.getElementById('previousGrid')
+    };
+
+    let refreshTimer = null;
+    let gillamList = [];
+    let cycleIndex = 0;
+    let isBusy = false;
+
+    function baseUrl() {
+      const raw = String(el.serverUrl.value || '').trim();
+      return raw ? raw.replace(/\/+$/, '') : '';
+    }
+
+    function setStatus(msg, kind) {
+      el.status.textContent = msg;
+      el.status.style.color = kind === 'error'
+        ? '#fca5a5'
+        : kind === 'ok'
+        ? '#86efac'
+        : '#94a3b8';
+    }
+
+    function escapeHtml(v) {
+      return String(v ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function sortBouts(list) {
+      return [...(Array.isArray(list) ? list : [])].sort((a, b) => Number(a?.boutNo || 0) - Number(b?.boutNo || 0));
+    }
+
+    function currentIndex(bouts) {
+      const idx = bouts.findIndex(b => !b?.finished);
+      return idx === -1 ? Math.max(0, bouts.length - 1) : idx;
+    }
+
+    function sexLabel(sex) {
+      return sex === 'F' ? 'Women' : sex === 'M' ? 'Men' : '-';
+    }
+
+    function winnerName(bout) {
+      if (!bout) return '';
+      if (typeof bout.winnerName === 'string' && bout.winnerName.trim()) return bout.winnerName.trim();
+      if (bout.winner === 'blue') return bout.blueName || bout.blueId || 'Blue';
+      if (bout.winner === 'green') return bout.greenName || bout.greenId || 'Green';
+      if (typeof bout.winner === 'string' && bout.winner.trim()) return bout.winner.trim();
+      return '';
+    }
+
+    function renderEmpty(panel, title, note) {
+      panel.className = 'panel empty';
+      panel.innerHTML = `
+        <div class="label">${escapeHtml(title)}</div>
+        <div style="font-size:28px;font-weight:700;">No fight</div>
+        <div style="color:var(--muted);max-width:260px;">${escapeHtml(note || '')}</div>
+      `;
+    }
+
+    function renderBout(panel, title, bout, mode) {
+      if (!bout) {
+        renderEmpty(panel, title, 'No fight available in this position.');
+        return;
+      }
+
+      const done = !!bout.finished;
+      const panelClasses = ['panel'];
+      if (mode === 'current') panelClasses.push('current');
+      if (done) panelClasses.push('done');
+      panel.className = panelClasses.join(' ');
+
+      const blueName = bout.blueName || bout.blueId || 'Blue';
+      const greenName = bout.greenName || bout.greenId || 'Green';
+      const blueCountry = bout.blueCountry || '';
+      const greenCountry = bout.greenCountry || '';
+      const finalWinner = winnerName(bout);
+      const badgeText = done ? 'Finished' : mode === 'current' ? 'On Deck' : 'Coming Up';
+      const badgeClass = done ? 'done' : mode === 'current' ? 'current' : 'next';
+
+      panel.innerHTML = `
+        <div class="labelRow">
+          <div class="label">${escapeHtml(title)}</div>
+          <div class="badge ${badgeClass}">${escapeHtml(badgeText)}</div>
+        </div>
+
+        <div class="boutNo">Fight #${escapeHtml(bout.boutNo)}</div>
+
+        <div class="meta">
+          <span>${escapeHtml(bout.gillam || '-')}</span>
+          <span>${escapeHtml(sexLabel(bout.sex))}</span>
+          <span>${escapeHtml(bout.weight || '-')}</span>
+          <span>${escapeHtml(bout.stage || '-')}</span>
+        </div>
+
+        <div class="vs">
+          <div class="fighter blue">
+            <div class="corner">Blue</div>
+            <div class="name">${escapeHtml(blueName)}</div>
+            <div class="country">${escapeHtml(blueCountry)}</div>
+          </div>
+          <div class="versus">VS</div>
+          <div class="fighter green">
+            <div class="corner">Green</div>
+            <div class="name">${escapeHtml(greenName)}</div>
+            <div class="country">${escapeHtml(greenCountry)}</div>
+          </div>
+        </div>
+
+        <div class="footerRow">
+          <div>Status: ${done ? 'Finished' : 'Waiting'}</div>
+          <div>Winner: ${escapeHtml(done ? (finalWinner || 'Saved') : 'Pending')}</div>
+        </div>
+      `;
+    }
+
+    function renderPreviousResults(bouts, currentIdx) {
+      const finished = bouts.filter(b => b && b.finished);
+      let previous = finished;
+
+      if (bouts[currentIdx] && !bouts[currentIdx].finished) {
+        previous = bouts.slice(0, currentIdx).filter(b => b && b.finished);
+      }
+
+      previous = previous.slice(-5).reverse();
+      el.previousGrid.innerHTML = '';
+
+      if (!previous.length) {
+        for (let i = 0; i < 5; i++) {
+          const box = document.createElement('div');
+          box.className = 'resultBox empty';
+          box.innerHTML = '<div>No previous result yet</div>';
+          el.previousGrid.appendChild(box);
+        }
+        return;
+      }
+
+      previous.forEach((b) => {
+        const box = document.createElement('div');
+        box.className = 'resultBox';
+
+        const wName = winnerName(b);
+        const winnerClass = wName ? 'winnerPill' : 'winnerPill winnerUnknown';
+
+        box.innerHTML = `
+          <div class="resultTop">
+            <div class="resultFightNo">Fight #${escapeHtml(b.boutNo)}</div>
+            <div class="resultStage">${escapeHtml(b.stage || '-')}</div>
+          </div>
+
+          <div class="resultNames">
+            <div class="rName">${escapeHtml(b.blueName || b.blueId || 'Blue')}</div>
+            <div class="rVs">VS</div>
+            <div class="rName">${escapeHtml(b.greenName || b.greenId || 'Green')}</div>
+          </div>
+
+          <div class="resultBottom">
+            <div>${escapeHtml(b.weight || '-')}</div>
+            <div class="${winnerClass}">${escapeHtml(wName || 'Winner saved')}</div>
+          </div>
+        `;
+        el.previousGrid.appendChild(box);
+      });
+
+      for (let i = previous.length; i < 5; i++) {
+        const box = document.createElement('div');
+        box.className = 'resultBox empty';
+        box.innerHTML = '<div>Waiting for more finished fights</div>';
+        el.previousGrid.appendChild(box);
+      }
+    }
+
+    async function apiGet(url) {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) {
+        throw new Error('HTTP ' + res.status);
+      }
+      return res.json();
+    }
+
+    async function testConnection() {
+      const base = baseUrl();
+      if (!base) {
+        setStatus('Enter server URL first.', 'error');
+        return;
+      }
+      try {
+        setStatus('Testing connection...', 'info');
+        await apiGet(base + '/api/ping');
+        setStatus('Server is online.', 'ok');
+      } catch (err) {
+        console.error(err);
+        setStatus('Cannot reach server.', 'error');
+      }
+    }
+
+    function setGillamOptions(list) {
+      gillamList = Array.isArray(list) ? list.slice() : [];
+      el.gillamSelect.innerHTML = '';
+
+      const firstOpt = document.createElement('option');
+      firstOpt.value = '';
+      firstOpt.textContent = gillamList.length ? '-- Select Gillam --' : '-- No Gillams --';
+      el.gillamSelect.appendChild(firstOpt);
+
+      gillamList.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        el.gillamSelect.appendChild(opt);
+      });
+
+      if (gillamList.length) {
+        cycleIndex = 0;
+        el.gillamSelect.value = gillamList[0];
+      } else {
+        cycleIndex = 0;
+        el.gillamSelect.value = '';
+      }
+    }
+
+    async function loadGillams() {
+      const base = baseUrl();
+      if (!base) {
+        setStatus('Enter server URL first.', 'error');
+        return;
+      }
+      try {
+        setStatus('Loading Gillams...', 'info');
+        const list = await apiGet(base + '/api/gillams');
+        setGillamOptions(list);
+
+        if (gillamList.length) {
+          setStatus('Gillams loaded. Auto rotation every 5 seconds.', 'ok');
+          await refreshScreenForGillam(gillamList[0]);
+        } else {
+          clearPanels();
+          setStatus('No Gillams found.', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        setStatus('Error loading Gillams.', 'error');
+      }
+    }
+
+    function enrichBouts(bouts) {
+      return bouts.map(b => ({
+        ...b,
+        blueName: b.blueName || b.blue?.name || b.A?.name || b.blueId || 'Blue',
+        greenName: b.greenName || b.green?.name || b.G?.name || b.greenId || 'Green',
+        blueCountry: b.blueCountry || b.blue?.country || '',
+        greenCountry: b.greenCountry || b.green?.country || ''
+      }));
+    }
+
+    function clearPanels() {
+      el.heroGillam.textContent = '-';
+      el.sumGillam.textContent = '-';
+      el.sumTotal.textContent = '0';
+      el.sumDone.textContent = '0';
+      el.sumRemain.textContent = '0';
+      renderEmpty(el.panelCurrent, 'Current Fight', 'Select a Gillam and load data.');
+      renderEmpty(el.panelNext, 'Next Fight', 'Waiting for data.');
+      renderEmpty(el.panelAfter, 'Then', 'Waiting for data.');
+      renderPreviousResults([], 0);
+    }
+
+    async function refreshScreenForGillam(gillam) {
+      const base = baseUrl();
+      if (!base || !gillam) {
+        clearPanels();
+        return;
+      }
+      try {
+        setStatus('Refreshing ' + gillam + '...', 'info');
+        const raw = await apiGet(base + '/api/gillam/' + encodeURIComponent(gillam) + '/bouts');
+        const bouts = enrichBouts(sortBouts(raw));
+
+        el.gillamSelect.value = gillam;
+        el.heroGillam.textContent = gillam;
+        el.sumGillam.textContent = gillam;
+        el.sumTotal.textContent = String(bouts.length);
+        const doneCount = bouts.filter(b => b.finished).length;
+        el.sumDone.textContent = String(doneCount);
+        el.sumRemain.textContent = String(Math.max(0, bouts.length - doneCount));
+
+        if (!bouts.length) {
+          renderEmpty(el.panelCurrent, 'Current Fight', 'No fights in this Gillam yet.');
+          renderEmpty(el.panelNext, 'Next Fight', 'No fights in this Gillam yet.');
+          renderEmpty(el.panelAfter, 'Then', 'No fights in this Gillam yet.');
+          renderPreviousResults([], 0);
+          setStatus(gillam + ': no fights.', 'error');
+          return;
+        }
+
+        const idx = currentIndex(bouts);
+        renderBout(el.panelCurrent, 'Current Fight', bouts[idx], 'current');
+        renderBout(el.panelNext, 'Next Fight', bouts[idx + 1], 'next');
+        renderBout(el.panelAfter, 'Then', bouts[idx + 2], 'after');
+        renderPreviousResults(bouts, idx);
+        setStatus('Updated ' + gillam + ' • ' + new Date().toLocaleTimeString(), 'ok');
+      } catch (err) {
+        console.error(err);
+        setStatus('Refresh failed for ' + gillam + '.', 'error');
+      }
+    }
+
+    async function manualRefresh() {
+      const gillam = el.gillamSelect.value || gillamList[cycleIndex] || '';
+      await refreshScreenForGillam(gillam);
+    }
+
+    async function cycleRefresh() {
+      if (isBusy) return;
+      const base = baseUrl();
+      if (!base) return;
+      if (!gillamList.length) return;
+
+      isBusy = true;
+      try {
+        const currentGillam = gillamList[cycleIndex] || gillamList[0];
+        await refreshScreenForGillam(currentGillam);
+        if (gillamList.length > 1) {
+          cycleIndex = (cycleIndex + 1) % gillamList.length;
+        }
+      } finally {
+        isBusy = false;
+      }
+    }
+
+    function startAutoRefresh() {
+      if (refreshTimer) clearInterval(refreshTimer);
+      refreshTimer = setInterval(cycleRefresh, 5000);
+    }
+
+    async function toggleFullscreen() {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen().catch(() => {});
+      } else {
+        await el.root.requestFullscreen?.().catch(() => {});
+      }
+    }
+
+    function syncFullscreenClass() {
+      if (document.fullscreenElement === el.root) {
+        el.root.classList.add('is-fullscreen');
+      } else {
+        el.root.classList.remove('is-fullscreen');
+      }
+    }
+
+    el.btnTest.addEventListener('click', testConnection);
+    el.btnGillams.addEventListener('click', loadGillams);
+    el.btnRefresh.addEventListener('click', manualRefresh);
+    el.btnFullscreen.addEventListener('click', toggleFullscreen);
+    document.addEventListener('fullscreenchange', syncFullscreenClass);
+
+    el.gillamSelect.addEventListener('change', async () => {
+      const selected = el.gillamSelect.value;
+      const idx = gillamList.indexOf(selected);
+      if (idx >= 0) cycleIndex = idx;
+      await refreshScreenForGillam(selected);
+    });
+
+    clearPanels();
+    startAutoRefresh();
+  </script>
+</body>
+</html>
