@@ -492,6 +492,7 @@
           <select id="gillamSelect">
             <option value="">-- Load Gillams --</option>
           </select>
+          <button id="btnCurrent">Load Current Tournament</button>
           <button id="btnGillams">Load Gillams</button>
           <button id="btnRefresh">Refresh Now</button>
           <div class="status" id="status">Idle.</div>
@@ -524,7 +525,7 @@
       </div>
 
       <div class="hint fs-hide">
-        This screen uses <code>/api/gillams</code> and <code>/api/gillam/:name/bouts</code>. It refreshes every <strong>5 seconds</strong>. If there is more than one Gillam, the screen switches automatically to the next Gillam on each cycle. If there is only one Gillam, it refreshes the same Gillam every 5 seconds.
+        This screen uses <code>/api/tournament/current</code>, <code>/api/gillams</code> and <code>/api/gillam/:name/bouts</code>. It refreshes every <strong>5 seconds</strong>. If there is more than one Gillam, the screen switches automatically to the next Gillam on each cycle. If there is only one Gillam, it refreshes the same Gillam every 5 seconds.
       </div>
     </div>
   </div>
@@ -535,6 +536,7 @@
       serverUrl: document.getElementById('serverUrl'),
       btnTest: document.getElementById('btnTest'),
       btnGillams: document.getElementById('btnGillams'),
+      btnCurrent: document.getElementById('btnCurrent'),
       btnRefresh: document.getElementById('btnRefresh'),
       btnFullscreen: document.getElementById('btnFullscreen'),
       gillamSelect: document.getElementById('gillamSelect'),
@@ -554,6 +556,53 @@
     let gillamList = [];
     let cycleIndex = 0;
     let isBusy = false;
+    let playerIndex = new Map();
+    let tournamentMeta = { tournamentScope: 'external', affiliationMode: 'country', weightMode: 'auto_weights' };
+
+    function isExternalTournament() {
+      return (tournamentMeta?.tournamentScope || 'external') === 'external';
+    }
+
+    function noAffiliationCode(code) {
+      return ['', 'NA', 'NONE', 'NO', 'N/A'].includes(String(code || '').trim().toUpperCase());
+    }
+
+    function affiliationFullName(player) {
+      const full = String(player?.countryFull || player?.affiliationFull || player?.club || '').trim();
+      const code = String(player?.country || player?.affiliationCode || '').trim().toUpperCase();
+      if (!full && noAffiliationCode(code)) return 'No Affiliation';
+      if (!full) return code || 'No Affiliation';
+      return full;
+    }
+
+    function affiliationCode(player) {
+      const code = String(player?.country || player?.affiliationCode || '').trim().toUpperCase();
+      if (code) return code;
+      const full = affiliationFullName(player);
+      const letters = full.replace(/[^A-Za-z]/g, '').toUpperCase();
+      return letters ? letters.slice(0, 3) : 'NA';
+    }
+
+    function affiliationText(player) {
+      const full = affiliationFullName(player);
+      const code = affiliationCode(player);
+      if (String(full).toLowerCase() === 'no affiliation' || noAffiliationCode(code)) return 'No Affiliation';
+      if (isExternalTournament()) return code ? `${full} (${code})` : full;
+      return full || code || 'No Affiliation';
+    }
+
+    function slotLabel(bout) {
+      const slot = String(bout?.weight || bout?.slot || '').trim();
+      if (!slot) return '-';
+      if (tournamentMeta?.weightMode === 'manual_groups' && !/^[-+]?\d/.test(slot)) return 'Group ' + slot.replace(/^Group\s+/i, '');
+      return slot;
+    }
+
+    function playerFromBout(bout, side) {
+      const id = side === 'blue' ? bout?.blueId : bout?.greenId;
+      const embedded = side === 'blue' ? (bout?.blue || bout?.A) : (bout?.green || bout?.G);
+      return embedded || playerIndex.get(id) || {};
+    }
 
     function baseUrl() {
       const raw = String(el.serverUrl.value || '').trim();
@@ -621,10 +670,12 @@
       if (done) panelClasses.push('done');
       panel.className = panelClasses.join(' ');
 
-      const blueName = bout.blueName || bout.blueId || 'Blue';
-      const greenName = bout.greenName || bout.greenId || 'Green';
-      const blueCountry = bout.blueCountry || '';
-      const greenCountry = bout.greenCountry || '';
+      const bluePlayer = playerFromBout(bout, 'blue');
+      const greenPlayer = playerFromBout(bout, 'green');
+      const blueName = bout.blueName || bluePlayer.name || bout.blueId || 'Blue';
+      const greenName = bout.greenName || greenPlayer.name || bout.greenId || 'Green';
+      const blueAffiliation = bout.blueAffiliation || bout.blueCountry || affiliationText(bluePlayer);
+      const greenAffiliation = bout.greenAffiliation || bout.greenCountry || affiliationText(greenPlayer);
       const finalWinner = winnerName(bout);
       const badgeText = done ? 'Finished' : mode === 'current' ? 'On Deck' : 'Coming Up';
       const badgeClass = done ? 'done' : mode === 'current' ? 'current' : 'next';
@@ -640,7 +691,7 @@
         <div class="meta">
           <span>${escapeHtml(bout.gillam || '-')}</span>
           <span>${escapeHtml(sexLabel(bout.sex))}</span>
-          <span>${escapeHtml(bout.weight || '-')}</span>
+          <span>${escapeHtml(slotLabel(bout))}</span>
           <span>${escapeHtml(bout.stage || '-')}</span>
         </div>
 
@@ -648,13 +699,13 @@
           <div class="fighter blue">
             <div class="corner">Blue</div>
             <div class="name">${escapeHtml(blueName)}</div>
-            <div class="country">${escapeHtml(blueCountry)}</div>
+            <div class="country">${escapeHtml(blueAffiliation)}</div>
           </div>
           <div class="versus">VS</div>
           <div class="fighter green">
             <div class="corner">Green</div>
             <div class="name">${escapeHtml(greenName)}</div>
-            <div class="country">${escapeHtml(greenCountry)}</div>
+            <div class="country">${escapeHtml(greenAffiliation)}</div>
           </div>
         </div>
 
@@ -700,13 +751,13 @@
           </div>
 
           <div class="resultNames">
-            <div class="rName">${escapeHtml(b.blueName || b.blueId || 'Blue')}</div>
+            <div class="rName">${escapeHtml(b.blueName || playerFromBout(b, 'blue').name || b.blueId || 'Blue')}</div>
             <div class="rVs">VS</div>
-            <div class="rName">${escapeHtml(b.greenName || b.greenId || 'Green')}</div>
+            <div class="rName">${escapeHtml(b.greenName || playerFromBout(b, 'green').name || b.greenId || 'Green')}</div>
           </div>
 
           <div class="resultBottom">
-            <div>${escapeHtml(b.weight || '-')}</div>
+            <div>${escapeHtml(slotLabel(b))}</div>
             <div class="${winnerClass}">${escapeHtml(wName || 'Winner saved')}</div>
           </div>
         `;
@@ -777,7 +828,8 @@
         return;
       }
       try {
-        setStatus('Loading Gillams...', 'info');
+        setStatus('Loading current tournament and Gillams...', 'info');
+        await loadCurrentTournament();
         const list = await apiGet(base + '/api/gillams');
         setGillamOptions(list);
 
@@ -795,13 +847,44 @@
     }
 
     function enrichBouts(bouts) {
-      return bouts.map(b => ({
-        ...b,
-        blueName: b.blueName || b.blue?.name || b.A?.name || b.blueId || 'Blue',
-        greenName: b.greenName || b.green?.name || b.G?.name || b.greenId || 'Green',
-        blueCountry: b.blueCountry || b.blue?.country || '',
-        greenCountry: b.greenCountry || b.green?.country || ''
-      }));
+      return bouts.map(b => {
+        const bluePlayer = playerFromBout(b, 'blue');
+        const greenPlayer = playerFromBout(b, 'green');
+        return {
+          ...b,
+          blueName: b.blueName || bluePlayer.name || b.blue?.name || b.A?.name || b.blueId || 'Blue',
+          greenName: b.greenName || greenPlayer.name || b.green?.name || b.G?.name || b.greenId || 'Green',
+          blueAffiliation: b.blueAffiliation || b.blueCountry || affiliationText(bluePlayer),
+          greenAffiliation: b.greenAffiliation || b.greenCountry || affiliationText(greenPlayer)
+        };
+      });
+    }
+
+    async function loadCurrentTournament() {
+      const base = baseUrl();
+      if (!base) {
+        setStatus('Enter server URL first.', 'error');
+        return null;
+      }
+      try {
+        setStatus('Loading current tournament...', 'info');
+        const data = await apiGet(base + '/api/tournament/current');
+        if (!data) {
+          playerIndex = new Map();
+          tournamentMeta = { tournamentScope: 'external', affiliationMode: 'country', weightMode: 'auto_weights' };
+          setStatus('No current tournament found.', 'error');
+          return null;
+        }
+        const players = Array.isArray(data.players) ? data.players : [];
+        playerIndex = new Map(players.map(p => [p.id, p]));
+        tournamentMeta = data.meta || data.tournamentMeta || tournamentMeta;
+        setStatus('Current tournament loaded.', 'ok');
+        return data;
+      } catch (err) {
+        console.error(err);
+        setStatus('Error loading current tournament.', 'error');
+        return null;
+      }
     }
 
     function clearPanels() {
@@ -824,6 +907,7 @@
       }
       try {
         setStatus('Refreshing ' + gillam + '...', 'info');
+        await loadCurrentTournament();
         const raw = await apiGet(base + '/api/gillam/' + encodeURIComponent(gillam) + '/bouts');
         const bouts = enrichBouts(sortBouts(raw));
 
@@ -901,6 +985,7 @@
     }
 
     el.btnTest.addEventListener('click', testConnection);
+    el.btnCurrent.addEventListener('click', loadCurrentTournament);
     el.btnGillams.addEventListener('click', loadGillams);
     el.btnRefresh.addEventListener('click', manualRefresh);
     el.btnFullscreen.addEventListener('click', toggleFullscreen);
