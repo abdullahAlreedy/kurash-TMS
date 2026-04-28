@@ -4,22 +4,15 @@ const fs = require("fs");
 const path = require("path");
 
 const app = express();
-
 app.use(cors());
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: "5mb" }));
 
 const DATA_DIR = path.join(__dirname, "data");
 const TOURNAMENTS_DIR = path.join(DATA_DIR, "tournaments");
 const CURRENT_FILE = path.join(DATA_DIR, "current.json");
 
-ensureDir(DATA_DIR);
-ensureDir(TOURNAMENTS_DIR);
-
-function ensureDir(dirPath) {
-  if (!fs.existsSync(dirPath)) {
-    fs.mkdirSync(dirPath, { recursive: true });
-  }
-}
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+if (!fs.existsSync(TOURNAMENTS_DIR)) fs.mkdirSync(TOURNAMENTS_DIR, { recursive: true });
 
 function emptyStore() {
   return {
@@ -29,7 +22,8 @@ function emptyStore() {
     status: "idle", // idle | active | archived
     players: [],
     refs: [],
-    schedule: null
+    schedule: null,
+    tournamentMeta: null
   };
 }
 
@@ -39,7 +33,6 @@ function safeReadJson(filePath, fallback = null) {
   try {
     if (!fs.existsSync(filePath)) return fallback;
     const raw = fs.readFileSync(filePath, "utf8");
-    if (!raw.trim()) return fallback;
     return JSON.parse(raw);
   } catch (err) {
     console.error("JSON read error:", filePath, err.message);
@@ -48,21 +41,7 @@ function safeReadJson(filePath, fallback = null) {
 }
 
 function writeJson(filePath, value) {
-  const tmp = filePath + ".tmp";
-  fs.writeFileSync(tmp, JSON.stringify(value, null, 2), "utf8");
-  fs.renameSync(tmp, filePath);
-}
-
-function sanitizeIdPart(value) {
-  return String(value || "")
-    .trim()
-    .replace(/\s+/g, "_")
-    .replace(/[^\w\-]/g, "");
-}
-
-function makeTournamentId(name) {
-  const base = sanitizeIdPart(name) || "Tournament";
-  return `${base}_${Date.now()}`;
+  fs.writeFileSync(filePath, JSON.stringify(value, null, 2), "utf8");
 }
 
 function tournamentFile(id) {
@@ -75,7 +54,8 @@ function makeMeta(src) {
     id: src.tournamentId,
     name: src.name || "",
     date: src.date || "",
-    status: src.status || "idle"
+    status: src.status || "idle",
+    ...(src.tournamentMeta || {})
   };
 }
 
@@ -84,7 +64,8 @@ function fullTournamentPayload(src) {
     players: Array.isArray(src?.players) ? src.players : [],
     refs: Array.isArray(src?.refs) ? src.refs : [],
     schedule: src?.schedule || null,
-    meta: makeMeta(src)
+    meta: makeMeta(src),
+    tournamentMeta: src?.tournamentMeta || null
   };
 }
 
@@ -108,13 +89,7 @@ function loadTournament(id) {
 function loadCurrent() {
   const current = safeReadJson(CURRENT_FILE, null);
   if (current && current.tournamentId) {
-    store = {
-      ...emptyStore(),
-      ...current,
-      players: Array.isArray(current.players) ? current.players : [],
-      refs: Array.isArray(current.refs) ? current.refs : [],
-      schedule: current.schedule || null
-    };
+    store = current;
   }
 }
 
@@ -156,88 +131,15 @@ function listTournaments() {
   }
 
   return Array.from(map.values()).sort((a, b) => {
-    const d = String(b.date || "").localeCompare(String(a.date || ""));
-    if (d !== 0) return d;
-    return String(b.id || "").localeCompare(String(a.id || ""));
+    return String(b.date || "").localeCompare(String(a.date || ""));
   });
-}
-
-function playersIndex() {
-  return new Map((store.players || []).map((p) => [p.id, p]));
-}
-
-function refsIndex() {
-  return new Map((store.refs || []).map((r) => [r.id, r]));
-}
-
-function findBoutByNo(no) {
-  return store.schedule?.bouts?.find((b) => String(b.boutNo) === String(no)) || null;
-}
-
-function findAssignmentByBoutNo(no) {
-  return store.schedule?.assignments?.find((a) => String(a.boutNo) === String(no)) || null;
-}
-
-function buildMetaEvents(events) {
-  if (!Array.isArray(events)) return [];
-  return events.map((ev) => ({
-    timeSec: Number(ev.timeSec || 0),
-    timeStr: String(ev.timeStr || ""),
-    type: String(ev.type || ""),
-    side: ev.side === "green" ? "green" : "blue",
-    text: String(ev.text || "")
-  }));
-}
-
-function propagateWinnerToNextBouts(boutNo, winnerPlayerId) {
-  if (!winnerPlayerId || !store.schedule?.bracketLinks) return;
-
-  const links = store.schedule.bracketLinks[boutNo];
-  if (!Array.isArray(links)) return;
-
-  for (const link of links) {
-    const target = findBoutByNo(link.toBoutNo);
-    if (!target) continue;
-
-    if (link.side === "blue") {
-      target.blueId = winnerPlayerId;
-    } else if (link.side === "green") {
-      target.greenId = winnerPlayerId;
-    }
-  }
-}
-
-function ensureStoreFromTournamentMeta(tournamentMeta) {
-  if (store.tournamentId) return;
-
-  if (tournamentMeta?.name && tournamentMeta?.date) {
-    store = {
-      tournamentId: makeTournamentId(tournamentMeta.name),
-      name: String(tournamentMeta.name).trim(),
-      date: String(tournamentMeta.date).trim(),
-      status: "active",
-      players: [],
-      refs: [],
-      schedule: null
-    };
-    return;
-  }
-
-  store = {
-    tournamentId: makeTournamentId("Tournament"),
-    name: "Tournament",
-    date: "",
-    status: "active",
-    players: [],
-    refs: [],
-    schedule: null
-  };
 }
 
 loadCurrent();
 
 // ---------------- Tournament API ----------------
 
+// current active/loaded tournament
 app.get("/api/tournament/current", (req, res) => {
   if (!store.tournamentId || store.status === "idle") {
     return res.json(null);
@@ -245,10 +147,12 @@ app.get("/api/tournament/current", (req, res) => {
   return res.json(fullTournamentPayload(store));
 });
 
+// list
 app.get("/api/tournaments", (req, res) => {
   return res.json(listTournaments());
 });
 
+// create new
 app.post("/api/tournament/new", (req, res) => {
   const { name, date, archiveCurrent } = req.body || {};
 
@@ -270,14 +174,20 @@ app.post("/api/tournament/new", (req, res) => {
     }
   }
 
+  const id =
+    String(name).trim().replace(/\s+/g, "_").replace(/[^\w\-]/g, "") +
+    "_" +
+    Date.now();
+
   store = {
-    tournamentId: makeTournamentId(name),
+    tournamentId: id,
     name: String(name).trim(),
     date: String(date).trim(),
     status: "active",
     players: [],
     refs: [],
-    schedule: null
+    schedule: null,
+      tournamentMeta: null
   };
 
   saveTournament(store);
@@ -289,25 +199,20 @@ app.post("/api/tournament/new", (req, res) => {
   });
 });
 
+// open tournament for resume/view
 app.get("/api/tournament/:id", (req, res) => {
   const t = loadTournament(req.params.id);
   if (!t) {
     return res.status(404).json({ error: "Tournament not found" });
   }
 
-  store = {
-    ...emptyStore(),
-    ...t,
-    players: Array.isArray(t.players) ? t.players : [],
-    refs: Array.isArray(t.refs) ? t.refs : [],
-    schedule: t.schedule || null
-  };
-
+  store = t;
   saveCurrent();
 
   return res.json(fullTournamentPayload(store));
 });
 
+// archive current loaded tournament
 app.post("/api/tournament/:id/archive", (req, res) => {
   const id = req.params.id;
 
@@ -325,6 +230,7 @@ app.post("/api/tournament/:id/archive", (req, res) => {
   });
 });
 
+// reopen archived tournament
 app.post("/api/tournament/:id/reopen", (req, res) => {
   const id = req.params.id;
   const active = currentActiveTournament();
@@ -342,14 +248,7 @@ app.post("/api/tournament/:id/reopen", (req, res) => {
   }
 
   t.status = "active";
-  store = {
-    ...emptyStore(),
-    ...t,
-    players: Array.isArray(t.players) ? t.players : [],
-    refs: Array.isArray(t.refs) ? t.refs : [],
-    schedule: t.schedule || null
-  };
-
+  store = t;
   saveTournament(store);
   saveCurrent();
 
@@ -359,6 +258,7 @@ app.post("/api/tournament/:id/reopen", (req, res) => {
   });
 });
 
+// delete archived only
 app.delete("/api/tournament/:id", (req, res) => {
   const id = req.params.id;
   const file = tournamentFile(id);
@@ -391,131 +291,84 @@ app.post("/api/schedule", (req, res) => {
     return res.status(400).json({ error: "Invalid schedule" });
   }
 
-  ensureStoreFromTournamentMeta(tournamentMeta);
+  // if no tournament exists yet but main sends meta, create/load one
+  if (!store.tournamentId && tournamentMeta?.name && tournamentMeta?.date) {
+    store = {
+      tournamentId:
+        String(tournamentMeta.name).trim().replace(/\s+/g, "_").replace(/[^\w\-]/g, "") +
+        "_" +
+        Date.now(),
+      name: String(tournamentMeta.name).trim(),
+      date: String(tournamentMeta.date).trim(),
+      status: "active",
+      players: [],
+      refs: [],
+      schedule: null
+    };
+  }
 
   store.players = Array.isArray(players) ? players : [];
   store.refs = Array.isArray(refs) ? refs : [];
-  store.schedule = {
-    bouts: Array.isArray(schedule.bouts) ? schedule.bouts : [],
-    assignments: Array.isArray(schedule.assignments) ? schedule.assignments : [],
-    bracketLinks:
-      schedule && typeof schedule.bracketLinks === "object" && schedule.bracketLinks
-        ? schedule.bracketLinks
-        : {}
-  };
+  store.schedule = schedule;
+  store.tournamentMeta = tournamentMeta || store.tournamentMeta || null;
 
-  saveTournament(store);
-  saveCurrent();
+  if (store.tournamentId) {
+    saveTournament(store);
+    saveCurrent();
+  }
 
-  return res.json({
-    ok: true,
-    tournamentId: store.tournamentId,
-    bouts: store.schedule.bouts.length
-  });
+  return res.json({ ok: true });
 });
 
 app.get("/api/gillams", (req, res) => {
   if (!store.schedule || !Array.isArray(store.schedule.bouts)) {
     return res.json([]);
   }
-
-  const names = [...new Set(store.schedule.bouts.map((b) => b.gillam).filter(Boolean))].sort(
-    (a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" })
-  );
-
-  return res.json(names);
+  const g = new Set(store.schedule.bouts.map((b) => b.gillam).filter(Boolean));
+  return res.json([...g]);
 });
 
 app.get("/api/gillam/:name/bouts", (req, res) => {
   if (!store.schedule || !Array.isArray(store.schedule.bouts)) {
     return res.json([]);
   }
-
-  const bouts = store.schedule.bouts
-    .filter((b) => b.gillam === req.params.name)
-    .sort((a, b) => Number(a.boutNo || 0) - Number(b.boutNo || 0));
-
-  return res.json(bouts);
+  return res.json(
+    store.schedule.bouts.filter((b) => b.gillam === req.params.name)
+  );
 });
 
 app.get("/api/bout/:no", (req, res) => {
-  const bout = findBoutByNo(req.params.no);
+  const bout = store.schedule?.bouts?.find((b) => b.boutNo == req.params.no);
   if (!bout) {
     return res.status(404).json({ error: "Bout not found" });
   }
 
-  const pIndex = playersIndex();
-  const rIndex = refsIndex();
-  const assignment = findAssignmentByBoutNo(req.params.no);
-
-  const mainRef = assignment?.mainRef ? rIndex.get(assignment.mainRef) || null : null;
-  const judge1 = assignment?.judge1 ? rIndex.get(assignment.judge1) || null : null;
-  const judge2 = assignment?.judge2 ? rIndex.get(assignment.judge2) || null : null;
+  const players = Object.fromEntries((store.players || []).map((p) => [p.id, p]));
 
   return res.json({
     bout,
-    blue: bout.blueId ? pIndex.get(bout.blueId) || null : null,
-    green: bout.greenId ? pIndex.get(bout.greenId) || null : null,
-    assignment: assignment || null,
-    officials: {
-      mainRef,
-      judge1,
-      judge2
-    }
+    blue: players[bout.blueId] || {},
+    green: players[bout.greenId] || {},
+    tournamentMeta: store.tournamentMeta || null,
+    meta: makeMeta(store)
   });
 });
 
 app.post("/api/bout/:no/save", (req, res) => {
-  const bout = findBoutByNo(req.params.no);
+  const bout = store.schedule?.bouts?.find((b) => b.boutNo == req.params.no);
   if (!bout) {
     return res.status(404).json({ error: "Bout not found" });
   }
 
-  const body = req.body || {};
-  const winner = body.winner === "green" ? "green" : body.winner === "blue" ? "blue" : null;
+  Object.assign(bout, req.body || {}, {
+    finished: true,
+    savedAt: new Date().toISOString()
+  });
 
-  const blueScore = {
-    H: Number(body.blueScore?.H || 0),
-    YO: Number(body.blueScore?.YO || 0),
-    CH: Number(body.blueScore?.CH || 0)
-  };
-
-  const greenScore = {
-    H: Number(body.greenScore?.H || 0),
-    YO: Number(body.greenScore?.YO || 0),
-    CH: Number(body.greenScore?.CH || 0)
-  };
-
-  const bluePenalties = {
-    T: Number(body.bluePenalties?.T || 0),
-    D: Number(body.bluePenalties?.D || 0),
-    G: Number(body.bluePenalties?.G || 0)
-  };
-
-  const greenPenalties = {
-    T: Number(body.greenPenalties?.T || 0),
-    D: Number(body.greenPenalties?.D || 0),
-    G: Number(body.greenPenalties?.G || 0)
-  };
-
-  bout.winner = winner;
-  bout.blueScore = blueScore;
-  bout.greenScore = greenScore;
-  bout.bluePenalties = bluePenalties;
-  bout.greenPenalties = greenPenalties;
-  bout.meta = buildMetaEvents(body.meta);
-  bout.durationMs = Number(body.durationMs || 0);
-  bout.finished = true;
-  bout.savedAt = new Date().toISOString();
-
-  if (winner) {
-    const winnerPlayerId = winner === "blue" ? bout.blueId : bout.greenId;
-    propagateWinnerToNextBouts(String(bout.boutNo), winnerPlayerId);
-    propagateWinnerToNextBouts(Number(bout.boutNo), winnerPlayerId);
+  if (store.tournamentId) {
+    saveTournament(store);
+    saveCurrent();
   }
-
-  saveTournament(store);
-  saveCurrent();
 
   return res.json({ ok: true, bout });
 });
@@ -524,26 +377,7 @@ app.get("/api/ping", (req, res) => {
   return res.json({
     ok: true,
     tournamentId: store.tournamentId || null,
-    status: store.status || "idle",
-    hasSchedule: !!store.schedule,
-    players: Array.isArray(store.players) ? store.players.length : 0,
-    refs: Array.isArray(store.refs) ? store.refs.length : 0,
-    bouts: Array.isArray(store.schedule?.bouts) ? store.schedule.bouts.length : 0
-  });
-});
-
-// optional static serving for local frontend files
-app.use(express.static(__dirname));
-
-app.use((req, res) => {
-  res.status(404).json({ error: "Route not found" });
-});
-
-app.use((err, req, res, next) => {
-  console.error("Unhandled server error:", err);
-  res.status(500).json({
-    error: "Internal server error",
-    details: err?.message || "Unknown error"
+    status: store.status || "idle"
   });
 });
 
