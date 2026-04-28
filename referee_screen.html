@@ -129,7 +129,7 @@
 
     .summary {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: clamp(8px, 1vw, 12px);
       padding: 0 clamp(10px, 1.2vw, 16px) clamp(8px, 1vw, 12px);
     }
@@ -276,6 +276,30 @@
       font-weight: 700;
     }
 
+    .refAff {
+      margin-top: 8px;
+      font-size: clamp(11px, 0.9vw, 13px);
+      color: var(--muted);
+      max-width: 100%;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      line-height: 1.25;
+    }
+
+    .refAff .code {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 4px;
+      padding: 3px 8px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: #cbd5e1;
+      background: rgba(2,6,23,0.8);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-weight: 700;
+    }
+
     .footerRow {
       display: flex;
       justify-content: space-between;
@@ -346,6 +370,7 @@
             <option value="">-- Select Gillam --</option>
           </select>
 
+          <button id="btnCurrent">Load Current Tournament</button>
           <button id="btnGillams">Load Gillams</button>
           <button id="btnStart" class="primary">Start</button>
           <button id="btnRefresh">Refresh Now</button>
@@ -363,6 +388,7 @@
         <div class="mini"><div class="k">Gillam</div><div class="v" id="sumGillam">-</div></div>
         <div class="mini"><div class="k">Total fights</div><div class="v" id="sumTotal">0</div></div>
         <div class="mini"><div class="k">Remaining</div><div class="v" id="sumRemain">0</div></div>
+        <div class="mini"><div class="k">Affiliation</div><div class="v" id="sumAffiliation">-</div></div>
       </div>
 
       <div class="content">
@@ -387,6 +413,7 @@
       modeSelect: document.getElementById('modeSelect'),
       gillamSelect: document.getElementById('gillamSelect'),
       btnGillams: document.getElementById('btnGillams'),
+      btnCurrent: document.getElementById('btnCurrent'),
       btnStart: document.getElementById('btnStart'),
       btnRefresh: document.getElementById('btnRefresh'),
       btnFullscreen: document.getElementById('btnFullscreen'),
@@ -396,6 +423,7 @@
       sumGillam: document.getElementById('sumGillam'),
       sumTotal: document.getElementById('sumTotal'),
       sumRemain: document.getElementById('sumRemain'),
+      sumAffiliation: document.getElementById('sumAffiliation'),
       panelCurrent: document.getElementById('panelCurrent'),
       panelNext: document.getElementById('panelNext'),
       panelAfter: document.getElementById('panelAfter'),
@@ -410,7 +438,9 @@
       mode: 'rotate',
       fixedGillam: '',
       timerId: null,
-      started: false
+      started: false,
+      tournamentMeta: { tournamentScope: 'external', affiliationMode: 'country', weightMode: 'auto_weights' },
+      refs: []
     };
 
     function setStatus(msg, tone = 'muted') {
@@ -441,6 +471,67 @@
       const no = refObj.refNo;
       if (no === null || no === undefined || no === '') return 'Not set';
       return String(no);
+    }
+
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function isExternalTournament() {
+      return (state.tournamentMeta?.tournamentScope || 'external') === 'external';
+    }
+
+    function noAffiliationCode(code) {
+      return ['', 'NA', 'NONE', 'NO', 'N/A'].includes(String(code || '').trim().toUpperCase());
+    }
+
+    function affiliationFullName(obj) {
+      const full = String(obj?.countryFull || obj?.affiliationFull || obj?.club || '').trim();
+      const code = String(obj?.country || obj?.affiliationCode || '').trim().toUpperCase();
+      if (!full && noAffiliationCode(code)) return 'No Affiliation';
+      if (!full) return code || 'No Affiliation';
+      return full;
+    }
+
+    function affiliationCode(obj) {
+      const code = String(obj?.country || obj?.affiliationCode || '').trim().toUpperCase();
+      if (code) return code;
+      const letters = affiliationFullName(obj).replace(/[^A-Za-z]/g, '').toUpperCase();
+      return letters ? letters.slice(0, 3) : 'NA';
+    }
+
+    function affiliationText(obj) {
+      const full = affiliationFullName(obj);
+      const code = affiliationCode(obj);
+      if (String(full).toLowerCase() === 'no affiliation' || noAffiliationCode(code)) return 'No Affiliation';
+      if (isExternalTournament()) return code ? `${full} (${code})` : full;
+      return full || code || 'No Affiliation';
+    }
+
+    function affiliationModeLabel() {
+      if (isExternalTournament()) return 'Country';
+      const mode = state.tournamentMeta?.affiliationMode || 'none';
+      return mode === 'club' ? 'Club' : 'No Affiliation';
+    }
+
+    function formatRefAffiliation(refObj) {
+      if (!refObj) return '';
+      const text = affiliationText(refObj);
+      const code = affiliationCode(refObj);
+      const codePart = noAffiliationCode(code) ? 'NA' : code;
+      return `<div class="refAff"><div>${escapeHtml(text)}</div><span class="code">${escapeHtml(codePart)}</span></div>`;
+    }
+
+    function formatRefLabel(refObj) {
+      if (!refObj) return 'Not set';
+      const name = String(refObj.name || '').trim();
+      return name ? escapeHtml(name) : 'No name';
     }
 
     function renderEmpty(panelEl, title, badgeText) {
@@ -486,16 +577,22 @@
           <div class="refBox">
             <div class="refRole">Main Ref</div>
             <div class="refNo ${mainRef ? '' : 'missing'}">${formatRefNo(mainRef)}</div>
+            <div class="refAff">${formatRefLabel(mainRef)}</div>
+            ${formatRefAffiliation(mainRef)}
           </div>
 
           <div class="refBox">
             <div class="refRole">Judge 1</div>
             <div class="refNo ${judge1 ? '' : 'missing'}">${formatRefNo(judge1)}</div>
+            <div class="refAff">${formatRefLabel(judge1)}</div>
+            ${formatRefAffiliation(judge1)}
           </div>
 
           <div class="refBox">
             <div class="refRole">Judge 2</div>
             <div class="refNo ${judge2 ? '' : 'missing'}">${formatRefNo(judge2)}</div>
+            <div class="refAff">${formatRefLabel(judge2)}</div>
+            ${formatRefAffiliation(judge2)}
           </div>
         </div>
 
@@ -538,7 +635,36 @@
       }
     }
 
+    async function loadCurrentTournament() {
+      const base = normalizedBaseUrl();
+      if (!base) {
+        setStatus('Enter server URL first.', 'warn');
+        return null;
+      }
+      try {
+        setStatus('Loading current tournament...');
+        const payload = await fetchJson(base + '/api/tournament/current');
+        if (!payload) {
+          state.refs = [];
+          state.tournamentMeta = { tournamentScope: 'external', affiliationMode: 'country', weightMode: 'auto_weights' };
+          el.sumAffiliation.textContent = '-';
+          setStatus('No current tournament found.', 'warn');
+          return null;
+        }
+        state.refs = Array.isArray(payload.refs) ? payload.refs : [];
+        state.tournamentMeta = payload.meta || payload.tournamentMeta || state.tournamentMeta;
+        el.sumAffiliation.textContent = affiliationModeLabel();
+        setStatus('Current tournament loaded.', 'ok');
+        return payload;
+      } catch (err) {
+        console.error(err);
+        setStatus('Error loading current tournament.', 'error');
+        return null;
+      }
+    }
+
     async function loadGillams() {
+
       const base = normalizedBaseUrl();
       if (!base) {
         setStatus('Enter server URL first.', 'warn');
@@ -584,6 +710,7 @@
           el.sumGillam.textContent = '-';
           el.sumTotal.textContent = '0';
           el.sumRemain.textContent = '0';
+          el.sumAffiliation.textContent = affiliationModeLabel();
           renderEmpty(el.panelCurrent, 'Current Referees', 'Current');
           renderEmpty(el.panelNext, 'Next Referees', 'Next');
           renderEmpty(el.panelAfter, 'Then Referees', 'Then');
@@ -595,8 +722,11 @@
 
         setStatus('Refreshing ' + targetGillam + '...');
         const payload = await fetchJson(base + '/api/tournament/current');
+        if (payload?.meta || payload?.tournamentMeta) {
+          state.tournamentMeta = payload.meta || payload.tournamentMeta || state.tournamentMeta;
+        }
         const schedule = payload && payload.schedule ? payload.schedule : null;
-        const refs = Array.isArray(payload && payload.refs) ? payload.refs : [];
+        const refs = Array.isArray(payload && payload.refs) ? payload.refs : state.refs;
 
         if (!schedule || !Array.isArray(schedule.bouts)) {
           throw new Error('No active schedule');
@@ -610,6 +740,7 @@
         el.sumGillam.textContent = targetGillam || '-';
         el.sumTotal.textContent = String(bouts.length);
         el.sumRemain.textContent = String(pending.length);
+        el.sumAffiliation.textContent = affiliationModeLabel();
 
         renderRefPanel(el.panelCurrent, 'Current Referees', 'Current', pending[0], { bouts, schedule }, refsById);
         renderRefPanel(el.panelNext, 'Next Referees', 'Next', pending[1], { bouts, schedule }, refsById);
@@ -660,6 +791,7 @@
 
     el.btnTest.addEventListener('click', testConnection);
     el.btnGillams.addEventListener('click', loadGillams);
+    el.btnCurrent.addEventListener('click', loadCurrentTournament);
     el.btnRefresh.addEventListener('click', refreshScreen);
     el.btnStart.addEventListener('click', startLoop);
     el.btnFullscreen.addEventListener('click', async () => {
@@ -685,6 +817,7 @@
     document.addEventListener('fullscreenchange', handleFsChange);
 
     setModeUI();
+    el.sumAffiliation.textContent = affiliationModeLabel();
     renderEmpty(el.panelCurrent, 'Current Referees', 'Current');
     renderEmpty(el.panelNext, 'Next Referees', 'Next');
     renderEmpty(el.panelAfter, 'Then Referees', 'Then');
