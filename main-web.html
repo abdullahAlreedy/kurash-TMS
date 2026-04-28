@@ -16,7 +16,7 @@
   <script type="text/babel">
     const { useState, useMemo, useEffect, useRef } = React;
 
-// دول لها أكواد رياضية/رسمية محددة (IOC/ISO) – خيار رقم 3
+// Country-specific sport/official code overrides (IOC/ISO where applicable).
 const COUNTRY_CODE_OVERRIDES = {
   "Saudi Arabia": "KSA",
   "United Arab Emirates": "UAE",
@@ -132,7 +132,7 @@ const COUNTRY_CODE_OVERRIDES = {
   "United Kingdom": "GBR"
 };
 
-// قائمة دول موسّعة (تستخدم في القائمة المنسدلة)
+// Expanded country list used in the country dropdown.
 const ALL_COUNTRY_NAMES = [
   "Afghanistan",
   "Albania",
@@ -272,7 +272,7 @@ const ALL_COUNTRY_NAMES = [
   "Zimbabwe"
 ];
 
-// توليد كود تلقائي لأي دولة غير موجودة في overrides (أخذ أول 3 حروف نظيفة)
+// Auto-generate a code for countries without overrides using the first 3 clean letters.
 function autoCodeFromName(name) {
   const letters = name.replace(/[^A-Za-z]/g, "").toUpperCase();
   if (!letters) return "UNK";
@@ -280,7 +280,7 @@ function autoCodeFromName(name) {
   return letters.slice(0, 3);
 }
 
-// الكائن النهائي المستخدم في كل النظام
+// Final mapping used throughout the system.
 const COUNTRY_NAME_TO_CODE = Object.fromEntries(
   ALL_COUNTRY_NAMES.map((fullName) => [
     fullName,
@@ -288,12 +288,12 @@ const COUNTRY_NAME_TO_CODE = Object.fromEntries(
   ])
 );
 
-// عكس الجدول للكود → اسم
+// Reverse mapping: code to country name.
 const COUNTRY_CODE_TO_NAME = Object.fromEntries(
   Object.entries(COUNTRY_NAME_TO_CODE).map(([full, code]) => [code, full])
 );
 
-// نفس الدالة القديمة ولكن الآن تعتمد على الجدول الجديد
+// Backward-compatible resolver using the new mapping.
 function resolveCountry(input) {
   const t = (input || "").trim();
   if (COUNTRY_NAME_TO_CODE[t]) return { code: COUNTRY_NAME_TO_CODE[t], full: t };
@@ -312,18 +312,18 @@ function CountryFlag({ code }) {
     return <div className={baseClass + " bg-slate-700"} aria-label="flag" />;
   }
 
-  // نحول الكود لصغير ونضيف _m حسب نمط الملفات: e.g. ksa_m.jpg
+  // Convert code to lowercase and append _m to match flag file naming, e.g. ksa_m.jpg.
   const lower = upper.toLowerCase();
 
   const jpgPath = `flags/${lower}_m.jpg`;
   const pngPath = `flags/${lower}_m.png`;
 
   const handleError = (e) => {
-    // لو ما لقى JPG جرّب PNG بنفس الاسم
+    // If JPG is not found, try PNG with the same name.
     if (e.target.src.includes(".jpg")) {
       e.target.src = pngPath;
     } else {
-      // لو فشل الاثنين نخفي الصورة
+      // If both fail, hide the image.
       e.target.style.display = "none";
     }
   };
@@ -339,23 +339,236 @@ function CountryFlag({ code }) {
 }
 
 
-    const MEN_THRESHOLDS = [60, 66, 73, 81, 90, 100];
-    const MEN_PLUS = 100;
-    const WOMEN_THRESHOLDS = [48, 51, 57, 63, 70, 78, 87];
-    const WOMEN_PLUS = 87;
+    // --------------------------------------------------
+    // Tournament categories, weights and durations
+    // --------------------------------------------------
+    const TOURNAMENT_SCOPES = [
+      { value: "internal_local", label: "Internal Local" },
+      { value: "internal_school", label: "Internal School" },
+      { value: "external", label: "External" }
+    ];
 
+    const WEIGHT_MODES = [
+      { value: "auto_weights", label: "Auto Weights" },
+      { value: "manual_groups", label: "Manual Groups / No Weights" }
+    ];
+
+    const AFFILIATION_MODES = [
+      { value: "none", label: "No Affiliation" },
+      { value: "club", label: "Club" },
+      { value: "country", label: "Country" }
+    ];
+
+    function isManualGroupsMode(mode) { return mode === "manual_groups"; }
+    function cleanManualGroupName(name, fallback) {
+      const t = String(name || "").trim();
+      return t || fallback || "Group A";
+    }
+
+    const INTERNAL_AGE_GROUPS = [
+      { numb: 1, label: "First Division (+21)", arLabel: "درجة أولى (+21)", competitive: true, weightGr: 1, defaultSeconds: 5 * 60 },
+      { numb: 2, label: "Youth B (-21)", arLabel: "الشباب (ب)(-21)", competitive: true, weightGr: 2, defaultSeconds: 4 * 60 },
+      { numb: 3, label: "Youth A (-17)", arLabel: "الشباب (أ)(-17)", competitive: true, weightGr: 3, defaultSeconds: 4 * 60 },
+      { numb: 4, label: "Cadets (-15)", arLabel: "الناشئون (-15)", competitive: true, weightGr: 4, defaultSeconds: 3 * 60 },
+      { numb: 5, label: "Cubs (-13)", arLabel: "البراعم (-13)", competitive: true, weightGr: 5, defaultSeconds: 3 * 60 },
+      { numb: 6, label: "Flowers (-11)", arLabel: "الزهور (-11)", competitive: true, weightGr: 6, defaultSeconds: 2 * 60 },
+      { numb: 7, label: "Upper Primary", arLabel: "ابتدائي فصول عليا", competitive: false, weightGr: null, defaultSeconds: 0 },
+      { numb: 8, label: "Lower Primary", arLabel: "ابتدائي فصول دنيا", competitive: false, weightGr: null, defaultSeconds: 0 },
+      { numb: 9, label: "Middle School", arLabel: "تعليمي متوسط", competitive: false, weightGr: null, defaultSeconds: 0 },
+      { numb: 10, label: "High School", arLabel: "تعليمي ثانوي", competitive: false, weightGr: null, defaultSeconds: 0 }
+    ];
+
+    const SCHOOL_AGE_GROUPS = [
+      { numb: 8, label: "Lower Primary", arLabel: "ابتدائي فصول دنيا", competitive: true, weightGr: 6, defaultSeconds: 2 * 60 },
+      { numb: 7, label: "Upper Primary", arLabel: "ابتدائي فصول عليا", competitive: true, weightGr: 5, defaultSeconds: 3 * 60 },
+      { numb: 9, label: "Middle School", arLabel: "تعليمي متوسط", competitive: true, weightGr: 4, defaultSeconds: 3 * 60 },
+      { numb: 10, label: "High School", arLabel: "تعليمي ثانوي", competitive: true, weightGr: 3, defaultSeconds: 4 * 60 }
+    ];
+
+    const EXTERNAL_AGE_GROUPS = [
+      { numb: 101, label: "Senior", competitive: true, weightGr: "senior", defaultSeconds: 5 * 60 },
+      { numb: 102, label: "Junior", competitive: true, weightGr: "junior", defaultSeconds: 4 * 60 },
+      { numb: 103, label: "Cadet", competitive: true, weightGr: "cadet", defaultSeconds: 4 * 60 }
+    ];
+
+    const INTERNAL_MALE_WEIGHTS_BY_GR = {
+      1: [60, 66, 73, 81, 90, 100, "100+"],
+      2: [55, 60, 66, 73, 81, 90, 100, "100+"],
+      3: [50, 55, 60, 66, 73, 81, 90, "90+"],
+      4: [34, 38, 42, 46, 50, 55, 60, 66, "66+"],
+      5: [27, 30, 34, 38, 42, 46, 50, 55, "55+"],
+      6: [24, 28, 32, 36, 42, 46, 52, 56, 60, "60+"]
+    };
+
+    const INTERNAL_FEMALE_WEIGHTS_BY_GR = {
+      1: [48, 52, 57, 63, 70, 78, "78+"],
+      2: [48, 52, 57, 63, 70, 78, "78+"],
+      3: [40, 44, 48, 52, 57, 63, 70, "70+"],
+      4: [32, 36, 40, 44, 48, 52, 57, 63, "63+"],
+      5: [24, 27, 30, 34, 38, 42, 46, 50, "50+"],
+      6: [20, 24, 28, 32, 36, 40, 44, 48, 52, "52+"]
+    };
+
+    const EXTERNAL_WEIGHTS = {
+      senior: { M: [60, 66, 73, 81, 90, 100, "100+"], F: [48, 52, 57, 63, 70, 78, "78+"] },
+      junior: { M: [60, 66, 73, 81, 90, 100, "100+"], F: [48, 52, 57, 63, 70, 78, "78+"] },
+      cadet: { M: [50, 55, 60, 66, 73, 81, 90, "90+"], F: [40, 44, 48, 52, 57, 63, 70, "70+"] }
+    };
+
+    // Backward-compatible fallback constants used by older display blocks.
     const MEN_FIGHT_SECONDS = 4 * 60;
     const WOMEN_FIGHT_SECONDS = 3 * 60;
 
+    function isExternalScope(scope) { return scope === "external"; }
+    function isSchoolScope(scope) { return scope === "internal_school"; }
+    function isInternalScope(scope) { return !isExternalScope(scope); }
+    function normalizedAffiliationMode(scope, mode) {
+      if (isExternalScope(scope)) return "country";
+      return mode === "club" ? "club" : "none";
+    }
+    function affiliationLabel(scope, mode) {
+      const m = normalizedAffiliationMode(scope, mode);
+      if (m === "country") return "Country";
+      if (m === "club") return "Club";
+      return "Affiliation";
+    }
+    function defaultAffiliation(scope, mode) {
+      const m = normalizedAffiliationMode(scope, mode);
+      if (m === "country") return { full: "Saudi Arabia", code: COUNTRY_NAME_TO_CODE["Saudi Arabia"] || "KSA" };
+      if (m === "club") return { full: "", code: "CLB" };
+      return { full: "No Affiliation", code: "NA" };
+    }
+    function resolveAffiliation(input, scope, mode) {
+      const m = normalizedAffiliationMode(scope, mode);
+      if (m === "country") return resolveCountry(input);
+      if (m === "none") return defaultAffiliation(scope, mode);
+      const full = String(input || "").trim();
+      if (!full) return { full: "", code: "CLB" };
+      return { full, code: autoCodeFromName(full) };
+    }
+    function defaultAgeGroupNumbForScope(scope) {
+      if (isExternalScope(scope)) return 101;
+      if (isSchoolScope(scope)) return 8;
+      return 1;
+    }
+    function activeAgeGroups(scope) {
+      if (isExternalScope(scope)) return EXTERNAL_AGE_GROUPS;
+      if (isSchoolScope(scope)) return SCHOOL_AGE_GROUPS;
+      return INTERNAL_AGE_GROUPS;
+    }
+    function ageGroupByNumb(numb, scope) {
+      const n = Number(numb) || defaultAgeGroupNumbForScope(scope);
+      return activeAgeGroups(scope).find((g) => Number(g.numb) === n) || activeAgeGroups(scope)[0];
+    }
+    function competitiveAgeGroups(scope) {
+      return activeAgeGroups(scope).filter((g) => g.competitive);
+    }
+    function ageGroupFromAge(ageValue, scope) {
+      const age = Number(ageValue);
+      if (!Number.isFinite(age) || age < 0) return defaultAgeGroupNumbForScope(scope);
+      if (isExternalScope(scope)) {
+        if (age <= 17) return 103;
+        if (age <= 21) return 102;
+        return 101;
+      }
+      if (isSchoolScope(scope)) {
+        if (age <= 9) return 8;
+        if (age <= 12) return 7;
+        if (age <= 15) return 9;
+        return 10;
+      }
+      if (age <= 11) return 6;
+      if (age <= 13) return 5;
+      if (age <= 15) return 4;
+      if (age <= 17) return 3;
+      if (age <= 21) return 2;
+      return 1;
+    }
+    function defaultManualGroupsForScope(scope) {
+      const out = {};
+      competitiveAgeGroups(scope).forEach((g) => {
+        out[g.numb] = ["Group A"];
+      });
+      return out;
+    }
+    function manualGroupsForAge(manualGroupsByAge, ageGroupNumb, scope) {
+      const group = ageGroupByNumb(ageGroupNumb, scope);
+      const raw = manualGroupsByAge?.[group?.numb];
+      const arr = Array.isArray(raw) ? raw.map((x, i) => cleanManualGroupName(x, `Group ${i + 1}`)).filter(Boolean) : [];
+      return arr.length ? arr : ["Group A"];
+    }
+    function normalizeManualGroup(value, manualGroupsByAge, ageGroupNumb, scope) {
+      const arr = manualGroupsForAge(manualGroupsByAge, ageGroupNumb, scope);
+      return arr.includes(value) ? value : arr[0];
+    }
     function fmtClass(x) {
-      return typeof x === "number" ? "-" + x : "+" + x.plus;
+      const t = String(x);
+      return t.endsWith("+") ? "+" + t.replace("+", "") : "-" + t;
+    }
+    function weightsForGroup(ageGroupNumb, sex, scope) {
+      const group = ageGroupByNumb(ageGroupNumb, scope);
+      if (!group?.competitive) return [];
+      if (isExternalScope(scope)) return EXTERNAL_WEIGHTS[group.weightGr]?.[sex === "F" ? "F" : "M"] || [];
+      const source = sex === "F" ? INTERNAL_FEMALE_WEIGHTS_BY_GR : INTERNAL_MALE_WEIGHTS_BY_GR;
+      return source[group.weightGr] || [];
+    }
+    function bucketWeight(sex, actualKg, ageGroupNumb, scope) {
+      const v = Math.max(0, Number(actualKg) || 0);
+      const arr = weightsForGroup(ageGroupNumb || 1, sex, scope || "internal_local");
+      if (!arr.length) return "";
+      for (const w of arr) {
+        const label = String(w);
+        const limit = Number(label.replace("+", ""));
+        if (!label.endsWith("+") && v <= limit) return fmtClass(label);
+      }
+      const last = String(arr[arr.length - 1]);
+      return last.endsWith("+") ? fmtClass(last) : "+" + last;
+    }
+    function ageGroupLabel(numb, scope) { return ageGroupByNumb(numb, scope)?.label || "-"; }
+    function ageGroupArabicLabel(numb, scope) { return ageGroupByNumb(numb, scope)?.arLabel || ""; }
+    function ageGroupTitleProps(numb, scope) {
+      const ar = ageGroupArabicLabel(numb, scope);
+      return ar ? { title: ar } : {};
+    }
+    function groupSlotOfPlayer(p, weightMode) {
+      return isManualGroupsMode(weightMode) ? (p.manualGroup || "") : (p.weight || "");
+    }
+    function groupKeyOfPlayer(p, weightMode) {
+      return `${p.ageGroupNumb || 1}|${p.sex || "M"}|${groupSlotOfPlayer(p, weightMode)}`;
+    }
+    function parseGroupKey(gk) {
+      const parts = String(gk || "").split("|");
+      if (parts.length >= 3) return { ageGroupNumb: Number(parts[0]) || 1, sex: parts[1], weight: parts[2], slot: parts[2] };
+      return { ageGroupNumb: 1, sex: parts[0] || "M", weight: parts[1] || "", slot: parts[1] || "" };
+    }
+    function groupLabel(gk, scope, weightMode) {
+      const p = parseGroupKey(gk);
+      const slotLabel = isManualGroupsMode(weightMode) ? `Group ${p.slot}` : p.weight;
+      return `${ageGroupLabel(p.ageGroupNumb, scope)} | ${p.sex === "F" ? "Women" : "Men"} | ${slotLabel}`;
+    }
+    function matchDurationSecondsForBout(bout, playersIndex, scope, manualOverrideSeconds) {
+      if (Number(manualOverrideSeconds) > 0) return Number(manualOverrideSeconds);
+      const p = parseGroupKey(bout?.groupKey);
+      const g = ageGroupByNumb(p.ageGroupNumb, scope || "internal_local");
+      if (g?.defaultSeconds) return g.defaultSeconds;
+      const A = playersIndex?.get?.(bout?.blueId);
+      const G = playersIndex?.get?.(bout?.greenId);
+      const sex = bout?.sex || A?.sex || G?.sex || "M";
+      return sex === "F" ? 3 * 60 : 4 * 60;
     }
 
-    function bucketWeight(sex, actualKg) {
-      const v = Math.max(0, Number(actualKg) || 0);
-      const arr = sex === "M" ? MEN_THRESHOLDS : WOMEN_THRESHOLDS;
-      for (const t of arr) if (v <= t) return fmtClass(t);
-      return fmtClass({ plus: sex === "M" ? MEN_PLUS : WOMEN_PLUS });
+    function formatWeightsForPreview(weights) {
+      return (weights || []).map((w) => fmtClass(w)).join(", ");
+    }
+    function weightPreviewRows(scope) {
+      return activeAgeGroups(scope)
+        .filter((g) => g.competitive)
+        .map((g) => ({
+          label: g.label,
+          duration: g.defaultSeconds ? Math.round(g.defaultSeconds / 60) + " min" : "-",
+          male: formatWeightsForPreview(weightsForGroup(g.numb, "M", scope)),
+          female: formatWeightsForPreview(weightsForGroup(g.numb, "F", scope))
+        }));
     }
 
     function calcAge(dobStr) {
@@ -444,16 +657,16 @@ function mixBoutsAcrossWeights(input, weightsOrder) {
       const weights =
         weightsOrder && weightsOrder.length ? weightsOrder.slice() : Object.keys(input);
 
-      // لكل وزن، نسخة من قائمة النزالات (بداخلها blueId / greenId / localId / type / round ...)
+      // For each group, keep a copy of its bout queue with blueId / greenId / localId / type / round.
       const queues = new Map(weights.map((w) => [w, (input[w] || []).slice()]));
 
-      // النتيجة النهائية: مصفوفة من [groupKey, boutDesc]
+      // Final result: an array of [groupKey, boutDesc].
       const result = [];
 
-      // آخر مباراة لعبها كل لاعب: playerId -> boutIndex
+      // Last bout played by each player: playerId -> boutIndex.
       const lastBoutIndexByPlayer = new Map();
 
-      // الأوزان المستخدمة في آخر نزالات (نستخدمها لتجنب تكرار نفس الوزن قدر الإمكان)
+      // Recently used groups, used to avoid immediate repetition when possible.
       const lastWeights = [];
 
       function canUseBout(bout, weightKey, requireRest, avoidSameWeight) {
@@ -462,7 +675,7 @@ function mixBoutsAcrossWeights(input, weightsOrder) {
         if (bout.blueId) players.push(bout.blueId);
         if (bout.greenId) players.push(bout.greenId);
 
-        // شرط الراحة: على الأقل مباراتان بين النزالين لنفس اللاعب (gap >= 3)
+        // Rest rule: at least two bouts between two bouts for the same player (gap >= 3).
         if (requireRest) {
           for (const pid of players) {
             const lastIdx = lastBoutIndexByPlayer.get(pid);
@@ -472,7 +685,7 @@ function mixBoutsAcrossWeights(input, weightsOrder) {
           }
         }
 
-        // تجنب تكرار نفس الوزن مباشرة قدر الإمكان
+        // Avoid repeating the same group immediately whenever possible.
         if (avoidSameWeight && lastWeights.length > 0) {
           const lastW = lastWeights[lastWeights.length - 1];
           if (weightKey === lastW) {
@@ -484,11 +697,11 @@ function mixBoutsAcrossWeights(input, weightsOrder) {
       }
 
       function pickNext() {
-        // نحاول بعدة أوضاع تدريجية:
-        // 1) راحة + عدم تكرار وزن
-        // 2) راحة فقط
-        // 3) عدم تكرار وزن فقط
-        // 4) بدون شروط (عند الضرورة)
+        // Try progressively relaxed selection modes:
+        // 1) Rest + no group repetition.
+        // 2) Rest only.
+        // 3) No group repetition only.
+        // 4) No constraints when necessary.
         const modes = [
           { requireRest: true, avoidSameWeight: true },
           { requireRest: true, avoidSameWeight: false },
@@ -770,7 +983,7 @@ function mixBoutsAcrossWeights(input, weightsOrder) {
         ));
       return (
         <select
-          className="border rounded-xl px-3 py-2 bg-slate-900 border-slate-700"
+          className="w-[clamp(12rem,18vw,22rem)] border rounded-xl px-3 py-2 bg-slate-900 border-slate-700"
           value={valueFull}
           onChange={(e) => onChange(e.target.value)}
         >
@@ -832,14 +1045,12 @@ function mixBoutsAcrossWeights(input, weightsOrder) {
 
     // --- group key handling: "M|-81", "F|-63" ---
 function groupKeyComparator(a, b) {
-      const [sexA, wA] = a.split("|");
-      const [sexB, wB] = b.split("|");
-      if (sexA !== sexB) {
-        return sexA === "M" ? -1 : 1; // M first, then F
-      }
-      const numA = Number(wA.replace("+", "").replace("-", ""));
-      const numB = Number(wB.replace("+", "").replace("-", ""));
-      // lighter weights first, so championship ends with heaviest
+      const A = parseGroupKey(a);
+      const B = parseGroupKey(b);
+      if (A.ageGroupNumb !== B.ageGroupNumb) return A.ageGroupNumb - B.ageGroupNumb;
+      if (A.sex !== B.sex) return A.sex === "M" ? -1 : 1;
+      const numA = Number(String(A.weight).replace("+", "").replace("-", ""));
+      const numB = Number(String(B.weight).replace("+", "").replace("-", ""));
       return numA - numB;
     }
 
@@ -855,6 +1066,11 @@ function groupKeyComparator(a, b) {
       const isGillamPoolMode = refAssignmentMode === "gillam_pool";
       const [numGillams, setNumGillams] = useState(1);
       const [roundRobinMax, setRoundRobinMax] = useState(5);
+      const [tournamentScope, setTournamentScope] = useState("internal_local");
+      const [affiliationMode, setAffiliationMode] = useState("none");
+      const [weightMode, setWeightMode] = useState("auto_weights");
+      const [manualGroupsByAge, setManualGroupsByAge] = useState(() => defaultManualGroupsForScope("internal_local"));
+      const [manualDurationSeconds, setManualDurationSeconds] = useState(0);
       const [schedule, setSchedule] = useState(null);
       const [boutMeta, setBoutMeta] = useState({});
       const [activeBoutNo, setActiveBoutNo] = useState(null);
@@ -939,6 +1155,11 @@ function groupKeyComparator(a, b) {
         initialFightMsRef.current = 0;
         halfPingDoneRef.current = false;
         setCurrentTournamentMeta(tournament?.meta || null);
+        if (tournament?.meta?.tournamentScope) setTournamentScope(tournament.meta.tournamentScope);
+        if (tournament?.meta?.affiliationMode) setAffiliationMode(tournament.meta.affiliationMode);
+        if (tournament?.meta?.weightMode) setWeightMode(tournament.meta.weightMode);
+        if (tournament?.meta?.manualGroupsByAge) setManualGroupsByAge(tournament.meta.manualGroupsByAge);
+        if (tournament?.meta?.manualDurationSeconds != null) setManualDurationSeconds(Number(tournament.meta.manualDurationSeconds) || 0);
         setIsTournamentReadOnly(!!opts.readOnly || tournament?.meta?.status === "archived");
       }
 
@@ -946,6 +1167,47 @@ function groupKeyComparator(a, b) {
         if (!isTournamentReadOnly) return true;
         alert((actionLabel || "This action") + " is disabled while viewing an archived tournament.");
         return false;
+      }
+
+      function handleTournamentScopeChange(nextScope) {
+        if (!ensureWritable("Changing tournament type")) return;
+        const scope = nextScope || "internal_local";
+        const defaultAgeGroup = defaultAgeGroupNumbForScope(scope);
+        setTournamentScope(scope);
+        const effectiveAffiliationMode = normalizedAffiliationMode(scope, affiliationMode);
+        setAffiliationMode(effectiveAffiliationMode);
+        setManualGroupsByAge((prev) => ({ ...defaultManualGroupsForScope(scope), ...(prev || {}) }));
+        setPlayers((prev) =>
+          (prev || []).map((p) => {
+            const validGroup = activeAgeGroups(scope).some((g) => Number(g.numb) === Number(p.ageGroupNumb));
+            const detectedByAge = p.age !== "" && p.age != null ? ageGroupFromAge(p.age, scope) : defaultAgeGroup;
+            const ageGroupNumb = validGroup ? Number(p.ageGroupNumb) : detectedByAge;
+            const sex = p.sex === "F" ? "F" : "M";
+            const weight = bucketWeight(sex, p.actualKg, ageGroupNumb, scope);
+            const manualGroup = normalizeManualGroup(p.manualGroup, manualGroupsByAge, ageGroupNumb, scope);
+            const slot = isManualGroupsMode(weightMode) ? manualGroup : weight;
+            const slotLabel = String(slot || "").replace("+", "P").replace("-", "N").replace(/\s+/g, "");
+            const aff = normalizedAffiliationMode(scope, effectiveAffiliationMode) === "none" ? defaultAffiliation(scope, effectiveAffiliationMode) : resolveAffiliation(p.countryFull || p.country, scope, effectiveAffiliationMode);
+            const id = `${aff.code || "UNK"}-${(p.name || "").replace(/\s+/g, "").toUpperCase()}-${slotLabel}`;
+            return { ...p, countryFull: aff.full, country: aff.code, ageGroupNumb, weight, manualGroup, id };
+          })
+        );
+        setRefs((prev) =>
+          (prev || []).map((r) => {
+            const aff = normalizedAffiliationMode(scope, effectiveAffiliationMode) === "none"
+              ? defaultAffiliation(scope, effectiveAffiliationMode)
+              : resolveAffiliation(r.countryFull || r.country, scope, effectiveAffiliationMode);
+            return { ...r, countryFull: aff.full, country: aff.code };
+          })
+        );
+        setSchedule(null);
+        setBoutMeta({});
+        setActiveBoutNo(null);
+        setSbEvents([]);
+        setTimerMs(0);
+        setTimerRunning(false);
+        setShowMeta(false);
+        setDrawValidation({ errors: [], warnings: [] });
       }
 
       async function refreshTournamentList() {
@@ -1168,9 +1430,14 @@ function groupKeyComparator(a, b) {
             tournamentMeta: currentTournamentMeta
               ? {
                   name: currentTournamentMeta.name,
-                  date: currentTournamentMeta.date
+                  date: currentTournamentMeta.date,
+                  tournamentScope,
+                  affiliationMode,
+                  weightMode,
+                  manualGroupsByAge,
+                  manualDurationSeconds
                 }
-              : null
+              : { tournamentScope, affiliationMode, weightMode, manualGroupsByAge, manualDurationSeconds }
           };
 
           const base = serverUrl.replace(/\/+$/, "");
@@ -1283,12 +1550,14 @@ function groupKeyComparator(a, b) {
       const weightsWithPlayers = useMemo(() => {
         const s = new Set();
         players.forEach((p) => {
-          if (p.weight && p.sex) {
-            s.add(`${p.sex}|${p.weight}`);
+          const ag = ageGroupByNumb(p.ageGroupNumb, tournamentScope);
+          const slot = groupSlotOfPlayer(p, weightMode);
+          if (slot && p.sex && ag?.competitive) {
+            s.add(groupKeyOfPlayer(p, weightMode));
           }
         });
         return Array.from(s).sort(groupKeyComparator);
-      }, [players]);
+      }, [players, tournamentScope, weightMode, manualGroupsByAge]);
 
       const [weightConfig, setWeightConfig] = useState({});
       const gillamNames = useMemo(
@@ -1412,18 +1681,86 @@ function groupKeyComparator(a, b) {
         }
       }
 
+      function setAffiliationModeAndRecalc(nextMode) {
+        if (!ensureWritable("Changing affiliation mode")) return;
+        const mode = normalizedAffiliationMode(tournamentScope, nextMode);
+        setAffiliationMode(mode);
+        setPlayers((prev) =>
+          (prev || []).map((p) => {
+            const aff = mode === "none" ? defaultAffiliation(tournamentScope, mode) : resolveAffiliation(p.countryFull || p.country, tournamentScope, mode);
+            const slot = isManualGroupsMode(weightMode) ? p.manualGroup : p.weight;
+            const slotLabel = String(slot || "").replace("+", "P").replace("-", "N").replace(/\s+/g, "");
+            const id = `${aff.code || "UNK"}-${(p.name || "").replace(/\s+/g, "").toUpperCase()}-${slotLabel}`;
+            return { ...p, countryFull: aff.full, country: aff.code, id };
+          })
+        );
+        setRefs((prev) =>
+          (prev || []).map((r) => {
+            const aff = mode === "none" ? defaultAffiliation(tournamentScope, mode) : resolveAffiliation(r.countryFull || r.country, tournamentScope, mode);
+            return { ...r, countryFull: aff.full, country: aff.code };
+          })
+        );
+        setSchedule(null);
+        setBoutMeta({});
+        setDrawValidation({ errors: [], warnings: [] });
+      }
+
+      function setWeightModeAndRecalc(nextMode) {
+        if (!ensureWritable("Changing weight mode")) return;
+        const mode = nextMode || "auto_weights";
+        setWeightMode(mode);
+        setManualGroupsByAge((prev) => ({ ...defaultManualGroupsForScope(tournamentScope), ...(prev || {}) }));
+        setPlayers((prev) =>
+          (prev || []).map((p) => {
+            const ageGroupNumb = p.age !== "" && p.age != null ? ageGroupFromAge(p.age, tournamentScope) : (p.ageGroupNumb || defaultAgeGroupNumbForScope(tournamentScope));
+            const sex = p.sex === "F" ? "F" : "M";
+            const weight = bucketWeight(sex, p.actualKg, ageGroupNumb, tournamentScope);
+            const manualGroup = normalizeManualGroup(p.manualGroup, manualGroupsByAge, ageGroupNumb, tournamentScope);
+            const slot = isManualGroupsMode(mode) ? manualGroup : weight;
+            const slotLabel = String(slot || "").replace("+", "P").replace("-", "N").replace(/\s+/g, "");
+            const id = `${p.country || "UNK"}-${(p.name || "").replace(/\s+/g, "").toUpperCase()}-${slotLabel}`;
+            return { ...p, ageGroupNumb, weight, manualGroup, id };
+          })
+        );
+        setSchedule(null);
+        setBoutMeta({});
+        setDrawValidation({ errors: [], warnings: [] });
+      }
+
+      function updateManualGroupsForAge(ageGroupNumb, text) {
+        const names = String(text || "")
+          .split(/[\n,]+/)
+          .map((x, i) => cleanManualGroupName(x, `Group ${i + 1}`))
+          .filter(Boolean);
+        const finalNames = names.length ? names : ["Group A"];
+        setManualGroupsByAge((prev) => ({ ...prev, [ageGroupNumb]: finalNames }));
+        setPlayers((prev) =>
+          (prev || []).map((p) => {
+            if (Number(p.ageGroupNumb) !== Number(ageGroupNumb)) return p;
+            const manualGroup = finalNames.includes(p.manualGroup) ? p.manualGroup : finalNames[0];
+            const slot = isManualGroupsMode(weightMode) ? manualGroup : p.weight;
+            const slotLabel = String(slot || "").replace("+", "P").replace("-", "N").replace(/\s+/g, "");
+            const id = `${p.country || "UNK"}-${(p.name || "").replace(/\s+/g, "").toUpperCase()}-${slotLabel}`;
+            return { ...p, manualGroup, id };
+          })
+        );
+        setSchedule(null);
+        setBoutMeta({});
+      }
+
       function addPlayer() {
         if (!ensureWritable("Adding players")) return;
-        const defFull = "Saudi Arabia";
-        const defCode = COUNTRY_NAME_TO_CODE[defFull];
+        const defAff = defaultAffiliation(tournamentScope, affiliationMode);
         const p = {
           id: "",
           name: "",
-          countryFull: defFull,
-          country: defCode,
+          countryFull: defAff.full,
+          country: defAff.code,
           sex: "M",
+          ageGroupNumb: defaultAgeGroupNumbForScope(tournamentScope),
           actualKg: 0,
-          weight: "-60",
+          weight: bucketWeight("M", 0, defaultAgeGroupNumbForScope(tournamentScope), tournamentScope),
+          manualGroup: manualGroupsForAge(manualGroupsByAge, defaultAgeGroupNumbForScope(tournamentScope), tournamentScope)[0],
           dob: "",
           age: ""
         };
@@ -1436,22 +1773,33 @@ function groupKeyComparator(a, b) {
           const next = prev.slice();
           const p = { ...next[idx], ...patch };
           if (Object.prototype.hasOwnProperty.call(patch, "countryFull")) {
-            const { code, full } = resolveCountry(patch.countryFull);
+            const { code, full } = resolveAffiliation(patch.countryFull, tournamentScope, affiliationMode);
             p.countryFull = full;
             p.country = code;
+          }
+          if (Object.prototype.hasOwnProperty.call(patch, "dob")) {
+            p.age = calcAge(patch.dob);
+            if (p.age !== "") p.ageGroupNumb = ageGroupFromAge(p.age, tournamentScope);
+          }
+          if (Object.prototype.hasOwnProperty.call(patch, "age")) {
+            if (p.age !== "") p.ageGroupNumb = ageGroupFromAge(p.age, tournamentScope);
           }
           if (
             Object.prototype.hasOwnProperty.call(patch, "sex") ||
             Object.prototype.hasOwnProperty.call(patch, "actualKg") ||
             Object.prototype.hasOwnProperty.call(patch, "name") ||
-            Object.prototype.hasOwnProperty.call(patch, "country")
+            Object.prototype.hasOwnProperty.call(patch, "country") ||
+            Object.prototype.hasOwnProperty.call(patch, "ageGroupNumb") ||
+            Object.prototype.hasOwnProperty.call(patch, "dob")
           ) {
-            p.weight = bucketWeight(p.sex, p.actualKg);
+            p.weight = bucketWeight(p.sex, p.actualKg, p.ageGroupNumb, tournamentScope);
+            p.manualGroup = normalizeManualGroup(p.manualGroup, manualGroupsByAge, p.ageGroupNumb, tournamentScope);
           }
-          if (Object.prototype.hasOwnProperty.call(patch, "dob")) {
-            p.age = calcAge(patch.dob);
+          if (Object.prototype.hasOwnProperty.call(patch, "manualGroup")) {
+            p.manualGroup = normalizeManualGroup(patch.manualGroup, manualGroupsByAge, p.ageGroupNumb, tournamentScope);
           }
-          const weightLabel = p.weight.replace("+", "P").replace("-", "N");
+          const slot = isManualGroupsMode(weightMode) ? p.manualGroup : p.weight;
+          const weightLabel = String(slot || "").replace("+", "P").replace("-", "N").replace(/\s+/g, "");
           p.id = `${p.country}-${(p.name || "").replace(/\s+/g, "").toUpperCase()}-${weightLabel}`;
           next[idx] = p;
           return next;
@@ -1469,24 +1817,32 @@ function groupKeyComparator(a, b) {
           const parts = line.split("|").map((p) => p.trim());
           if (parts.length >= 4 && /^[MF]$/i.test(parts[2])) {
             const [name, countryIn, sexIn, actualRaw, seedRaw, dobRaw] = parts;
-            const { code, full } = resolveCountry(countryIn);
+            const { code, full } = resolveAffiliation(countryIn, tournamentScope, affiliationMode);
             const sex = sexIn.toUpperCase();
             const actualKg = Number(actualRaw);
-            const weight = bucketWeight(sex, actualKg);
+            const ageGroupNumb = defaultAgeGroupNumbForScope(tournamentScope);
+            const weight = bucketWeight(sex, actualKg, ageGroupNumb, tournamentScope);
             const seed = seedRaw ? Number(seedRaw) : undefined;
             const dob = dobRaw || "";
             const age = calcAge(dob);
             const id = `${code}-${name.replace(/\s+/g, "").toUpperCase()}-${weight.replace("+", "P").replace("-", "N")}`;
-            acc.push({ id, name, countryFull: full, country: code, sex, actualKg, weight, seed, dob, age });
+            const detectedAgeGroupNumb = age !== "" ? ageGroupFromAge(age, tournamentScope) : ageGroupNumb;
+            const finalWeight = bucketWeight(sex, actualKg, detectedAgeGroupNumb, tournamentScope);
+            const manualGroup = manualGroupsForAge(manualGroupsByAge, detectedAgeGroupNumb, tournamentScope)[0];
+            const slot = isManualGroupsMode(weightMode) ? manualGroup : finalWeight;
+            const finalId = `${code}-${name.replace(/\s+/g, "").toUpperCase()}-${String(slot || "").replace("+", "P").replace("-", "N").replace(/\s+/g, "")}`;
+            acc.push({ id: finalId, name, countryFull: full, country: code, sex, ageGroupNumb: detectedAgeGroupNumb, actualKg, weight: finalWeight, manualGroup, seed, dob, age });
           } else if (parts.length >= 3) {
             const [name, countryIn, weightIn, seedRaw] = parts;
-            const { code, full } = resolveCountry(countryIn);
+            const { code, full } = resolveAffiliation(countryIn, tournamentScope, affiliationMode);
             const sex = "M";
             const actualKg = 0;
             const weight = (weightIn || "").replace(/\s+/g, "");
             const seed = seedRaw ? Number(seedRaw) : undefined;
             const id = `${code}-${name.replace(/\s+/g, "").toUpperCase()}-${weight.replace("+", "P").replace("-", "N")}`;
-            acc.push({ id, name, countryFull: full, country: code, sex, actualKg, weight, seed, dob: "", age: "" });
+            const ageGroupNumb = defaultAgeGroupNumbForScope(tournamentScope);
+            const manualGroup = manualGroupsForAge(manualGroupsByAge, ageGroupNumb, tournamentScope)[0];
+            acc.push({ id, name, countryFull: full, country: code, sex, ageGroupNumb, actualKg, weight, manualGroup, seed, dob: "", age: "" });
           }
         }
         setPlayers((prev) => [...prev, ...acc]);
@@ -1494,15 +1850,14 @@ function groupKeyComparator(a, b) {
 
       function addRef() {
         if (!ensureWritable("Adding referees")) return;
-        const defFull = "Saudi Arabia";
-        const defCode = COUNTRY_NAME_TO_CODE[defFull];
+        const defAff = defaultAffiliation(tournamentScope, affiliationMode);
         const nextNo = refs.length + 1;
         const r = {
           id: `REF-${String(nextNo).padStart(3, "0")}`,
           refNo: nextNo,
           name: "",
-          countryFull: defFull,
-          country: defCode,
+          countryFull: defAff.full,
+          country: defAff.code,
           rank: 1,
           assignScope: "global",
           poolGillam: ""
@@ -1517,7 +1872,7 @@ function groupKeyComparator(a, b) {
           const current = next[idx] || {};
           const r = { ...current, ...patch };
           if (Object.prototype.hasOwnProperty.call(patch, "countryFull")) {
-            const { code, full } = resolveCountry(patch.countryFull);
+            const { code, full } = resolveAffiliation(patch.countryFull, tournamentScope, affiliationMode);
             r.countryFull = full;
             r.country = code;
           }
@@ -1547,7 +1902,7 @@ function groupKeyComparator(a, b) {
           const parts = line.split("|").map((p) => p.trim());
           let refNo = localIdx;
           let name = "";
-          let countryIn = "Saudi Arabia";
+          let countryIn = defaultAffiliation(tournamentScope, affiliationMode).full;
           let rank = 1;
           let assignScope = "global";
           let poolGillam = "";
@@ -1566,7 +1921,7 @@ function groupKeyComparator(a, b) {
             continue;
           }
 
-          const { code, full } = resolveCountry(countryIn);
+          const { code, full } = resolveAffiliation(countryIn, tournamentScope, affiliationMode);
           const scopeNormalized = String(assignScope || "global").trim().toLowerCase() === "pool" ? "pool" : "global";
 
           acc.push({
@@ -1659,7 +2014,7 @@ function groupKeyComparator(a, b) {
               pushError(`${gillam} has only ${eligible.length} eligible referees. Minimum required is 3.`);
             }
             if (!dedicated.length) {
-              pushWarning(`${gillam} has no dedicated pool referees. It will rely بالكامل على global referees.`);
+              pushWarning(`${gillam} has no dedicated pool referees. It will rely entirely on global referees.`);
             }
           });
         }
@@ -1820,10 +2175,11 @@ function groupKeyComparator(a, b) {
 
       function generateSchedule() {
         if (!ensureWritable("Generating the schedule")) return;
-        const byGroup = new Map(); // key: "M|-81", "F|-63"
+        const byGroup = new Map(); // key: ageGroup|sex|weight-or-manual-group
         for (const p of players) {
-          if (!p.weight || !p.sex) continue;
-          const key = `${p.sex}|${p.weight}`;
+          const slot = groupSlotOfPlayer(p, weightMode);
+          if (!slot || !p.sex) continue;
+          const key = groupKeyOfPlayer(p, weightMode);
           if (!byGroup.has(key)) byGroup.set(key, []);
           byGroup.get(key).push(p);
         }
@@ -1852,10 +2208,10 @@ function groupKeyComparator(a, b) {
               greenId: b
             }));
 
-            // ترتيب نزالات اللاعبين Seed 1 و Seed 2 في نهاية القائمة
+            // Move bouts involving Seed 1 and Seed 2 toward the end of the queue.
             const seedRank = new Map();
             plist.forEach((pl, idx) => {
-              // القائمة plist مرتبة مسبقاً بـ bySeedThenName
+              // The plist array is already sorted by bySeedThenName.
               seedRank.set(pl.id, idx + 1);
             });
 
@@ -1968,9 +2324,10 @@ function groupKeyComparator(a, b) {
             subInput[gk] = early;
 
             // cache late bouts with weight numeric value for later sorting
-            const [sex, weightLabel] = gk.split("|");
+            const parsed = parseGroupKey(gk);
+            const weightLabel = parsed.weight;
             const weightNumeric =
-              Number(weightLabel.replace("+", "").replace("-", "")) || 0;
+              Number(String(weightLabel).replace("+", "").replace("-", "")) || 0;
 
             late.forEach((b) => {
               lateRecords.push({
@@ -2025,7 +2382,7 @@ function groupKeyComparator(a, b) {
 
         for (const item of allMixed) {
           const { gillamName, groupKey, boutDesc } = item;
-          const [sex, weightLabel] = groupKey.split("|");
+          const { ageGroupNumb, sex, weight: weightLabel } = parseGroupKey(groupKey);
           const boutNo = counter++;
           localToGlobal.set(groupKey + "|" + boutDesc.localId, boutNo);
 
@@ -2044,6 +2401,8 @@ function groupKeyComparator(a, b) {
           globalBouts.push({
             boutNo,
             gillam: gillamName,
+            ageGroupNumb,
+            ageGroupLabel: ageGroupLabel(ageGroupNumb, tournamentScope),
             sex,
             weight: weightLabel,
             blueId: boutDesc.blueId,
@@ -2083,7 +2442,7 @@ function groupKeyComparator(a, b) {
           { assignmentMode: refAssignmentMode, fallbackToGlobal: true }
         );
 
-        // نبني جسم الجدول النهائي مرة واحدة
+        // Build the final schedule payload once.
         const schedulePayload = { bouts: globalBouts, assignments, bracketLinks };
         const validation = buildRefereeValidationPayload(schedulePayload);
         setDrawValidation(validation);
@@ -2093,7 +2452,7 @@ function groupKeyComparator(a, b) {
           return;
         }
 
-        // نخزن الجدول في حالة التطبيق (الواجهة)
+        // Store the schedule in the app state.
         setSchedule(schedulePayload);
         setBoutMeta({});
         setActiveBoutNo(null);
@@ -2113,7 +2472,7 @@ function groupKeyComparator(a, b) {
         const { bouts, assignments } = schedule;
         const pIndex = new Map(players.map((p) => [p.id, p]));
         const header = [
-          "BoutNo","Gillam","Sex","Weight","BlueName","BlueCountry","GreenName","GreenCountry","Stage","MainRef","Judge1","Judge2"
+          "BoutNo","Gillam","AgeGroup","Sex","Weight","BlueName","BlueAffiliation","GreenName","GreenAffiliation","Stage","MainRef","Judge1","Judge2"
         ];
         const lines = [header.join(",")];
         for (const b of bouts) {
@@ -2126,6 +2485,7 @@ function groupKeyComparator(a, b) {
           lines.push([
             b.boutNo,
             b.gillam,
+            b.ageGroupLabel || ageGroupLabel(b.ageGroupNumb, tournamentScope),
             b.sex || "",
             b.weight,
             A?.name || "",
@@ -2156,10 +2516,8 @@ function groupKeyComparator(a, b) {
         if (schedule && no != null) {
           const bout = schedule.bouts.find((b) => b.boutNo === no);
           if (bout) {
-            const A = players.find((p) => p.id === bout.blueId);
-            const G = players.find((p) => p.id === bout.greenId);
-            const sex = bout.sex || (A?.sex || G?.sex || "M");
-            const baseSec = sex === "F" ? WOMEN_FIGHT_SECONDS : MEN_FIGHT_SECONDS;
+            const pIndex = new Map(players.map((p) => [p.id, p]));
+            const baseSec = matchDurationSecondsForBout(bout, pIndex, tournamentScope, manualDurationSeconds);
             initialMs = baseSec * 1000;
           }
         }
@@ -2216,6 +2574,25 @@ function groupKeyComparator(a, b) {
           if (!canAdd) return;
           addEvent(side, type);
         }
+      }
+
+
+      function fullResetCurrentBout() {
+        if (!ensureWritable("Full reset") || !activeBoutNo || !schedule) return;
+        const bout = schedule.bouts.find((b) => b.boutNo === activeBoutNo);
+        const pIndex = new Map(players.map((p) => [p.id, p]));
+        const sec = matchDurationSecondsForBout(bout, pIndex, tournamentScope, manualDurationSeconds);
+        setTimerRunning(false);
+        setSbEvents([]);
+        setTimerMs(sec * 1000);
+        initialFightMsRef.current = sec * 1000;
+        halfPingDoneRef.current = false;
+        setShowMeta(false);
+        setBoutMeta((prev) => {
+          const next = { ...prev };
+          delete next[activeBoutNo];
+          return next;
+        });
       }
 
       async function sendIntegratedResultToServer(boutNo, payload) {
@@ -2320,7 +2697,8 @@ function groupKeyComparator(a, b) {
         const bySex = { M: [], F: [] };
         const byCountry = new Map();
         players.forEach((p) => {
-          const gk = p.sex && p.weight ? `${p.sex}|${p.weight}` : null;
+          const slot = groupSlotOfPlayer(p, weightMode);
+          const gk = p.sex && slot ? groupKeyOfPlayer(p, weightMode) : null;
           if (gk) {
             if (!byGroup.has(gk)) byGroup.set(gk, []);
             byGroup.get(gk).push(p);
@@ -2332,7 +2710,7 @@ function groupKeyComparator(a, b) {
           }
         });
         return { byGroup, bySex, byCountry };
-      }, [players]);
+      }, [players, weightMode, manualGroupsByAge]);
 
       // reports data (player / country / matches / penalties / counts)
       const reportsData = useMemo(() => {
@@ -2354,7 +2732,7 @@ function groupKeyComparator(a, b) {
         const playersIndex = new Map(players.map((p) => [p.id, p]));
         const boutsByGroup = new Map();
         schedule.bouts.forEach((b) => {
-          const key = b.sex && b.weight ? `${b.sex}|${b.weight}` : "UNKNOWN";
+          const key = b.groupKey || (b.ageGroupNumb && b.sex && b.weight ? `${b.ageGroupNumb}|${b.sex}|${b.weight}` : "UNKNOWN");
           if (!boutsByGroup.has(key)) boutsByGroup.set(key, []);
           boutsByGroup.get(key).push(b);
         });
@@ -2591,7 +2969,7 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
 
         const playersByWeight = [];
         groupedPlayers.byGroup.forEach((plist, gk) => {
-          const [sex, weight] = gk.split("|");
+          const { sex, weight } = parseGroupKey(gk);
           const sexLabel = sex === "F" ? "Women" : "Men";
           const sorted = plist
             .slice()
@@ -2645,12 +3023,12 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
           countryCounts,
           countsByCountrySex
         };
-      }, [players, schedule, boutMeta, groupedPlayers, refs]);
+      }, [players, schedule, boutMeta, groupedPlayers, refs, weightMode, manualGroupsByAge, tournamentScope]);
 
       return (
         <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100">
 <header className="sticky top-0 z-20 bg-slate-950/70 backdrop-blur border-b border-slate-800">
-  <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+  <div className="max-w-[98vw] mx-auto px-4 py-3 flex items-center justify-between">
     <div>
       <h1 className="text-xl font-semibold tracking-wide">Kurash Draw System v2</h1>
       <p className="text-sm text-slate-400">
@@ -2670,7 +3048,7 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
       </span>
     </div>
   </div>
-            <nav className="max-w-6xl mx-auto px-2 pb-2">
+            <nav className="max-w-[98vw] mx-auto px-2 pb-2">
               <div className="grid grid-cols-8 gap-2 text-xs md:text-sm">
                 {[
                   { k: "home", label: "Home" },
@@ -2699,7 +3077,7 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
             </nav>
           </header>
 
-          <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+          <main className="max-w-[98vw] mx-auto px-4 py-6 space-y-6">
 {tab === "home" && (
   <div className="space-y-6">
     <SectionCard title="Tournament Manager">
@@ -2726,6 +3104,10 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                     )}
                   </div>
                   <div className="text-slate-300">Date: {currentTournamentMeta.date || "-"}</div>
+                  <div className="text-slate-300">Scope: {TOURNAMENT_SCOPES.find((x) => x.value === tournamentScope)?.label || tournamentScope}</div>
+                  <div className="text-slate-300">Affiliation: {AFFILIATION_MODES.find((x) => x.value === normalizedAffiliationMode(tournamentScope, affiliationMode))?.label || affiliationMode}</div>
+                  <div className="text-slate-300">Weight Mode: {WEIGHT_MODES.find((x) => x.value === weightMode)?.label || weightMode}</div>
+                  <div className="text-slate-300">Duration: {manualDurationSeconds ? `${manualDurationSeconds}s manual` : "Category default"}</div>
                   <div className="text-slate-500 text-xs">ID: {currentTournamentMeta.id}</div>
                 </div>
               ) : (
@@ -2764,6 +3146,43 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                   className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2"
                   value={newTournamentDate}
                   onChange={(e) => setNewTournamentDate(e.target.value)}
+                />
+                <select
+                  className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2"
+                  value={tournamentScope}
+                  onChange={(e) => handleTournamentScopeChange(e.target.value)}
+                >
+                  {TOURNAMENT_SCOPES.map((x) => (
+                    <option key={x.value} value={x.value}>{x.label}</option>
+                  ))}
+                </select>
+                {isInternalScope(tournamentScope) && (
+                  <select
+                    className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2"
+                    value={normalizedAffiliationMode(tournamentScope, affiliationMode)}
+                    onChange={(e) => setAffiliationModeAndRecalc(e.target.value)}
+                  >
+                    <option value="none">No Affiliation</option>
+                    <option value="club">Club</option>
+                  </select>
+                )}
+                <select
+                  className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2"
+                  value={weightMode}
+                  onChange={(e) => setWeightModeAndRecalc(e.target.value)}
+                >
+                  {WEIGHT_MODES.map((x) => (
+                    <option key={x.value} value={x.value}>{x.label}</option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min="0"
+                  step="30"
+                  placeholder="Manual duration seconds, 0 = category default"
+                  className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2"
+                  value={manualDurationSeconds || ""}
+                  onChange={(e) => setManualDurationSeconds(Number(e.target.value || 0))}
                 />
               </div>
               <div className="flex flex-wrap gap-2">
@@ -2884,7 +3303,7 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
         <h2 className="text-2xl font-bold">All-in-one Kurash Tournament Engine</h2>
         <p className="text-slate-300">
           Hybrid system: automatic Round Robin for small groups (≤5) and Single Elimination for larger
-          weights, with Gillams, referee assignment, scoreboard and medal/Country reports.
+          weights, with Gillams, referee assignment, scoreboard and medal/affiliation reports.
         </p>
         <ul className="list-disc pl-6 text-slate-300 space-y-1">
 
@@ -2896,29 +3315,122 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                       <li>Full reports + CSV downloads</li>
                     </ul>
                   </div>
-                  <div className="rounded-2xl border border-slate-800 p-5 bg-gradient-to-br from-sky-900/30 via-slate-900 to-indigo-900/20">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4">
-                        <div className="text-slate-400">Default Men Weights</div>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {["-60", "-66", "-73", "-81", "-90", "-100", "+100"].map((w) => (
-                            <span key={w} className="px-2 py-1 rounded-full bg-slate-800 border border-slate-700">
-                              {w}
-                            </span>
+                  <div className="rounded-2xl border border-slate-800 p-5 bg-gradient-to-br from-sky-900/30 via-slate-900 to-indigo-900/20 space-y-4">
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <div>
+                        <div className="text-slate-400 text-xs mb-1">Tournament Type</div>
+                        <select
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2"
+                          value={tournamentScope}
+                          onChange={(e) => handleTournamentScopeChange(e.target.value)}
+                        >
+                          {TOURNAMENT_SCOPES.map((x) => (
+                            <option key={x.value} value={x.value}>{x.label}</option>
                           ))}
-                        </div>
+                        </select>
                       </div>
-                      <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4">
-                        <div className="text-slate-400">Default Women Weights</div>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {["-48", "-51", "-57", "-63", "-70", "-78", "-87", "+87"].map((w) => (
-                            <span key={w} className="px-2 py-1 rounded-full bg-slate-800 border border-slate-700">
-                              {w}
-                            </span>
-                          ))}
+                      {isInternalScope(tournamentScope) && (
+                        <div>
+                          <div className="text-slate-400 text-xs mb-1">Affiliation Mode</div>
+                          <select
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2"
+                            value={normalizedAffiliationMode(tournamentScope, affiliationMode)}
+                            onChange={(e) => setAffiliationModeAndRecalc(e.target.value)}
+                          >
+                            <option value="none">No Affiliation</option>
+                            <option value="club">Club</option>
+                          </select>
                         </div>
+                      )}
+                      <div>
+                        <div className="text-slate-400 text-xs mb-1">Match Duration</div>
+                        <input
+                          type="number"
+                          min="0"
+                          step="30"
+                          placeholder="0 = category default"
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2"
+                          value={manualDurationSeconds || ""}
+                          onChange={(e) => setManualDurationSeconds(Number(e.target.value || 0))}
+                        />
+                      </div>
+                      <div>
+                        <div className="text-slate-400 text-xs mb-1">Weight Mode</div>
+                        <select
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2"
+                          value={weightMode}
+                          onChange={(e) => setWeightModeAndRecalc(e.target.value)}
+                        >
+                          {WEIGHT_MODES.map((x) => (
+                            <option key={x.value} value={x.value}>{x.label}</option>
+                          ))}
+                        </select>
                       </div>
                     </div>
+
+                    {isManualGroupsMode(weightMode) && (
+                      <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 space-y-3">
+                        <div className="font-semibold text-sky-300 text-sm">Manual Groups per Age Category</div>
+                        <div className="text-xs text-slate-400">Enter group names separated by commas or new lines. Each age category can have its own groups.</div>
+                        <div className="grid md:grid-cols-2 gap-3">
+                          {competitiveAgeGroups(tournamentScope).map((g) => (
+                            <div key={g.numb}>
+                              <div className="text-xs text-slate-400 mb-1" {...ageGroupTitleProps(g.numb, tournamentScope)}>{g.label}</div>
+                              <textarea
+                                rows={2}
+                                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm"
+                                value={manualGroupsForAge(manualGroupsByAge, g.numb, tournamentScope).join(", ")}
+                                onChange={(e) => updateManualGroupsForAge(g.numb, e.target.value)}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="text-xs text-slate-400 rounded-xl border border-slate-800 bg-slate-950/50 p-3">
+                      The default weight list changes automatically based on the selected tournament type:
+                      <span className="text-sky-300 font-semibold ml-1">
+                        {TOURNAMENT_SCOPES.find((x) => x.value === tournamentScope)?.label || tournamentScope}
+                      </span>
+                    </div>
+
+                    {!isManualGroupsMode(weightMode) && (
+                    <div className="space-y-3 text-sm">
+                      {activeAgeGroups(tournamentScope).filter((g) => g.competitive).map((g) => (
+                        <div key={g.numb} className="bg-slate-900/70 border border-slate-800 rounded-xl p-4">
+                          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                            <div className="font-semibold text-sky-300" {...ageGroupTitleProps(g.numb, tournamentScope)}>{g.label}</div>
+                            <div className="text-xs text-slate-400">
+                              Default duration: <span className="text-slate-200">{g.defaultSeconds ? Math.round(g.defaultSeconds / 60) + " min" : "-"}</span>
+                            </div>
+                          </div>
+                          <div className="grid md:grid-cols-2 gap-3">
+                            <div>
+                              <div className="text-slate-400 text-xs mb-2">Men Weights</div>
+                              <div className="flex flex-wrap gap-2">
+                                {weightsForGroup(g.numb, "M", tournamentScope).map((w) => fmtClass(w)).map((w) => (
+                                  <span key={g.numb + "M" + w} className="px-2 py-1 rounded-full bg-slate-800 border border-slate-700">
+                                    {w}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-slate-400 text-xs mb-2">Women Weights</div>
+                              <div className="flex flex-wrap gap-2">
+                                {weightsForGroup(g.numb, "F", tournamentScope).map((w) => fmtClass(w)).map((w) => (
+                                  <span key={g.numb + "F" + w} className="px-2 py-1 rounded-full bg-slate-800 border border-slate-700">
+                                    {w}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    )}
                   </div>
                 </div>
               </SectionCard>
@@ -3034,7 +3546,7 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
       </div>
 
       <p className="text-slate-400">
-        Timer per gender is automatic (4 min men / 3 min women based on group sex).
+        Timer is now based on tournament category, with optional manual duration override. Half-time alert uses the actual match duration.
       </p>
     </div>
   </SectionCard>
@@ -3053,7 +3565,7 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                   <label className="text-sm text-slate-400">
                     or import TXT:{" "}
                     <code className="bg-slate-900 border border-slate-800 px-2 py-1 rounded">
-                      name | countryFullOrCode | sex(M/F) | actualKg | [seed] | [dob YYYY-MM-DD]
+                      name | {normalizedAffiliationMode(tournamentScope, affiliationMode) === "country" ? "countryFullOrCode" : normalizedAffiliationMode(tournamentScope, affiliationMode) === "club" ? "clubName" : "affiliation(optional)"} | sex(M/F) | actualKg | [seed] | [dob YYYY-MM-DD]
                     </code>
                   </label>
                   <input
@@ -3070,20 +3582,22 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                   />
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-slate-800">
-                  <table className="w-full text-sm">
+                <div className="overflow-x-auto rounded-xl border border-slate-800 w-full">
+                  <table className="w-max min-w-full table-auto text-sm whitespace-nowrap">
                     <thead className="bg-slate-900/60 text-slate-300">
                       <tr>
-                        <th className="p-2 text-right">Name</th>
-                        <th className="p-2 text-right">Country</th>
-                        <th className="p-2 text-right">Code</th>
-                        <th className="p-2 text-right">Sex</th>
-                        <th className="p-2 text-right">Actual (kg)</th>
-                        <th className="p-2 text-right">Bucket</th>
-                        <th className="p-2 text-right">DOB</th>
-                        <th className="p-2 text-right">Age</th>
-                        <th className="p-2 text-right">Seed</th>
-                        <th className="p-2 text-right">Action</th>
+                        <th className="p-2 text-right whitespace-nowrap">Name</th>
+                        <th className="p-2 text-right whitespace-nowrap">{affiliationLabel(tournamentScope, affiliationMode)}</th>
+                        <th className="p-2 text-right whitespace-nowrap">Code</th>
+                        <th className="p-2 text-right whitespace-nowrap">Sex</th>
+                        <th className="p-2 text-right whitespace-nowrap">Age Group</th>
+                        <th className="p-2 text-right whitespace-nowrap">Actual (kg)</th>
+                        <th className="p-2 text-right whitespace-nowrap">Bucket</th>
+                        {isManualGroupsMode(weightMode) && <th className="p-2 text-right whitespace-nowrap">Manual Group</th>}
+                        <th className="p-2 text-right whitespace-nowrap">DOB</th>
+                        <th className="p-2 text-right whitespace-nowrap">Age</th>
+                        <th className="p-2 text-right whitespace-nowrap">Seed</th>
+                        <th className="p-2 text-right whitespace-nowrap">Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -3091,16 +3605,27 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                         <tr key={idx} className="border-t border-slate-800">
                           <td className="p-2">
                             <input
-                              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1"
+                              className="w-[clamp(14rem,22vw,24rem)] bg-slate-950 border border-slate-800 rounded-xl px-3 py-1"
                               value={p.name}
                               onChange={(e) => recalcPlayer(idx, { name: e.target.value })}
                             />
                           </td>
                           <td className="p-2">
-                            <CountryDropdown
-                              valueFull={p.countryFull}
-                              onChange={(full) => recalcPlayer(idx, { countryFull: full })}
-                            />
+                            {normalizedAffiliationMode(tournamentScope, affiliationMode) === "country" ? (
+                              <CountryDropdown
+                                valueFull={p.countryFull}
+                                onChange={(full) => recalcPlayer(idx, { countryFull: full })}
+                              />
+                            ) : normalizedAffiliationMode(tournamentScope, affiliationMode) === "club" ? (
+                              <input
+                                className="w-[clamp(12rem,18vw,22rem)] bg-slate-950 border border-slate-800 rounded-xl px-3 py-1"
+                                placeholder="Club name"
+                                value={p.countryFull === "No Affiliation" ? "" : (p.countryFull || "")}
+                                onChange={(e) => recalcPlayer(idx, { countryFull: e.target.value })}
+                              />
+                            ) : (
+                              <span className="px-2 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-400">No Affiliation</span>
+                            )}
                           </td>
                           <td className="p-2 text-slate-300">{p.country}</td>
                           <td className="p-2">
@@ -3110,10 +3635,23 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                             />
                           </td>
                           <td className="p-2">
+                            <select
+                              className="w-[clamp(12rem,16vw,20rem)] border rounded-xl px-3 py-2 bg-slate-900 border-slate-700"
+                              value={p.ageGroupNumb || defaultAgeGroupNumbForScope(tournamentScope)}
+                              onChange={(e) => recalcPlayer(idx, { ageGroupNumb: Number(e.target.value) })}
+                            >
+                              {activeAgeGroups(tournamentScope).map((g) => (
+                                <option key={g.numb} value={g.numb} title={g.arLabel || g.label}>
+                                  {g.label}{g.competitive ? "" : " (Report only)"}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="p-2">
                             <input
                               type="number"
                               step="0.1"
-                              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1"
+                              className="w-28 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1"
                               value={p.actualKg}
                               onChange={(e) =>
                                 recalcPlayer(idx, { actualKg: Number(e.target.value || 0) })
@@ -3122,13 +3660,26 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                           </td>
                           <td className="p-2">
                             <span className="px-2 py-1 rounded-full bg-slate-800 border border-slate-700">
-                              {p.weight}
+                              {isManualGroupsMode(weightMode) ? "—" : p.weight}
                             </span>
                           </td>
+                          {isManualGroupsMode(weightMode) && (
+                            <td className="p-2">
+                              <select
+                                className="w-[clamp(10rem,14vw,18rem)] border rounded-xl px-3 py-2 bg-slate-900 border-slate-700"
+                                value={normalizeManualGroup(p.manualGroup, manualGroupsByAge, p.ageGroupNumb, tournamentScope)}
+                                onChange={(e) => recalcPlayer(idx, { manualGroup: e.target.value })}
+                              >
+                                {manualGroupsForAge(manualGroupsByAge, p.ageGroupNumb, tournamentScope).map((name) => (
+                                  <option key={name} value={name}>{name}</option>
+                                ))}
+                              </select>
+                            </td>
+                          )}
                           <td className="p-2">
                             <input
                               type="date"
-                              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1"
+                              className="w-40 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1"
                               value={p.dob || ""}
                               onChange={(e) => recalcPlayer(idx, { dob: e.target.value || "" })}
                             />
@@ -3141,7 +3692,7 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                               type="number"
                               min={1}
                               step={1}
-                              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1"
+                              className="w-24 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1"
                               value={p.seed ?? ""}
                               onChange={(e) =>
                                 recalcPlayer(idx, {
@@ -3162,7 +3713,7 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                       ))}
                       {players.length === 0 && (
                         <tr>
-                          <td className="p-3 text-slate-400" colSpan={10}>
+                          <td className="p-3 text-slate-400" colSpan={isManualGroupsMode(weightMode) ? 12 : 11}>
                             No players yet — use Add Player or import TXT.
                           </td>
                         </tr>
@@ -3185,9 +3736,9 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                   <label className="text-sm text-slate-400">
                     or import TXT:{" "}
                     <code className="bg-slate-900 border border-slate-800 px-2 py-1 rounded">
-                      refNo | name | countryFullOrCode | rank | assignScope | [poolGillam] | assignScope | [poolGillam]
+                      refNo | name | {normalizedAffiliationMode(tournamentScope, affiliationMode) === "country" ? "countryFullOrCode" : normalizedAffiliationMode(tournamentScope, affiliationMode) === "club" ? "clubName" : "affiliation(optional)"} | rank | assignScope | [poolGillam]
                     </code>
-                    <span className="ml-2 text-slate-500">supported: full format / refNo | name | country | rank / name | country | rank / old format name | country</span>
+                    <span className="ml-2 text-slate-500">supported: full format / refNo | name | affiliation | rank / name | affiliation | rank / old format name | affiliation</span>
                   </label>
                   <input
                     type="file"
@@ -3245,7 +3796,7 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                       <tr>
                         <th className="p-2 text-right">Ref No</th>
                         <th className="p-2 text-right">Name</th>
-                        <th className="p-2 text-right">Country</th>
+                        <th className="p-2 text-right">{affiliationLabel(tournamentScope, affiliationMode)}</th>
                         <th className="p-2 text-right">Code</th>
                         <th className="p-2 text-right">Rank</th>
                         {isGillamPoolMode && <th className="p-2 text-right">Scope</th>}
@@ -3272,10 +3823,21 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                             />
                           </td>
                           <td className="p-2">
-                            <CountryDropdown
-                              valueFull={r.countryFull}
-                              onChange={(full) => recalcRef(idx, { countryFull: full })}
-                            />
+                            {normalizedAffiliationMode(tournamentScope, affiliationMode) === "country" ? (
+                              <CountryDropdown
+                                valueFull={r.countryFull}
+                                onChange={(full) => recalcRef(idx, { countryFull: full })}
+                              />
+                            ) : normalizedAffiliationMode(tournamentScope, affiliationMode) === "club" ? (
+                              <input
+                                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1"
+                                placeholder="Club name"
+                                value={r.countryFull === "No Affiliation" ? "" : (r.countryFull || "")}
+                                onChange={(e) => recalcRef(idx, { countryFull: e.target.value })}
+                              />
+                            ) : (
+                              <span className="px-2 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-400">No Affiliation</span>
+                            )}
                           </td>
                           <td className="p-2 text-slate-300">{r.country}</td>
                           <td className="p-2">
@@ -3366,7 +3928,7 @@ Hybrid logic per weight:
 
 
                   <br />
-                  The table lists only (sex + weight) groups that currently have players.
+                  The table lists only active groups that currently have players.
                   Order: Men first, then Women, and inside each: heavier categories first.
                 </div>
 
@@ -3376,7 +3938,7 @@ Hybrid logic per weight:
                       <tr>
                         <th className="p-2 text-right">Include</th>
                         <th className="p-2 text-right">Sex</th>
-                        <th className="p-2 text-right">Weight</th>
+                        <th className="p-2 text-right">Weight / Group</th>
                         <th className="p-2 text-right">Format</th>
                         <th className="p-2 text-right">Gillam</th>
                       </tr>
@@ -3384,7 +3946,7 @@ Hybrid logic per weight:
                     <tbody>
                       {weightsWithPlayers.map((gk) => {
                         const cfg = weightConfig[gk] || { include: true, gillamIndex: 0 };
-                        const [sex, weightLabel] = gk.split("|");
+                        const { sex, weight: weightLabel } = parseGroupKey(gk);
                         const sexLabel = sex === "F" ? "Women" : "Men";
                         const pCount = groupedPlayers.byGroup.get(gk)?.length || 0;
                         const formatLabel =
@@ -3533,9 +4095,9 @@ Hybrid logic per weight:
                           <th className="p-2 text-right">Sex</th>
                           <th className="p-2 text-right">Weight</th>
                           <th className="p-2 text-right">Blue</th>
-                          <th className="p-2 text-right">Blue Country</th>
+                          <th className="p-2 text-right">Blue {affiliationLabel(tournamentScope, affiliationMode)}</th>
                           <th className="p-2 text-right">Green</th>
-                          <th className="p-2 text-right">Green Country</th>
+                          <th className="p-2 text-right">Green {affiliationLabel(tournamentScope, affiliationMode)}</th>
                           <th className="p-2 text-right">Stage</th>
                           <th className="p-2 text-right">Winner</th>
                         </tr>
@@ -3757,7 +4319,7 @@ Hybrid logic per weight:
   })}
                       </select>
                       <span className="text-sm text-slate-400">
-                        Countries and weights are locked from the draw.
+                        Participant affiliation and weights/groups are locked from the draw.
                       </span>
                     </div>
 
@@ -3769,8 +4331,8 @@ Hybrid logic per weight:
 
                       const sexFromBout = bout.sex || (A?.sex || G?.sex || "M");
                       const sexForLabel = sexFromBout === "F" ? "Women" : "Men";
-                      const baseSeconds =
-                        sexFromBout === "F" ? WOMEN_FIGHT_SECONDS : MEN_FIGHT_SECONDS;
+                      const pIndexForDuration = new Map(players.map((p) => [p.id, p]));
+                      const baseSeconds = matchDurationSecondsForBout(bout, pIndexForDuration, tournamentScope, manualDurationSeconds);
 
                       const asg = schedule.assignments.find(
                         (x) => x.boutNo === activeBoutNo
@@ -3839,7 +4401,7 @@ Hybrid logic per weight:
                                   <div className="text-left">
                                     <div className="text-xs text-yellow-400">{bout.gillam}</div>
                                     <div className="text-sm text-yellow-300">
-                                      {sexForLabel + " " + bout.weight} ({bout.stage || ""})
+                                      {(bout.ageGroupLabel ? bout.ageGroupLabel + " • " : "") + sexForLabel + " " + bout.weight} ({bout.stage || ""})
                                     </div>
                                   </div>
                                   <div className="flex gap-2">
@@ -3858,20 +4420,10 @@ Hybrid logic per weight:
                                       Stop
                                     </button>
                                     <button
-                                      onClick={() => {
-                                        const sec =
-                                          sexFromBout === "F"
-                                            ? WOMEN_FIGHT_SECONDS
-                                            : MEN_FIGHT_SECONDS;
-                                        const ms = sec * 1000;
-                                        setTimerMs(ms);
-                                        initialFightMsRef.current = ms;
-                                        halfPingDoneRef.current = false;
-                                        setTimerRunning(false);
-                                      }}
-                                      className="px-3 py-1 rounded-xl bg-slate-700 hover:bg-slate-600 text-xs md:text-sm"
+                                      onClick={fullResetCurrentBout}
+                                      className="px-3 py-1 rounded-xl bg-red-700 hover:bg-red-600 text-xs md:text-sm"
                                     >
-                                      Reset
+                                      FULL RESET
                                     </button>
                                     <button
                                       onClick={() => {
@@ -3922,7 +4474,7 @@ Hybrid logic per weight:
                                 <div className="text-left">
                                   <div className="text-xs text-yellow-400">{bout.gillam}</div>
                                   <div className="text-sm text-yellow-300">
-                                    {sexForLabel + " " + bout.weight} ({bout.stage || ""})
+                                    {(bout.ageGroupLabel ? bout.ageGroupLabel + " • " : "") + sexForLabel + " " + bout.weight} ({bout.stage || ""})
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-3">
@@ -3970,20 +4522,10 @@ Hybrid logic per weight:
                                     Stop
                                   </button>
                                   <button
-                                    onClick={() => {
-                                      const sec =
-                                        sexFromBout === "F"
-                                          ? WOMEN_FIGHT_SECONDS
-                                          : MEN_FIGHT_SECONDS;
-                                      const ms = sec * 1000;
-                                      setTimerMs(ms);
-                                      initialFightMsRef.current = ms;
-                                      halfPingDoneRef.current = false;
-                                      setTimerRunning(false);
-                                    }}
-                                    className="px-3 py-1 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm"
+                                    onClick={fullResetCurrentBout}
+                                    className="px-3 py-1 rounded-xl bg-red-700 hover:bg-red-600 text-sm"
                                   >
-                                    Reset
+                                    FULL RESET
                                   </button>
                                   <button
                                     onClick={() => {
@@ -4301,6 +4843,12 @@ Hybrid logic per weight:
                               Save result to bout
                             </button>
                             <button
+                              onClick={fullResetCurrentBout}
+                              className="px-4 py-2 rounded-xl bg-red-700 hover:bg-red-600 text-sm"
+                            >
+                              FULL RESET
+                            </button>
+                            <button
                               onClick={() => setShowMeta((v) => !v)}
                               className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm"
                             >
@@ -4365,21 +4913,24 @@ Hybrid logic per weight:
 {tab === "reports" && (() => {
   // ======== SHARED HELPERS FOR REPORTS =========
   const groupKeyLabel = (gk) => {
-    const [sex, weightLabel] = gk.split("|");
+    const { ageGroupNumb, sex, weight: weightLabel } = parseGroupKey(gk);
     const sexLabel = sex === "F" ? "Women" : "Men";
-    return `${sexLabel} ${weightLabel}`;
+    const label = ageGroupLabel(ageGroupNumb, tournamentScope);
+    const slotLabel = isManualGroupsMode(weightMode) ? `Group ${weightLabel}` : weightLabel;
+    return `${label} • ${sexLabel} ${slotLabel}`;
   };
 
   const groupedPlayers = new Map();
   players.forEach((p) => {
-    if (!p.sex || !p.weight) return;
-    const key = `${p.sex}|${p.weight}`;
+    const slot = groupSlotOfPlayer(p, weightMode);
+    if (!p.sex || !slot) return;
+    const key = groupKeyOfPlayer(p, weightMode);
     if (!groupedPlayers.has(key)) groupedPlayers.set(key, []);
     groupedPlayers.get(key).push(p);
   });
   const groupedKeys = Array.from(groupedPlayers.keys()).sort(groupKeyComparator);
 
-  // نوع كل مجموعة: Round Robin أو Single Elimination
+  // Group mode: Round Robin or Single Elimination.
 const groupModes = new Map();
 groupedKeys.forEach((gk) => {
   const size = groupedPlayers.get(gk)?.length || 0;
@@ -4390,11 +4941,11 @@ groupedKeys.forEach((gk) => {
   const hasSchedule = !!schedule && schedule.bouts && schedule.bouts.length > 0;
   const pIndex = new Map(players.map((p) => [p.id, p]));
 
-  // تجميع النزالات حسب المجموعة (لإظهار الأقواس والجداول)
+  // Group bouts for bracket/table display.
   const boutsByGroup = new Map();
   if (hasSchedule) {
     schedule.bouts.forEach((b) => {
-      const key = b.sex && b.weight ? `${b.sex}|${b.weight}` : "UNKNOWN";
+      const key = b.groupKey || (b.ageGroupNumb && b.sex && b.weight ? `${b.ageGroupNumb}|${b.sex}|${b.weight}` : "UNKNOWN");
       if (!boutsByGroup.has(key)) boutsByGroup.set(key, []);
       boutsByGroup.get(key).push(b);
     });
@@ -4741,7 +5292,7 @@ groupedKeys.forEach((gk) => {
               } else if (reportTab === "refs") {
                 csvHeader = [
                   "Referee",
-                  "Country",
+                  "Affiliation",
                   "Scope",
                   "MainRefCount",
                   "Judge1Count",
@@ -4753,7 +5304,7 @@ groupedKeys.forEach((gk) => {
                 ];
                 csvRows = refSummaryRows.map((r) => ({
                   Referee: r.label,
-                  Country: r.country,
+                  Affiliation: r.country,
                   Scope: r.scope,
                   MainRefCount: r.mainCount,
                   Judge1Count: r.judge1Count,
@@ -4799,7 +5350,7 @@ groupedKeys.forEach((gk) => {
                 csvRows = playersByWeightRows.map((r) => ({
                   Group: r.group,
                   PlayerName: r.name,
-                  Country: r.country,
+                  Affiliation: r.country,
                   Sex: r.sex,
                   Age: r.age,
                   ActualKg: r.actualKg,
@@ -5673,12 +6224,12 @@ const renderTable = () => {
                   <div>
                     <h4 className="font-semibold mb-1">Players TXT format (recommended)</h4>
                     <code className="bg-slate-900 border border-slate-800 px-2 py-1 rounded block">
-                      name | countryFullOrCode | sex(M/F) | actualKg | [seed] | [dob YYYY-MM-DD]
+                      name | affiliation | sex(M/F) | actualKg | [seed] | [dob YYYY-MM-DD]
                     </code>
                     <p className="mt-1">
                       Example:{" "}
                       <span className="font-mono">
-                        Abdullah Alreedy | Saudi Arabia | M | 81.4 | 1 | 1990-05-20
+                        Abdullah Alreedy | Al-Hilal Club | M | 81.4 | 1 | 1990-05-20
                       </span>
                     </p>
                   </div>
@@ -5686,26 +6237,26 @@ const renderTable = () => {
                   <div>
                     <h4 className="font-semibold mb-1">Legacy players format</h4>
                     <code className="bg-slate-900 border border-slate-800 px-2 py-1 rounded block">
-                      name | country | weightLabel | [seed]
+                      name | affiliation | weightLabel | [seed]
                     </code>
                     <p className="mt-1">
-                      Example: <span className="font-mono">A. Alreedy | KSA | -81 | 1</span>
+                      Example: <span className="font-mono">A. Alreedy | Al-Hilal Club | -81 | 1</span>
                     </p>
                   </div>
 
                   <div>
                     <h4 className="font-semibold mb-1">Referees TXT format</h4>
                     <code className="bg-slate-900 border border-slate-800 px-2 py-1 rounded block">
-                      refNo | name | countryFullOrCode | rank | [assignScope] | [poolGillam]
+                      refNo | name | affiliation | rank | [assignScope] | [poolGillam]
                     </code>
                     <p className="mt-1">
-                      Example: <span className="font-mono">07 | Ref A | Saudi Arabia | 3 | pool | Gillam A</span>
+                      Example: <span className="font-mono">07 | Ref A | Al-Hilal Club | 3 | pool | Gillam A</span>
                     </p>
                     <p className="mt-1 text-slate-400">
                       In <span className="font-mono">Global Assignment</span>, scope and pool values are ignored. In <span className="font-mono">Gillam Pool Assignment</span>, they are used.
                     </p>
                     <p className="mt-1 text-slate-400">
-                      Old formats still supported: <span className="font-mono">refNo | name | country | rank</span> and <span className="font-mono">name | countryFullOrCode</span>
+                      Old formats still supported: <span className="font-mono">refNo | name | affiliation | rank</span> and <span className="font-mono">name | affiliation</span>
                     </p>
                   </div>
 
@@ -5749,7 +6300,7 @@ const renderTable = () => {
             )}
           </main>
 
-          <footer className="max-w-6xl mx-auto px-4 pb-10 text-xs text-slate-400">
+          <footer className="max-w-[98vw] mx-auto px-4 pb-10 text-xs text-slate-400">
             Single-page web app – open index.html directly in your browser.
           </footer>
         </div>
