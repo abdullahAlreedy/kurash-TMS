@@ -806,26 +806,44 @@ function mixBoutsAcrossWeights(input, weightsOrder) {
         return globalPool;
       }
 
+      function isNeutralAffiliationCode(code) {
+        const c = String(code || "").trim().toUpperCase();
+        return !c || c === "NA" || c === "NONE" || c === "N/A" || c === "CLB" || c === "CLUB";
+      }
+
       function takeCandidate(pool, avoidCountries, recent, alsoAvoid) {
         alsoAvoid = alsoAvoid || new Set();
         if (!pool || !pool.length) return null;
 
+        const effectiveAvoid = new Set(
+          Array.from(avoidCountries || []).filter((code) => !isNeutralAffiliationCode(code))
+        );
+
         for (let i = 0; i < pool.length; i++) {
           const r = pool[i];
-          if (avoidCountries.has(r.country)) continue;
+          if (effectiveAvoid.has(r.country)) continue;
           if (alsoAvoid.has(r.id)) continue;
           if (recent.includes(r.id)) continue;
           pool.push(pool.splice(i, 1)[0]);
           return r.id;
         }
+
         for (let i = 0; i < pool.length; i++) {
           const r = pool[i];
-          if (!avoidCountries.has(r.country) && !alsoAvoid.has(r.id)) {
-            pool.push(pool.splice(i, 1)[0]);
-            return r.id;
-          }
+          if (effectiveAvoid.has(r.country)) continue;
+          if (alsoAvoid.has(r.id)) continue;
+          pool.push(pool.splice(i, 1)[0]);
+          return r.id;
         }
-        return pool[0]?.id || null;
+
+        for (let i = 0; i < pool.length; i++) {
+          const r = pool[i];
+          if (alsoAvoid.has(r.id)) continue;
+          pool.push(pool.splice(i, 1)[0]);
+          return r.id;
+        }
+
+        return null;
       }
 
       const out = [];
@@ -2031,7 +2049,7 @@ function groupKeyComparator(a, b) {
             ];
             const chosen = roles.map((r) => asg[r.key]).filter(Boolean);
             if (chosen.length && new Set(chosen).size !== chosen.length) {
-              pushError(`Fight #${b.boutNo} has duplicate manual referee assignment.`);
+              pushError(`Fight #${b.boutNo} has the same referee assigned more than once.`);
             }
             roles.forEach((r) => {
               if (!asg[r.key]) {
