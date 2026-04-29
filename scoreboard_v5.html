@@ -421,6 +421,34 @@
         return raw.replace(/\/+$/, "");
       }
 
+      function metaFromFinishedBout(bout) {
+        if (!bout || !bout.finished || !bout.winner) return null;
+        const events = Array.isArray(bout.meta)
+          ? bout.meta.map((ev) => ({
+              side: ev.side,
+              type: ev.type,
+              atMs: Number(ev.timeSec || 0) * 1000
+            }))
+          : [];
+        return {
+          events,
+          durationSec: bout.durationMs ? Math.floor(Number(bout.durationMs) / 1000) : (bout.durationSec || 0),
+          winner: bout.winner,
+          blueScore: bout.blueScore || null,
+          greenScore: bout.greenScore || null,
+          savedAt: bout.savedAt || null
+        };
+      }
+
+      function buildBoutMetaFromSchedule(scheduleObj) {
+        const out = {};
+        (scheduleObj?.bouts || []).forEach((b) => {
+          const meta = metaFromFinishedBout(b);
+          if (meta) out[b.boutNo] = meta;
+        });
+        return out;
+      }
+
       useEffect(() => {
         try {
           const raw = localStorage.getItem(SB_STORAGE_KEY);
@@ -496,20 +524,27 @@
             setServerMsg("No current tournament found.");
             return;
           }
-          if (data.schedule) setSchedule(data.schedule);
+          const loadedBoutMeta = data.schedule ? buildBoutMetaFromSchedule(data.schedule) : {};
+          if (data.schedule) {
+            setSchedule(data.schedule);
+            setBoutMeta(loadedBoutMeta);
+          }
           if (Array.isArray(data.players)) setPlayers(data.players);
           if (Array.isArray(data.refs)) setRefs(data.refs);
-          if (data.meta) setTournamentMeta(data.meta);
+          if (data.tournamentMeta || data.meta) setTournamentMeta(data.tournamentMeta || data.meta);
           const allBouts = data.schedule?.bouts || [];
           const gList = Array.from(new Set(allBouts.map((b) => b.gillam).filter(Boolean)));
           setGillams(gList);
           if (gList.length && !selectedGillam) setSelectedGillam(gList[0]);
           if (allBouts.length) {
-            setActiveBoutNo(allBouts[0].boutNo);
-            setSbEvents([]);
+            const targetBout = allBouts.find((b) => !loadedBoutMeta[b.boutNo]?.winner) || allBouts[0];
+            const targetMeta = loadedBoutMeta[targetBout.boutNo] || null;
+            setActiveBoutNo(targetBout.boutNo);
+            setSbEvents(targetMeta?.events || []);
+            setTimerMs(targetMeta?.durationSec != null ? targetMeta.durationSec * 1000 : 0);
             setTimerRunning(false);
-            setShowMeta(false);
-            setTimeout(() => loadBoutDetails(allBouts[0].boutNo), 0);
+            setShowMeta(!!targetMeta?.events?.length);
+            setTimeout(() => loadBoutDetails(targetBout.boutNo), 0);
           }
           setServerStatus("ok");
           setServerMsg("Current tournament loaded.");
@@ -583,6 +618,7 @@
             assignments: prev?.assignments || [],
             bracketLinks: prev?.bracketLinks || {}
           }));
+          setBoutMeta(buildBoutMetaFromSchedule({ bouts: safeBouts }));
 
           if (!safeBouts.length) {
             setActiveBoutNo(null);
@@ -630,6 +666,13 @@
               if (!prev?.bouts) return prev;
               return { ...prev, bouts: prev.bouts.map((b) => Number(b.boutNo) === Number(data.bout.boutNo) ? { ...b, ...data.bout } : b) };
             });
+            const loadedMeta = metaFromFinishedBout(data.bout);
+            setBoutMeta((prev) => {
+              const next = { ...prev };
+              if (loadedMeta) next[data.bout.boutNo] = loadedMeta;
+              else delete next[data.bout.boutNo];
+              return next;
+            });
           }
           if (data.blue || data.green) {
             setPlayers((prevPlayers) => {
@@ -653,11 +696,22 @@
         if (!base) return;
         try {
           const url = base + "/api/bout/" + boutNo + "/save";
-          await fetch(url, {
+          const res = await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
           });
+          const data = await res.json().catch(() => ({}));
+          if (data?.bout) {
+            setSchedule((prev) => {
+              if (!prev?.bouts) return prev;
+              return { ...prev, bouts: prev.bouts.map((b) => Number(b.boutNo) === Number(data.bout.boutNo) ? { ...b, ...data.bout } : b) };
+            });
+            const loadedMeta = metaFromFinishedBout(data.bout);
+            if (loadedMeta) {
+              setBoutMeta((prev) => ({ ...prev, [data.bout.boutNo]: loadedMeta }));
+            }
+          }
           console.log("Result sent to server for bout", boutNo);
         } catch (err) {
           console.error("Failed to send result to server:", err);
@@ -908,6 +962,17 @@ useEffect(() => {
           durationMs
         };
 
+        setSchedule((prev) => {
+          if (!prev?.bouts) return prev;
+          return {
+            ...prev,
+            bouts: prev.bouts.map((b) =>
+              Number(b.boutNo) === Number(activeBoutNo)
+                ? { ...b, ...payload, finished: true, savedAt: new Date().toISOString() }
+                : b
+            )
+          };
+        });
         sendResultToServer(activeBoutNo, payload);
 
         if (!options?.silent) alert("Result stored for bout #" + activeBoutNo);
