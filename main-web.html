@@ -1402,6 +1402,15 @@ function groupKeyComparator(a, b) {
         refreshTournamentList();
       }, [serverUrl]);
 
+      useEffect(() => {
+        const base = normalizedServerBase();
+        if (!base || !schedule?.bouts?.length) return;
+        const id = setInterval(() => {
+          if (!timerRunning) refreshResultsFromServer(true);
+        }, 5000);
+        return () => clearInterval(id);
+      }, [serverUrl, schedule?.bouts?.length, timerRunning]);
+
       // helper to download CSV (used in reports)
       function downloadCSV(filename, columns, rows) {
         if (!rows || !rows.length) {
@@ -2615,19 +2624,52 @@ function groupKeyComparator(a, b) {
 
       async function sendIntegratedResultToServer(boutNo, payload) {
         const base = normalizedServerBase();
-        if (!base) return;
+        if (!base) return null;
         try {
-          await fetch(base + "/api/bout/" + boutNo + "/save", {
+          const res = await fetch(base + "/api/bout/" + boutNo + "/save", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
           });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            console.error("Integrated scoreboard save failed:", res.status, data);
+            setServerStatus("error");
+            setServerStatusMsg("Result save failed: HTTP " + res.status);
+            return null;
+          }
+          setServerStatus("ok");
+          setServerStatusMsg("Result saved to server.");
+          return data?.bout || null;
         } catch (err) {
           console.error("Integrated scoreboard save error:", err);
+          setServerStatus("error");
+          setServerStatusMsg("Error saving result to server.");
+          return null;
         }
       }
 
-      function saveResultToBout() {
+      async function refreshResultsFromServer(silent = false) {
+        const base = normalizedServerBase();
+        if (!base) return;
+        try {
+          const res = await fetch(base + "/api/tournament/current");
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const data = await res.json();
+          if (!data?.schedule) return;
+          setSchedule(data.schedule);
+          setBoutMeta(buildBoutMetaFromSchedule(data.schedule));
+          if (Array.isArray(data.players)) setPlayers(data.players);
+          if (Array.isArray(data.refs)) setRefs(data.refs);
+          if (data.meta) setCurrentTournamentMeta(data.meta);
+          if (!silent) setTournamentActionMsg("Results refreshed from server.");
+        } catch (err) {
+          console.error("Refresh results error:", err);
+          if (!silent) setTournamentActionMsg("Could not refresh results from server.");
+        }
+      }
+
+      async function saveResultToBout() {
         if (!ensureWritable("Saving results") || !activeBoutNo || !schedule) return;
         const scores = computeScores(sbEvents);
         const isTimeUp = timerMs === 0;
@@ -2638,9 +2680,10 @@ function groupKeyComparator(a, b) {
         }
         const durationMs = timerMs;
         const durationSec = Math.floor(durationMs / 1000);
+        const localMeta = { events: sbEvents, durationSec, winner: winnerSide };
         setBoutMeta((prev) => ({
           ...prev,
-          [activeBoutNo]: { events: sbEvents, durationSec, winner: winnerSide }
+          [activeBoutNo]: localMeta
         }));
 
         const bluePenalties = { T: 0, D: 0, G: 0 };
@@ -2660,7 +2703,7 @@ function groupKeyComparator(a, b) {
           text: (ev.side === "blue" ? "BLUE " : "GREEN ") + ev.type
         }));
 
-        sendIntegratedResultToServer(activeBoutNo, {
+        const savedBoutFromServer = await sendIntegratedResultToServer(activeBoutNo, {
           winner: winnerSide,
           blueScore: {
             H: scores.blue.H,
@@ -2676,6 +2719,27 @@ function groupKeyComparator(a, b) {
           greenPenalties,
           meta: metaEvents,
           durationMs
+        });
+
+        setSchedule((prev) => {
+          if (!prev) return prev;
+          const updatedBouts = (prev.bouts || []).map((b) => {
+            if (Number(b.boutNo) !== Number(activeBoutNo)) return b;
+            return {
+              ...b,
+              ...(savedBoutFromServer || {}),
+              winner: winnerSide,
+              blueScore: { H: scores.blue.H, YO: scores.blue.YO, CH: scores.blue.CH },
+              greenScore: { H: scores.green.H, YO: scores.green.YO, CH: scores.green.CH },
+              bluePenalties,
+              greenPenalties,
+              meta: metaEvents,
+              durationMs,
+              finished: true,
+              savedAt: savedBoutFromServer?.savedAt || new Date().toISOString()
+            };
+          });
+          return { ...prev, bouts: updatedBouts };
         });
 
         // propagate winner to next elimination bout(s) if any
@@ -4339,6 +4403,13 @@ Hybrid logic per weight:
                       <span className="text-sm text-slate-400">
                         Participant affiliation and weights/groups are locked from the draw.
                       </span>
+                      <button
+                        type="button"
+                        onClick={() => refreshResultsFromServer(false)}
+                        className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-900 hover:border-sky-500"
+                      >
+                        Refresh Results
+                      </button>
                     </div>
 
                     {activeBoutNo && (() => {
