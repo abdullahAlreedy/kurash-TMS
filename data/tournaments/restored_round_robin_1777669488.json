@@ -1,0 +1,2405 @@
+{
+  "tournamentId": "restored_round_robin_1777669488",
+  "name": "Restored Round Robin Tournament",
+  "date": "2026-05-01",
+  "status": "active",
+  "players": [
+    {
+      "id": "NA-001--73",
+      "name": "عبدالله بشير عيسى",
+      "countryFull": "No Affiliation",
+      "country": "NA",
+      "sex": "M",
+      "ageGroupNumb": 1,
+      "actualKg": 0,
+      "weight": "-73",
+      "manualGroup": "Group A",
+      "seed": 1,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "NA-002--73",
+      "name": "يوسف صهيب لبان",
+      "countryFull": "No Affiliation",
+      "country": "NA",
+      "sex": "M",
+      "ageGroupNumb": 1,
+      "actualKg": 0,
+      "weight": "-73",
+      "manualGroup": "Group A",
+      "seed": 2,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "NA-003--81",
+      "name": "عبدالرحمن اوزداميروف",
+      "countryFull": "No Affiliation",
+      "country": "NA",
+      "sex": "M",
+      "ageGroupNumb": 1,
+      "actualKg": 0,
+      "weight": "-81",
+      "manualGroup": "Group A",
+      "seed": 3,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "NA-004--81",
+      "name": "غالب علي شراحيلي",
+      "countryFull": "No Affiliation",
+      "country": "NA",
+      "sex": "M",
+      "ageGroupNumb": 1,
+      "actualKg": 0,
+      "weight": "-81",
+      "manualGroup": "Group A",
+      "seed": 4,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "NA-005--73",
+      "name": "ريان علي أحمد",
+      "countryFull": "No Affiliation",
+      "country": "NA",
+      "sex": "M",
+      "ageGroupNumb": 1,
+      "actualKg": 0,
+      "weight": "-73",
+      "manualGroup": "Group A",
+      "seed": 5,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "NA-006--73",
+      "name": "عبدالرحمن محسن القرشي",
+      "countryFull": "No Affiliation",
+      "country": "NA",
+      "sex": "M",
+      "ageGroupNumb": 1,
+      "actualKg": 0,
+      "weight": "-73",
+      "manualGroup": "Group A",
+      "seed": 6,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "NA-007--81",
+      "name": "عبدالعزيز سعود الخالدي",
+      "countryFull": "No Affiliation",
+      "country": "NA",
+      "sex": "M",
+      "ageGroupNumb": 1,
+      "actualKg": 0,
+      "weight": "-81",
+      "manualGroup": "Group A",
+      "seed": 7,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "NA-008--81",
+      "name": "عبدالملك سلطان الميمني",
+      "countryFull": "No Affiliation",
+      "country": "NA",
+      "sex": "M",
+      "ageGroupNumb": 1,
+      "actualKg": 0,
+      "weight": "-81",
+      "manualGroup": "Group A",
+      "seed": 8,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "NA-009--90",
+      "name": "عثمان جولدوشوف",
+      "countryFull": "No Affiliation",
+      "country": "NA",
+      "sex": "M",
+      "ageGroupNumb": 1,
+      "actualKg": 0,
+      "weight": "-90",
+      "manualGroup": "Group A",
+      "seed": 9,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "NA-010--90",
+      "name": "مهند محيسن الهندي",
+      "countryFull": "No Affiliation",
+      "country": "NA",
+      "sex": "M",
+      "ageGroupNumb": 1,
+      "actualKg": 0,
+      "weight": "-90",
+      "manualGroup": "Group A",
+      "seed": 10,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "NA-011--81",
+      "name": "فهد صالح الخالدي",
+      "countryFull": "No Affiliation",
+      "country": "NA",
+      "sex": "M",
+      "ageGroupNumb": 1,
+      "actualKg": 0,
+      "weight": "-81",
+      "manualGroup": "Group A",
+      "seed": 11,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "NA-012--90",
+      "name": "عبدالله كولوف",
+      "countryFull": "No Affiliation",
+      "country": "NA",
+      "sex": "M",
+      "ageGroupNumb": 1,
+      "actualKg": 0,
+      "weight": "-90",
+      "manualGroup": "Group A",
+      "seed": 12,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "NA-013--81",
+      "name": "محمود حمزه هوساوي",
+      "countryFull": "No Affiliation",
+      "country": "NA",
+      "sex": "M",
+      "ageGroupNumb": 1,
+      "actualKg": 0,
+      "weight": "-81",
+      "manualGroup": "Group A",
+      "seed": 13,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "NA-014--90",
+      "name": "عبدالمجيد حماد الطويرقي",
+      "countryFull": "No Affiliation",
+      "country": "NA",
+      "sex": "M",
+      "ageGroupNumb": 1,
+      "actualKg": 0,
+      "weight": "-90",
+      "manualGroup": "Group A",
+      "seed": 14,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "NA-015--100",
+      "name": "عدي عبدالله المالكي",
+      "countryFull": "No Affiliation",
+      "country": "NA",
+      "sex": "M",
+      "ageGroupNumb": 1,
+      "actualKg": 0,
+      "weight": "-100",
+      "manualGroup": "Group A",
+      "seed": 15,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "NA-016--100",
+      "name": "مروان صالح الذبياني",
+      "countryFull": "No Affiliation",
+      "country": "NA",
+      "sex": "M",
+      "ageGroupNumb": 1,
+      "actualKg": 0,
+      "weight": "-100",
+      "manualGroup": "Group A",
+      "seed": 16,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "NA-017--100",
+      "name": "احمد حاميتوفيج ياندافوروف",
+      "countryFull": "No Affiliation",
+      "country": "NA",
+      "sex": "M",
+      "ageGroupNumb": 1,
+      "actualKg": 0,
+      "weight": "-100",
+      "manualGroup": "Group A",
+      "seed": 17,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "NA-018--81",
+      "name": "احمد محمود ملياني",
+      "countryFull": "No Affiliation",
+      "country": "NA",
+      "sex": "M",
+      "ageGroupNumb": 1,
+      "actualKg": 0,
+      "weight": "-81",
+      "manualGroup": "Group A",
+      "seed": 18,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "NA-019--100",
+      "name": "سالم حسين علي",
+      "countryFull": "No Affiliation",
+      "country": "NA",
+      "sex": "M",
+      "ageGroupNumb": 1,
+      "actualKg": 0,
+      "weight": "-100",
+      "manualGroup": "Group A",
+      "seed": 19,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "NA-020-100",
+      "name": "ضياء انس رجب",
+      "countryFull": "No Affiliation",
+      "country": "NA",
+      "sex": "M",
+      "ageGroupNumb": 1,
+      "actualKg": 0,
+      "weight": "100",
+      "manualGroup": "Group A",
+      "seed": 20,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "NA-021-100",
+      "name": "محمد عبدالله الطس",
+      "countryFull": "No Affiliation",
+      "country": "NA",
+      "sex": "M",
+      "ageGroupNumb": 1,
+      "actualKg": 0,
+      "weight": "100",
+      "manualGroup": "Group A",
+      "seed": 21,
+      "dob": "",
+      "age": ""
+    },
+    {
+      "id": "NA-022--81",
+      "name": "جواد حاتم بخالري",
+      "countryFull": "No Affiliation",
+      "country": "NA",
+      "sex": "M",
+      "ageGroupNumb": 1,
+      "actualKg": 0,
+      "weight": "-81",
+      "manualGroup": "Group A",
+      "seed": 22,
+      "dob": "",
+      "age": ""
+    }
+  ],
+  "refs": [],
+  "schedule": {
+    "bouts": [
+      {
+        "boutNo": 1,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-73",
+        "blueId": "NA-001--73",
+        "greenId": "NA-002--73",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-73",
+        "localId": 1,
+        "finished": true,
+        "winner": "green",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260309+00:00"
+      },
+      {
+        "boutNo": 2,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-003--81",
+        "greenId": "NA-004--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 1,
+        "finished": true,
+        "winner": "green",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260333+00:00"
+      },
+      {
+        "boutNo": 3,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-73",
+        "blueId": "NA-005--73",
+        "greenId": "NA-006--73",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-73",
+        "localId": 2,
+        "finished": true,
+        "winner": "blue",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260340+00:00"
+      },
+      {
+        "boutNo": 4,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-007--81",
+        "greenId": "NA-008--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 2,
+        "finished": true,
+        "winner": "blue",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260346+00:00"
+      },
+      {
+        "boutNo": 5,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-90",
+        "blueId": "NA-009--90",
+        "greenId": "NA-010--90",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-90",
+        "localId": 1,
+        "finished": true,
+        "winner": "blue",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260352+00:00"
+      },
+      {
+        "boutNo": 6,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-73",
+        "blueId": "NA-005--73",
+        "greenId": "NA-002--73",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-73",
+        "localId": 3,
+        "finished": true,
+        "winner": "blue",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260358+00:00"
+      },
+      {
+        "boutNo": 7,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-003--81",
+        "greenId": "NA-007--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 3,
+        "finished": true,
+        "winner": "green",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260363+00:00"
+      },
+      {
+        "boutNo": 8,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-73",
+        "blueId": "NA-006--73",
+        "greenId": "NA-001--73",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-73",
+        "localId": 4,
+        "finished": true,
+        "winner": "green",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260368+00:00"
+      },
+      {
+        "boutNo": 9,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-011--81",
+        "greenId": "NA-008--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 4,
+        "finished": true,
+        "winner": "blue",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260373+00:00"
+      },
+      {
+        "boutNo": 10,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-90",
+        "blueId": "NA-012--90",
+        "greenId": "NA-010--90",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-90",
+        "localId": 2,
+        "finished": true,
+        "winner": "green",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260379+00:00"
+      },
+      {
+        "boutNo": 11,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-73",
+        "blueId": "NA-005--73",
+        "greenId": "NA-001--73",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-73",
+        "localId": 5,
+        "finished": true,
+        "winner": "blue",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260384+00:00"
+      },
+      {
+        "boutNo": 12,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-011--81",
+        "greenId": "NA-003--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 5,
+        "finished": true,
+        "winner": "green",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260389+00:00"
+      },
+      {
+        "boutNo": 13,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-73",
+        "blueId": "NA-002--73",
+        "greenId": "NA-006--73",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-73",
+        "localId": 6,
+        "finished": true,
+        "winner": "blue",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260395+00:00"
+      },
+      {
+        "boutNo": 14,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-013--81",
+        "greenId": "NA-007--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 6,
+        "finished": true,
+        "winner": "green",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260400+00:00"
+      },
+      {
+        "boutNo": 15,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-90",
+        "blueId": "NA-012--90",
+        "greenId": "NA-009--90",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-90",
+        "localId": 3,
+        "finished": true,
+        "winner": "green",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260405+00:00"
+      },
+      {
+        "boutNo": 16,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-008--81",
+        "greenId": "NA-003--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 7,
+        "finished": true,
+        "winner": "green",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260427+00:00"
+      },
+      {
+        "boutNo": 17,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-90",
+        "blueId": "NA-010--90",
+        "greenId": "NA-014--90",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-90",
+        "localId": 4,
+        "finished": true,
+        "winner": "blue",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260432+00:00"
+      },
+      {
+        "boutNo": 18,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-004--81",
+        "greenId": "NA-007--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 8,
+        "finished": true,
+        "winner": "green",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260438+00:00"
+      },
+      {
+        "boutNo": 19,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-100",
+        "blueId": "NA-015--100",
+        "greenId": "NA-016--100",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-100",
+        "localId": 1,
+        "finished": true,
+        "winner": "blue",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260443+00:00"
+      },
+      {
+        "boutNo": 20,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-003--81",
+        "greenId": "NA-013--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 9,
+        "finished": true,
+        "winner": "blue",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260448+00:00"
+      },
+      {
+        "boutNo": 21,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-90",
+        "blueId": "NA-014--90",
+        "greenId": "NA-009--90",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-90",
+        "localId": 5,
+        "finished": true,
+        "winner": "green",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260454+00:00"
+      },
+      {
+        "boutNo": 22,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-007--81",
+        "greenId": "NA-011--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 10,
+        "finished": true,
+        "winner": "blue",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260459+00:00"
+      },
+      {
+        "boutNo": 23,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-100",
+        "blueId": "NA-017--100",
+        "greenId": "NA-016--100",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-100",
+        "localId": 2,
+        "finished": true,
+        "winner": "green",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260465+00:00"
+      },
+      {
+        "boutNo": 24,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-008--81",
+        "greenId": "NA-013--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 11,
+        "finished": true,
+        "winner": "green",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260470+00:00"
+      },
+      {
+        "boutNo": 25,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-90",
+        "blueId": "NA-012--90",
+        "greenId": "NA-014--90",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-90",
+        "localId": 6,
+        "finished": true,
+        "winner": "green",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260476+00:00"
+      },
+      {
+        "boutNo": 26,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-004--81",
+        "greenId": "NA-011--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 12,
+        "finished": true,
+        "winner": "green",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260485+00:00"
+      },
+      {
+        "boutNo": 27,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-100",
+        "blueId": "NA-017--100",
+        "greenId": "NA-015--100",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-100",
+        "localId": 3,
+        "finished": true,
+        "winner": "green",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260491+00:00"
+      },
+      {
+        "boutNo": 28,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-018--81",
+        "greenId": "NA-013--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 13,
+        "finished": true,
+        "winner": "green",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260496+00:00"
+      },
+      {
+        "boutNo": 29,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-100",
+        "blueId": "NA-016--100",
+        "greenId": "NA-019--100",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-100",
+        "localId": 4,
+        "finished": true,
+        "winner": "blue",
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260501+00:00"
+      },
+      {
+        "boutNo": 30,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-008--81",
+        "greenId": "NA-004--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 14,
+        "finished": false,
+        "winner": null,
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260507+00:00"
+      },
+      {
+        "boutNo": 31,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "100",
+        "blueId": "NA-020-100",
+        "greenId": "NA-021-100",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|100",
+        "localId": 1,
+        "finished": false,
+        "winner": null,
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260512+00:00"
+      },
+      {
+        "boutNo": 32,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-011--81",
+        "greenId": "NA-013--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 15,
+        "finished": false,
+        "winner": null,
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260517+00:00"
+      },
+      {
+        "boutNo": 33,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-100",
+        "blueId": "NA-019--100",
+        "greenId": "NA-015--100",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-100",
+        "localId": 5,
+        "finished": false,
+        "winner": null,
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260523+00:00"
+      },
+      {
+        "boutNo": 34,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-018--81",
+        "greenId": "NA-004--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 16,
+        "finished": false,
+        "winner": null,
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260528+00:00"
+      },
+      {
+        "boutNo": 35,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-022--81",
+        "greenId": "NA-011--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 17,
+        "finished": false,
+        "winner": null,
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260533+00:00"
+      },
+      {
+        "boutNo": 36,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-100",
+        "blueId": "NA-017--100",
+        "greenId": "NA-019--100",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-100",
+        "localId": 6,
+        "finished": false,
+        "winner": null,
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260541+00:00"
+      },
+      {
+        "boutNo": 37,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-013--81",
+        "greenId": "NA-004--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 18,
+        "finished": false,
+        "winner": null,
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260546+00:00"
+      },
+      {
+        "boutNo": 38,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-018--81",
+        "greenId": "NA-011--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 19,
+        "finished": false,
+        "winner": null,
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260552+00:00"
+      },
+      {
+        "boutNo": 39,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-022--81",
+        "greenId": "NA-008--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 20,
+        "finished": false,
+        "winner": null,
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260557+00:00"
+      },
+      {
+        "boutNo": 40,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-018--81",
+        "greenId": "NA-008--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 21,
+        "finished": false,
+        "winner": null,
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260562+00:00"
+      },
+      {
+        "boutNo": 41,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-018--81",
+        "greenId": "NA-007--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 22,
+        "finished": false,
+        "winner": null,
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260567+00:00"
+      },
+      {
+        "boutNo": 42,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-022--81",
+        "greenId": "NA-003--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 23,
+        "finished": false,
+        "winner": null,
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260572+00:00"
+      },
+      {
+        "boutNo": 43,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-018--81",
+        "greenId": "NA-003--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 24,
+        "finished": false,
+        "winner": null,
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260578+00:00"
+      },
+      {
+        "boutNo": 44,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-013--81",
+        "greenId": "NA-022--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 25,
+        "finished": false,
+        "winner": null,
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260583+00:00"
+      },
+      {
+        "boutNo": 45,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-004--81",
+        "greenId": "NA-022--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 26,
+        "finished": false,
+        "winner": null,
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260588+00:00"
+      },
+      {
+        "boutNo": 46,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-007--81",
+        "greenId": "NA-022--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 27,
+        "finished": false,
+        "winner": null,
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260596+00:00"
+      },
+      {
+        "boutNo": 47,
+        "gillam": "Gillam A",
+        "sex": "M",
+        "weight": "-81",
+        "blueId": "NA-018--81",
+        "greenId": "NA-022--81",
+        "stage": "RR",
+        "isElimination": false,
+        "groupKey": "1|M|-81",
+        "localId": 28,
+        "finished": false,
+        "winner": null,
+        "blueScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "greenScore": {
+          "H": 0,
+          "YO": 0,
+          "CH": 0
+        },
+        "bluePenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "greenPenalties": {
+          "T": 0,
+          "D": 0,
+          "G": 0
+        },
+        "meta": [],
+        "durationMs": 0,
+        "savedAt": "2026-05-01T21:04:48.260601+00:00"
+      }
+    ],
+    "assignments": [
+      {
+        "boutNo": 1,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 2,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 3,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 4,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 5,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 6,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 7,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 8,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 9,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 10,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 11,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 12,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 13,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 14,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 15,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 16,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 17,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 18,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 19,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 20,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 21,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 22,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 23,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 24,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 25,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 26,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 27,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 28,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 29,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 30,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 31,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 32,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 33,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 34,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 35,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 36,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 37,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 38,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 39,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 40,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 41,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 42,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 43,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 44,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 45,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 46,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      },
+      {
+        "boutNo": 47,
+        "mainRef": "",
+        "judge1": "",
+        "judge2": "",
+        "gillam": "Gillam A"
+      }
+    ],
+    "bracketLinks": {}
+  },
+  "tournamentMeta": {
+    "name": "Restored Round Robin Tournament",
+    "date": "2026-05-01",
+    "tournamentScope": "internal_local",
+    "affiliationMode": "none",
+    "weightMode": "auto_weights",
+    "manualGroupsByAge": {
+      "1": [
+        "Group A"
+      ]
+    },
+    "manualDurationSeconds": 0
+  }
+}
