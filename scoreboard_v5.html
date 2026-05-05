@@ -205,8 +205,8 @@
               {noAff ? "NA" : code}
             </div>
           )}
-          <span className="text-sm md:text-base font-mono tracking-wide">{noAff ? "NA" : code}</span>
-          <span className="text-[10px] md:text-xs text-slate-300 max-w-[7rem] truncate" title={full}>{full}</span>
+          <span className="text-xl md:text-3xl font-mono tracking-wide">{noAff ? "NA" : code}</span>
+          <span className="text-base md:text-2xl text-slate-300 max-w-[7rem] truncate" title={full}>{full}</span>
         </div>
       );
     }
@@ -414,39 +414,10 @@
       const [manualDurationSeconds, setManualDurationSeconds] = useState(0);
       const [tournamentMeta, setTournamentMeta] = useState({ tournamentScope: "external", affiliationMode: "country", weightMode: "auto_weights" });
       const [autoSaveMsg, setAutoSaveMsg] = useState("");
-
-      function normalizedBaseUrl() {
+       function normalizedBaseUrl() {
         const raw = (serverUrl || "").trim();
         if (!raw) return null;
         return raw.replace(/\/+$/, "");
-      }
-
-      function metaFromFinishedBout(bout) {
-        if (!bout || !bout.finished || !bout.winner) return null;
-        const events = Array.isArray(bout.meta)
-          ? bout.meta.map((ev) => ({
-              side: ev.side,
-              type: ev.type,
-              atMs: Number(ev.timeSec || 0) * 1000
-            }))
-          : [];
-        return {
-          events,
-          durationSec: bout.durationMs ? Math.floor(Number(bout.durationMs) / 1000) : (bout.durationSec || 0),
-          winner: bout.winner,
-          blueScore: bout.blueScore || null,
-          greenScore: bout.greenScore || null,
-          savedAt: bout.savedAt || null
-        };
-      }
-
-      function buildBoutMetaFromSchedule(scheduleObj) {
-        const out = {};
-        (scheduleObj?.bouts || []).forEach((b) => {
-          const meta = metaFromFinishedBout(b);
-          if (meta) out[b.boutNo] = meta;
-        });
-        return out;
       }
 
       useEffect(() => {
@@ -524,27 +495,20 @@
             setServerMsg("No current tournament found.");
             return;
           }
-          const loadedBoutMeta = data.schedule ? buildBoutMetaFromSchedule(data.schedule) : {};
-          if (data.schedule) {
-            setSchedule(data.schedule);
-            setBoutMeta(loadedBoutMeta);
-          }
+          if (data.schedule) setSchedule(data.schedule);
           if (Array.isArray(data.players)) setPlayers(data.players);
           if (Array.isArray(data.refs)) setRefs(data.refs);
-          if (data.tournamentMeta || data.meta) setTournamentMeta(data.tournamentMeta || data.meta);
+          if (data.meta) setTournamentMeta(data.meta);
           const allBouts = data.schedule?.bouts || [];
           const gList = Array.from(new Set(allBouts.map((b) => b.gillam).filter(Boolean)));
           setGillams(gList);
           if (gList.length && !selectedGillam) setSelectedGillam(gList[0]);
           if (allBouts.length) {
-            const targetBout = allBouts.find((b) => !loadedBoutMeta[b.boutNo]?.winner) || allBouts[0];
-            const targetMeta = loadedBoutMeta[targetBout.boutNo] || null;
-            setActiveBoutNo(targetBout.boutNo);
-            setSbEvents(targetMeta?.events || []);
-            setTimerMs(targetMeta?.durationSec != null ? targetMeta.durationSec * 1000 : 0);
+            setActiveBoutNo(allBouts[0].boutNo);
+            setSbEvents([]);
             setTimerRunning(false);
-            setShowMeta(!!targetMeta?.events?.length);
-            setTimeout(() => loadBoutDetails(targetBout.boutNo), 0);
+            setShowMeta(false);
+            setTimeout(() => loadBoutDetails(allBouts[0].boutNo), 0);
           }
           setServerStatus("ok");
           setServerMsg("Current tournament loaded.");
@@ -618,7 +582,6 @@
             assignments: prev?.assignments || [],
             bracketLinks: prev?.bracketLinks || {}
           }));
-          setBoutMeta(buildBoutMetaFromSchedule({ bouts: safeBouts }));
 
           if (!safeBouts.length) {
             setActiveBoutNo(null);
@@ -666,13 +629,6 @@
               if (!prev?.bouts) return prev;
               return { ...prev, bouts: prev.bouts.map((b) => Number(b.boutNo) === Number(data.bout.boutNo) ? { ...b, ...data.bout } : b) };
             });
-            const loadedMeta = metaFromFinishedBout(data.bout);
-            setBoutMeta((prev) => {
-              const next = { ...prev };
-              if (loadedMeta) next[data.bout.boutNo] = loadedMeta;
-              else delete next[data.bout.boutNo];
-              return next;
-            });
           }
           if (data.blue || data.green) {
             setPlayers((prevPlayers) => {
@@ -696,22 +652,11 @@
         if (!base) return;
         try {
           const url = base + "/api/bout/" + boutNo + "/save";
-          const res = await fetch(url, {
+          await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
           });
-          const data = await res.json().catch(() => ({}));
-          if (data?.bout) {
-            setSchedule((prev) => {
-              if (!prev?.bouts) return prev;
-              return { ...prev, bouts: prev.bouts.map((b) => Number(b.boutNo) === Number(data.bout.boutNo) ? { ...b, ...data.bout } : b) };
-            });
-            const loadedMeta = metaFromFinishedBout(data.bout);
-            if (loadedMeta) {
-              setBoutMeta((prev) => ({ ...prev, [data.bout.boutNo]: loadedMeta }));
-            }
-          }
           console.log("Result sent to server for bout", boutNo);
         } catch (err) {
           console.error("Failed to send result to server:", err);
@@ -725,6 +670,7 @@
       const [sbEvents, setSbEvents] = useState([]);
       const [timerMs, setTimerMs] = useState(0);
       const [timerRunning, setTimerRunning] = useState(false);
+      const [withdrawalMsg, setWithdrawalMsg] = useState("");
       const [showMeta, setShowMeta] = useState(false);
       const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -873,6 +819,42 @@ useEffect(() => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
       }, [activeBoutNo, schedule]);
 
+      
+      useEffect(() => {
+        function isEditableTarget(target) {
+          const tag = String(target?.tagName || "").toLowerCase();
+          return tag === "input" || tag === "textarea" || tag === "select" || target?.isContentEditable;
+        }
+
+        function onKeyDown(e) {
+          // Spacebar = Start / Stop timer from anywhere on the scoreboard screen.
+          // It is ignored only while typing in an editable field.
+          if (e.code !== "Space" && e.key !== " ") return;
+          if (isEditableTarget(e.target) || isEditableTarget(document.activeElement)) return;
+          e.preventDefault();
+          e.stopPropagation();
+          setTimerRunning((running) => !running);
+        }
+
+        document.addEventListener("keydown", onKeyDown, true);
+        window.addEventListener("keydown", onKeyDown, true);
+        return () => {
+          document.removeEventListener("keydown", onKeyDown, true);
+          window.removeEventListener("keydown", onKeyDown, true);
+        };
+      }, []);
+
+
+      // Phase 4 live polling: keep this scoreboard synchronized with server saves.
+      useEffect(() => {
+        const base = normalizedBaseUrl();
+        if (!base || !activeBoutNo) return;
+        const id = setInterval(() => {
+          if (!timerRunning) loadBoutDetails(activeBoutNo);
+        }, 2500);
+        return () => clearInterval(id);
+      }, [serverUrl, activeBoutNo, timerRunning]);
+
       function addEvent(side, type) {
         if (!activeBoutNo || !schedule) return;
         setSbEvents((prev) => [...prev, { side, type, atMs: timerMs }]);
@@ -962,20 +944,42 @@ useEffect(() => {
           durationMs
         };
 
-        setSchedule((prev) => {
-          if (!prev?.bouts) return prev;
-          return {
-            ...prev,
-            bouts: prev.bouts.map((b) =>
-              Number(b.boutNo) === Number(activeBoutNo)
-                ? { ...b, ...payload, finished: true, savedAt: new Date().toISOString() }
-                : b
-            )
-          };
-        });
         sendResultToServer(activeBoutNo, payload);
 
         if (!options?.silent) alert("Result stored for bout #" + activeBoutNo);
+      }
+
+
+      function saveWithdrawalResult(kind) {
+        if (!activeBoutNo || !schedule) return;
+        let winnerSide = null;
+        let withdrawnSide = null;
+        let resultType = "withdrawal";
+        let noContest = false;
+        if (kind === "blue") { withdrawnSide = "blue"; winnerSide = "green"; }
+        else if (kind === "green") { withdrawnSide = "green"; winnerSide = "blue"; }
+        else { resultType = "double_withdrawal"; noContest = true; }
+        const durationMs = timerMs;
+        const payload = {
+          resultType,
+          withdrawnSide,
+          noContest,
+          winner: winnerSide,
+          resultWeight: resultType === "double_withdrawal" ? 0 : 1,
+          blueScore: { H: 0, YO: 0, CH: 0 },
+          greenScore: { H: 0, YO: 0, CH: 0 },
+          bluePenalties: { T: 0, D: 0, G: 0 },
+          greenPenalties: { T: 0, D: 0, G: 0 },
+          meta: [{ timeSec: Math.floor(timerMs / 1000), timeStr: formatTime(timerMs), type: resultType, side: withdrawnSide || "both", text: resultType === "double_withdrawal" ? "DOUBLE WITHDRAWAL / NO CONTEST" : (withdrawnSide || "") + " WITHDRAWAL" }],
+          durationMs
+        };
+        setBoutMeta((prev) => ({ ...prev, [activeBoutNo]: { events: [], durationSec: Math.floor(durationMs / 1000), winner: winnerSide, resultType, noContest } }));
+        setSchedule((prev) => {
+          if (!prev?.bouts) return prev;
+          return { ...prev, bouts: prev.bouts.map((b) => b.boutNo === activeBoutNo ? { ...b, ...payload, finished: true, savedAt: new Date().toISOString() } : b) };
+        });
+        sendResultToServer(activeBoutNo, payload);
+        setWithdrawalMsg(resultType === "double_withdrawal" ? "Double withdrawal saved: no winner / no contest." : "Withdrawal saved.");
       }
 
       const bouts = schedule?.bouts || [];
@@ -1013,6 +1017,13 @@ useEffect(() => {
         setTimerMs(nextMs);
         initialFightMsRef.current = nextMs;
         halfPingDoneRef.current = false;
+      }
+
+      function handleTimerClick(e) {
+        // Keep double-click available for manual time editing.
+        // The first click of a double-click must not toggle the timer.
+        if (e.detail > 1) return;
+        setTimerRunning((running) => !running);
       }
 
       function fullResetCurrentBout() {
@@ -1185,9 +1196,9 @@ useEffect(() => {
                     #{bout.boutNo}
                   </span>
                 </div>
-                <div className="text-slate-400">
+                <div className="text-sky-200 font-extrabold tracking-wide text-2xl md:text-4xl leading-tight">
                   {bout.gillam} • {bout.ageGroupLabel ? bout.ageGroupLabel + " • " : ""}{sexForLabel} {slotLabel}{" "}
-                  ({bout.stage || "RR"})
+                  <span className="text-slate-300">({bout.stage || "RR"})</span>
                 </div>
               </div>
             </div>
@@ -1369,10 +1380,10 @@ useEffect(() => {
                   <div className="w-full h-full flex flex-col justify-between">
                     <div className="flex items-center justify-between mb-2 px-4">
                       <div className="text-left">
-                        <div className="text-xs text-yellow-400">
+                        <div className="text-2xl md:text-5xl font-extrabold text-yellow-400 leading-tight">
                           {bout.gillam}
                         </div>
-                        <div className="text-sm text-yellow-300">
+                        <div className="text-xl md:text-4xl font-bold text-yellow-300 leading-tight">
                           {bout.ageGroupLabel ? bout.ageGroupLabel + " • " : ""}{sexForLabel} {slotLabel} ({bout.stage || ""})
                         </div>
                       </div>
@@ -1418,9 +1429,7 @@ useEffect(() => {
                         ▲
                       </button>
                       <div
-                        onClick={() =>
-                          setTimerRunning((running) => !running)
-                        }
+                        onClick={handleTimerClick}
                         onDoubleClick={setTimerManuallyFromPrompt}
                         title="Click to start/stop timer • double-click to enter time manually"
                         className={
@@ -1443,10 +1452,10 @@ useEffect(() => {
                 ) : (
                   <>
                     <div className="text-left">
-                      <div className="text-xs text-yellow-400">
+                      <div className="text-2xl md:text-5xl font-extrabold text-yellow-400 leading-tight">
                         {bout.gillam}
                       </div>
-                      <div className="text-sm text-yellow-300">
+                      <div className="text-xl md:text-4xl font-bold text-yellow-300 leading-tight">
                         {bout.ageGroupLabel ? bout.ageGroupLabel + " • " : ""}{sexForLabel} {slotLabel} ({bout.stage || ""})
                       </div>
                     </div>
@@ -1459,9 +1468,7 @@ useEffect(() => {
                         ▲
                       </button>
                       <div
-                        onClick={() =>
-                          setTimerRunning((running) => !running)
-                        }
+                        onClick={handleTimerClick}
                         onDoubleClick={setTimerManuallyFromPrompt}
                         title="Click to start/stop timer • double-click to enter time manually"
                         className={
@@ -1823,6 +1830,10 @@ useEffect(() => {
                 >
                   FULL RESET
                 </button>
+                <button onClick={() => saveWithdrawalResult("blue")} className="px-4 py-2 rounded-xl bg-orange-700 hover:bg-orange-600 text-sm">Blue Withdrawal</button>
+                <button onClick={() => saveWithdrawalResult("green")} className="px-4 py-2 rounded-xl bg-orange-700 hover:bg-orange-600 text-sm">Green Withdrawal</button>
+                <button onClick={() => saveWithdrawalResult("both")} className="px-4 py-2 rounded-xl bg-red-800 hover:bg-red-700 text-sm">Double Withdrawal</button>
+                {withdrawalMsg && <span className="text-xs text-orange-300">{withdrawalMsg}</span>}
                 <button
                   onClick={() => setShowMeta((v) => !v)}
                   className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm"
