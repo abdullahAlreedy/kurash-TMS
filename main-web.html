@@ -1803,6 +1803,74 @@ function groupKeyComparator(a, b) {
         }
       }
 
+
+      function mergeRefereeManagementPayload(data, reason) {
+        if (!data) return;
+        const serverRefs = Array.isArray(data.refs) ? data.refs : null;
+        const serverBouts = Array.isArray(data.bouts) ? data.bouts : [];
+        const serverAssignments = Array.isArray(data.assignments) ? data.assignments : null;
+        const serverFinalPool = Array.isArray(data.finalRefereePool) ? data.finalRefereePool.map(String) : null;
+        const serverStamp = data.lastSavedAt || data.scheduleVersion || data.meta?.updatedAt || new Date().toISOString();
+
+        if (serverRefs) setRefs(serverRefs);
+        if (serverFinalPool) setFinalRefPool(serverFinalPool);
+
+        setSchedule((prev) => {
+          if (!prev || !Array.isArray(prev.bouts) || !prev.bouts.length) {
+            return {
+              ...(prev || {}),
+              bouts: serverBouts,
+              assignments: serverAssignments || data.assignments || [],
+              bracketLinks: prev?.bracketLinks || data.bracketLinks || {},
+              updatedAt: serverStamp
+            };
+          }
+
+          const serverBoutByNo = new Map(serverBouts.map((b) => [String(b.boutNo), b]));
+          const mergedBouts = prev.bouts.map((localBout) => {
+            const serverBout = serverBoutByNo.get(String(localBout.boutNo));
+            if (!serverBout) return localBout;
+            return {
+              ...localBout,
+              refEvaluations: Array.isArray(serverBout.refEvaluations) ? serverBout.refEvaluations : (localBout.refEvaluations || []),
+              mainRef: serverBout.mainRef ?? localBout.mainRef,
+              judge1: serverBout.judge1 ?? localBout.judge1,
+              judge2: serverBout.judge2 ?? localBout.judge2
+            };
+          });
+
+          return {
+            ...prev,
+            bouts: mergedBouts,
+            assignments: serverAssignments || prev.assignments || [],
+            updatedAt: serverStamp
+          };
+        });
+
+        setLastServerSnapshotAt(serverStamp);
+        setSyncMode("online");
+        setUnsyncedChanges(false);
+        setRefMgmtStatusMsg("Referee management data refreshed from server" + (reason ? ` (${reason})` : "") + ".");
+      }
+
+      async function refreshRefereeManagementFromServer(reason) {
+        const base = normalizedServerBase();
+        if (!base) {
+          setRefMgmtStatusMsg("Enter server URL first, or continue using local data.");
+          return;
+        }
+        try {
+          const res = await fetch(base + "/api/referee-management?ts=" + Date.now());
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const data = await res.json();
+          mergeRefereeManagementPayload(data, reason || "manual refresh");
+        } catch (err) {
+          console.error("Referee management refresh error:", err);
+          setSyncMode("server_error");
+          setRefMgmtStatusMsg("Could not refresh referee management data from server: " + err.message);
+        }
+      }
+
       async function refreshLeagueStandingsFromServer() {
         const base = normalizedServerBase();
         if (!base) return;
@@ -1836,9 +1904,20 @@ function groupKeyComparator(a, b) {
           if (!unsyncedChanges && !isTournamentReadOnly) refreshLiveServerSnapshot();
           refreshLeagueStandingsFromServer();
           refreshFinalRefCandidatesFromServer();
+          if (tab === "refMgmt") refreshRefereeManagementFromServer("auto sync");
         }, 3000);
         return () => clearInterval(id);
-      }, [serverUrl, unsyncedChanges, isTournamentReadOnly, lastServerSnapshotAt]);
+      }, [serverUrl, unsyncedChanges, isTournamentReadOnly, lastServerSnapshotAt, tab]);
+
+      useEffect(() => {
+        function handleRefMgmtStorage(e) {
+          if (e.key === "kurash_ref_mgmt_updated_at" && normalizedServerBase()) {
+            refreshRefereeManagementFromServer("external page update");
+          }
+        }
+        window.addEventListener("storage", handleRefMgmtStorage);
+        return () => window.removeEventListener("storage", handleRefMgmtStorage);
+      }, [serverUrl]);
 
       function ensureAudioContext() {
         const AC = window.AudioContext || window.webkitAudioContext;
@@ -2064,7 +2143,9 @@ function groupKeyComparator(a, b) {
         markUnsynced();
         saveLocalSnapshot("referee_management_assignments_save");
         await syncScheduleToServer(schedule);
-        setRefMgmtStatusMsg(serverUrl?.trim() ? "Assignments saved locally and sync attempted." : "Assignments saved locally. Offline mode.");
+        try { localStorage.setItem("kurash_ref_mgmt_updated_at", String(Date.now())); } catch (e) {}
+        if (normalizedServerBase()) await refreshRefereeManagementFromServer("assignment save");
+        setRefMgmtStatusMsg(serverUrl?.trim() ? "Assignments saved and refreshed from server." : "Assignments saved locally. Offline mode.");
       }
 
       async function saveRefereesToServer() {
@@ -2109,9 +2190,12 @@ function groupKeyComparator(a, b) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ finalRefereePool: cleaned })
           });
-          if (!res.ok) throw new Error("HTTP " + res.status);
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data?.error || ("HTTP " + res.status));
+          try { localStorage.setItem("kurash_ref_mgmt_updated_at", String(Date.now())); } catch (e) {}
           setUnsyncedChanges(false);
           setSyncMode("online");
+          await refreshRefereeManagementFromServer("final pool save");
           setRefMgmtStatusMsg("Final referee pool saved to server.");
         } catch (err) {
           console.warn("Final pool server save failed", err);
@@ -2221,12 +2305,27 @@ function groupKeyComparator(a, b) {
         const base = normalizedServerBase();
         if (base) {
           try {
-            await fetch(base + "/api/referee-evaluation", {
+            const res = await fetch(base + "/api/referee-evaluation", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ boutNo: saved.boutNo, refId: saved.refId, evaluation: saved })
             });
-            setServerStatusMsg("Referee evaluation saved locally and sent to server.");
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data?.error || ("HTTP " + res.status));
+            if (data?.tournament?.schedule) {
+              mergeRefereeManagementPayload({
+                refs: data.tournament.refs || refs,
+                bouts: data.tournament.schedule.bouts || [],
+                assignments: data.tournament.schedule.assignments || [],
+                finalRefereePool: data.tournament.tournamentMeta?.finalRefereePool || finalRefPool,
+                lastSavedAt: data.tournament.meta?.lastSavedAt || new Date().toISOString(),
+                meta: data.tournament.meta
+              }, "evaluation save");
+            } else {
+              await refreshRefereeManagementFromServer("evaluation save");
+            }
+            try { localStorage.setItem("kurash_ref_mgmt_updated_at", String(Date.now())); } catch (e) {}
+            setServerStatusMsg("Referee evaluation saved locally and synced with server.");
             setRefMgmtStatusMsg("Evaluation saved and synced.");
           } catch (err) {
             console.warn("Evaluation server save failed; kept locally", err);
@@ -4706,6 +4805,7 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                       <button onClick={autoAssignTopRatedOperational} className="px-4 py-2 rounded-xl bg-indigo-700 hover:bg-indigo-600">Auto Assign Top Rated</button>
                       <button onClick={saveOperationalAssignments} className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600">Save Assignments</button>
                       <button onClick={saveFinalPoolToServer} className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600">Save Final Pool</button>
+                      <button onClick={() => refreshRefereeManagementFromServer("manual refresh")} className="px-4 py-2 rounded-xl bg-sky-700 hover:bg-sky-600">Refresh From Server</button>
                       <button onClick={cleanFinalRefPool} className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700">Clean Pool</button>
                     </div>
                     {refMgmtStatusMsg && <div className="mt-3 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-300">{refMgmtStatusMsg}</div>}
