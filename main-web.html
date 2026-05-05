@@ -345,7 +345,7 @@ function CountryFlag({ code }) {
     const TOURNAMENT_SCOPES = [
       { value: "internal_local", label: "Internal Local" },
       { value: "internal_school", label: "Internal School" },
-      { value: "external", label: "External" }
+      { value: "international", label: "International" }
     ];
 
     const WEIGHT_MODES = [
@@ -419,7 +419,7 @@ function CountryFlag({ code }) {
     const MEN_FIGHT_SECONDS = 4 * 60;
     const WOMEN_FIGHT_SECONDS = 3 * 60;
 
-    function isExternalScope(scope) { return scope === "external"; }
+    function isExternalScope(scope) { return scope === "external" || scope === "international"; }
     function isSchoolScope(scope) { return scope === "internal_school"; }
     function isInternalScope(scope) { return !isExternalScope(scope); }
     function normalizedAffiliationMode(scope, mode) {
@@ -545,6 +545,37 @@ function CountryFlag({ code }) {
       const p = parseGroupKey(gk);
       const slotLabel = isManualGroupsMode(weightMode) ? `Group ${p.slot}` : p.weight;
       return `${ageGroupLabel(p.ageGroupNumb, scope)} | ${p.sex === "F" ? "Women" : "Men"} | ${slotLabel}`;
+    }
+
+    // Safe bout slot label used by Draw, Scoreboard and Referee Management.
+    // Keeps the UI from crashing if a bout was created by an older version
+    // that does not carry manualGroup/weight in the same shape.
+    function slotLabel(bout) {
+      const parsed = parseGroupKey(bout?.groupKey);
+      const raw = String(
+        bout?.manualGroup ||
+        bout?.manualGroupName ||
+        bout?.groupName ||
+        bout?.weight ||
+        parsed.slot ||
+        parsed.weight ||
+        ""
+      ).trim();
+      if (!raw) return "";
+
+      // IMPORTANT: this helper is defined outside App(), so it must not read
+      // React state variables such as weightMode. Reading weightMode here caused
+      // the Draw tab to crash with: "weightMode is not defined".
+      const mode = bout?.weightMode || bout?.mode || "";
+      const looksManualGroup =
+        isManualGroupsMode(mode) ||
+        !!bout?.manualGroup ||
+        !!bout?.manualGroupName ||
+        !!bout?.groupName ||
+        /^group\b/i.test(raw);
+
+      if (looksManualGroup) return /^group\b/i.test(raw) ? raw : `Group ${raw}`;
+      return raw;
     }
     function matchDurationSecondsForBout(bout, playersIndex, scope, manualOverrideSeconds) {
       if (Number(manualOverrideSeconds) > 0) return Number(manualOverrideSeconds);
@@ -1074,7 +1105,7 @@ function groupKeyComparator(a, b) {
 
 
     function App() {
-      const [tab, setTab] = useState("home");
+      const [tab, setTab] = useState("about");
       const [players, setPlayers] = useState([]);
       const [refs, setRefs] = useState([]);
       const [reportTab, setReportTab] = useState("playerResults");
@@ -1084,10 +1115,10 @@ function groupKeyComparator(a, b) {
       const isGillamPoolMode = refAssignmentMode === "gillam_pool";
       const [numGillams, setNumGillams] = useState(1);
       const [roundRobinMax, setRoundRobinMax] = useState(5);
-      const [tournamentScope, setTournamentScope] = useState("internal_local");
+      const [tournamentScope, setTournamentScope] = useState("international");
       const [affiliationMode, setAffiliationMode] = useState("none");
       const [weightMode, setWeightMode] = useState("auto_weights");
-      const [manualGroupsByAge, setManualGroupsByAge] = useState(() => defaultManualGroupsForScope("internal_local"));
+      const [manualGroupsByAge, setManualGroupsByAge] = useState(() => defaultManualGroupsForScope("international"));
       const [manualDurationSeconds, setManualDurationSeconds] = useState(0);
       const [schedule, setSchedule] = useState(null);
       const [boutMeta, setBoutMeta] = useState({});
@@ -1106,6 +1137,21 @@ function groupKeyComparator(a, b) {
       const [newTournamentName, setNewTournamentName] = useState("");
       const [newTournamentDate, setNewTournamentDate] = useState("");
       const [drawValidation, setDrawValidation] = useState({ errors: [], warnings: [] });
+      const [playerSearch, setPlayerSearch] = useState("");
+      const [refSearch, setRefSearch] = useState("");
+      const [refMgmtSearch, setRefMgmtSearch] = useState("");
+      const [refMgmtBoutSearch, setRefMgmtBoutSearch] = useState("");
+      const [refMgmtStageFilter, setRefMgmtStageFilter] = useState("all");
+      const [syncMode, setSyncMode] = useState("offline");
+      const [unsyncedChanges, setUnsyncedChanges] = useState(false);
+      const [lastServerSnapshotAt, setLastServerSnapshotAt] = useState(null);
+      const [leagueStandingsData, setLeagueStandingsData] = useState([]);
+      const [finalRefCandidates, setFinalRefCandidates] = useState([]);
+      const [evaluationDraft, setEvaluationDraft] = useState(null);
+      const [finalRefPool, setFinalRefPool] = useState([]);
+      const [refMgmtStatusMsg, setRefMgmtStatusMsg] = useState("");
+      const [refMgmtOnlyFinals, setRefMgmtOnlyFinals] = useState(false);
+      const [helpOpen, setHelpOpen] = useState(false);
 
       const sbContainerRef = useRef(null);
       const [isFullscreen, setIsFullscreen] = useState(false);
@@ -1116,10 +1162,166 @@ function groupKeyComparator(a, b) {
       const halfPingDoneRef = useRef(false);
       const sbComputedRef = useRef(null);
 
+
+      useEffect(() => {
+        saveLocalSnapshot("state_change");
+      }, [players, refs, schedule, boutMeta, tournamentScope, affiliationMode, weightMode, manualGroupsByAge, manualDurationSeconds, currentTournamentMeta, finalRefPool]);
+
       function normalizedServerBase() {
         const raw = String(serverUrl || "").trim();
         if (!raw) return null;
         return raw.replace(/\/+$/, "");
+      }
+
+
+      const LOCAL_APP_STATE_KEY = "kurash-main-web-hybrid-v12-state";
+
+      function markUnsynced() {
+        setUnsyncedChanges(true);
+        if (!normalizedServerBase()) setSyncMode("offline");
+        else setSyncMode("unsynced");
+      }
+
+      function saveLocalSnapshot(reason) {
+        try {
+          const snapshot = {
+            savedAt: new Date().toISOString(),
+            reason: reason || "autosave",
+            players,
+            refs,
+            schedule,
+            boutMeta,
+            tournamentScope,
+            affiliationMode,
+            weightMode,
+            manualGroupsByAge,
+            manualDurationSeconds,
+            currentTournamentMeta,
+            finalRefPool
+          };
+          localStorage.setItem(LOCAL_APP_STATE_KEY, JSON.stringify(snapshot));
+        } catch (err) {
+          console.warn("Local snapshot failed", err);
+        }
+      }
+
+      function restoreLocalSnapshot() {
+        try {
+          const raw = localStorage.getItem(LOCAL_APP_STATE_KEY);
+          if (!raw) return false;
+          const s = JSON.parse(raw);
+          setPlayers(Array.isArray(s.players) ? s.players : []);
+          setRefs(Array.isArray(s.refs) ? s.refs : []);
+          setSchedule(s.schedule || null);
+          setBoutMeta(s.boutMeta || buildBoutMetaFromSchedule(s.schedule));
+          if (s.tournamentScope) setTournamentScope(s.tournamentScope);
+          if (s.affiliationMode) setAffiliationMode(s.affiliationMode);
+          if (s.weightMode) setWeightMode(s.weightMode);
+          if (s.manualGroupsByAge) setManualGroupsByAge(s.manualGroupsByAge);
+          if (s.manualDurationSeconds != null) setManualDurationSeconds(Number(s.manualDurationSeconds) || 0);
+          setCurrentTournamentMeta(s.currentTournamentMeta || null);
+          setFinalRefPool(Array.isArray(s.finalRefPool) ? s.finalRefPool : []);
+          setTournamentActionMsg("Local offline snapshot restored from " + (s.savedAt || "previous session") + ".");
+          setSyncMode("offline");
+          return true;
+        } catch (err) {
+          console.warn("Restore local snapshot failed", err);
+          return false;
+        }
+      }
+
+
+      function currentSnapshotPayload(reason) {
+        return {
+          app: "Kurash Tournament Manager",
+          version: "v19-phase7-final-ui-stabilization",
+          exportedAt: new Date().toISOString(),
+          reason: reason || "manual_export",
+          players,
+          refs,
+          schedule,
+          boutMeta,
+          tournamentScope,
+          affiliationMode,
+          weightMode,
+          manualGroupsByAge,
+          manualDurationSeconds,
+          currentTournamentMeta,
+          finalRefPool,
+          leagueStandings: localLeagueStandings,
+          finalRefCandidates
+        };
+      }
+
+      function downloadJSON(filename, value) {
+        const blob = new Blob([JSON.stringify(value, null, 2)], { type: "application/json;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 500);
+      }
+
+      function exportTournamentJSON() {
+        const name = (currentTournamentMeta?.name || "kurash_tournament").replace(/[^a-z0-9_\-]+/gi, "_");
+        downloadJSON(`${name}_backup_v19.json`, currentSnapshotPayload("manual_json_export"));
+        saveLocalSnapshot("manual_json_export");
+        setTournamentActionMsg("Tournament JSON backup exported and local snapshot refreshed.");
+      }
+
+      function restoreTournamentFromJSON() {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".json,application/json";
+        input.onchange = async () => {
+          const file = input.files && input.files[0];
+          if (!file) return;
+          try {
+            const text = await file.text();
+            const s = JSON.parse(text);
+            setPlayers(Array.isArray(s.players) ? s.players : []);
+            setRefs(Array.isArray(s.refs) ? s.refs : []);
+            setSchedule(s.schedule || null);
+            setBoutMeta(s.boutMeta || buildBoutMetaFromSchedule(s.schedule));
+            if (s.tournamentScope) setTournamentScope(s.tournamentScope);
+            if (s.affiliationMode) setAffiliationMode(s.affiliationMode);
+            if (s.weightMode) setWeightMode(s.weightMode);
+            if (s.manualGroupsByAge) setManualGroupsByAge(s.manualGroupsByAge);
+            if (s.manualDurationSeconds != null) setManualDurationSeconds(Number(s.manualDurationSeconds) || 0);
+            setCurrentTournamentMeta(s.currentTournamentMeta || null);
+            setFinalRefPool(Array.isArray(s.finalRefPool) ? s.finalRefPool : []);
+            markUnsynced();
+            setTournamentActionMsg("Tournament restored from JSON. Review it, then Sync Now if you want to push it to the server.");
+          } catch (err) {
+            console.error("Restore JSON failed", err);
+            alert("Could not restore this JSON file. Please check that it is a Kurash backup file.");
+          }
+        };
+        input.click();
+      }
+
+      function exportLeagueStandingsCSV() {
+        const groups = localLeagueStandings || [];
+        if (!groups.length) {
+          alert("No league standings available yet.");
+          return;
+        }
+        const rows = [];
+        groups.forEach((g) => {
+          (g.rows || []).forEach((r) => rows.push({ groupKey: g.groupKey, ...r }));
+        });
+        downloadCSV("kurash_league_standings.csv", [
+          { key: "groupKey", label: "Group" },
+          { key: "rank", label: "Rank" },
+          { key: "name", label: "Player" },
+          { key: "country", label: "Affiliation" },
+          { key: "wins", label: "Wins" },
+          { key: "losses", label: "Losses" },
+          { key: "noContests", label: "No Contests" },
+          { key: "tiebreakPoints", label: "Tie Break Points" }
+        ], rows);
       }
 
       function clearTournamentWorkspace() {
@@ -1137,11 +1339,59 @@ function groupKeyComparator(a, b) {
         halfPingDoneRef.current = false;
       }
 
+
+      function createLocalTournament() {
+        const name = String(newTournamentName || "").trim();
+        const date = String(newTournamentDate || "").trim();
+        if (!name || !date) {
+          alert("Enter tournament name and date first.");
+          return;
+        }
+        const localMeta = {
+          id: "local_" + Date.now(),
+          name,
+          date,
+          status: "active",
+          localOnly: true,
+          tournamentScope,
+          affiliationMode,
+          weightMode,
+          manualGroupsByAge,
+          manualDurationSeconds
+        };
+        clearTournamentWorkspace();
+        setCurrentTournamentMeta(localMeta);
+        setIsTournamentReadOnly(false);
+        setSyncMode(serverUrl && serverUrl.trim() ? "unsynced" : "offline");
+        setUnsyncedChanges(true);
+        setTournamentActionMsg("Local tournament created. It will run offline first; use Sync Now after connecting a server.");
+        try {
+          const snapshot = {
+            savedAt: new Date().toISOString(),
+            reason: "local_tournament_created",
+            players: [],
+            refs: [],
+            schedule: null,
+            boutMeta: {},
+            tournamentScope,
+            affiliationMode,
+            weightMode,
+            manualGroupsByAge,
+            manualDurationSeconds,
+            currentTournamentMeta: localMeta,
+            finalRefPool: []
+          };
+          localStorage.setItem(LOCAL_APP_STATE_KEY, JSON.stringify(snapshot));
+        } catch (err) {
+          console.warn("Local tournament snapshot failed", err);
+        }
+      }
+
       function buildBoutMetaFromSchedule(scheduleObj) {
         const out = {};
         const bouts = scheduleObj?.bouts || [];
         bouts.forEach((b) => {
-          if (!b || !b.finished || !b.winner) return;
+          if (!b || !b.finished) return;
           const events = Array.isArray(b.meta)
             ? b.meta.map((ev) => ({
                 side: ev.side,
@@ -1152,7 +1402,12 @@ function groupKeyComparator(a, b) {
           out[b.boutNo] = {
             events,
             durationSec: b.durationMs ? Math.floor(b.durationMs / 1000) : 0,
-            winner: b.winner
+            winner: b.winner || null,
+            resultType: b.resultType || "points",
+            withdrawnSide: b.withdrawnSide || null,
+            noContest: !!b.noContest,
+            autoAdvanced: !!b.autoAdvanced,
+            savedAt: b.savedAt || null
           };
         });
         return out;
@@ -1269,10 +1524,6 @@ function groupKeyComparator(a, b) {
 
       async function createTournamentOnServer(archiveCurrent) {
         const base = normalizedServerBase();
-        if (!base) {
-          alert("Enter backend server URL first.");
-          return;
-        }
         const payload = {
           name: String(newTournamentName || "").trim(),
           date: String(newTournamentDate || "").trim(),
@@ -1280,6 +1531,26 @@ function groupKeyComparator(a, b) {
         };
         if (!payload.name || !payload.date) {
           alert("Enter tournament name and date first.");
+          return;
+        }
+        if (!base) {
+          const localMeta = {
+            id: "local_" + Date.now(),
+            name: payload.name,
+            date: payload.date,
+            status: "active",
+            tournamentScope,
+            affiliationMode,
+            weightMode,
+            manualGroupsByAge,
+            manualDurationSeconds
+          };
+          clearTournamentWorkspace();
+          setCurrentTournamentMeta(localMeta);
+          setIsTournamentReadOnly(false);
+          markUnsynced();
+          setTournamentActionMsg("Local offline tournament created. Add players/referees, then use Sync Now later if you connect a server.");
+          setTimeout(() => saveLocalSnapshot("local_tournament_created"), 0);
           return;
         }
         try {
@@ -1402,15 +1673,6 @@ function groupKeyComparator(a, b) {
         refreshTournamentList();
       }, [serverUrl]);
 
-      useEffect(() => {
-        const base = normalizedServerBase();
-        if (!base || !schedule?.bouts?.length) return;
-        const id = setInterval(() => {
-          if (!timerRunning) refreshResultsFromServer(true);
-        }, 5000);
-        return () => clearInterval(id);
-      }, [serverUrl, schedule?.bouts?.length, timerRunning]);
-
       // helper to download CSV (used in reports)
       function downloadCSV(filename, columns, rows) {
         if (!rows || !rows.length) {
@@ -1491,7 +1753,7 @@ function groupKeyComparator(a, b) {
         }
       }
 
-      // NEW: test server /api/ping from Settings
+      // Test server /api/ping from Home dashboard
       async function testServerConnection() {
         if (!serverUrl) {
           alert("Please enter server URL first.");
@@ -1517,6 +1779,66 @@ function groupKeyComparator(a, b) {
           setServerStatusMsg("Cannot reach server.");
         }
       }
+
+
+      async function refreshLiveServerSnapshot(options) {
+        const opts = options || {};
+        const base = normalizedServerBase();
+        if (!base) return;
+        try {
+          const res = await fetch(base + "/api/tournament/current");
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const data = await res.json();
+          if (!data) return;
+          const incomingStamp = data?.schedule?.updatedAt || data?.meta?.lastSavedAt || data?.meta?.updatedAt || null;
+          if (!opts.force && incomingStamp && lastServerSnapshotAt && incomingStamp === lastServerSnapshotAt) return;
+          loadTournamentIntoApp(data, { readOnly: data?.meta?.status === "archived" });
+          setLastServerSnapshotAt(incomingStamp || new Date().toISOString());
+          setUnsyncedChanges(false);
+          setSyncMode("online");
+          setTournamentActionMsg("Live server snapshot refreshed.");
+        } catch (err) {
+          console.error("Live snapshot refresh error:", err);
+          if (!unsyncedChanges) setSyncMode("server_error");
+        }
+      }
+
+      async function refreshLeagueStandingsFromServer() {
+        const base = normalizedServerBase();
+        if (!base) return;
+        try {
+          const res = await fetch(base + "/api/standings");
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const data = await res.json();
+          setLeagueStandingsData(Array.isArray(data.standings) ? data.standings : []);
+        } catch (err) {
+          console.error("Standings refresh error:", err);
+        }
+      }
+
+      async function refreshFinalRefCandidatesFromServer() {
+        const base = normalizedServerBase();
+        if (!base) return;
+        try {
+          const res = await fetch(base + "/api/referees/final-candidates?limit=12");
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const data = await res.json();
+          setFinalRefCandidates(Array.isArray(data.candidates) ? data.candidates : []);
+        } catch (err) {
+          console.error("Final referee candidates refresh error:", err);
+        }
+      }
+
+      useEffect(() => {
+        const base = normalizedServerBase();
+        if (!base) return;
+        const id = setInterval(() => {
+          if (!unsyncedChanges && !isTournamentReadOnly) refreshLiveServerSnapshot();
+          refreshLeagueStandingsFromServer();
+          refreshFinalRefCandidatesFromServer();
+        }, 3000);
+        return () => clearInterval(id);
+      }, [serverUrl, unsyncedChanges, isTournamentReadOnly, lastServerSnapshotAt]);
 
       function ensureAudioContext() {
         const AC = window.AudioContext || window.webkitAudioContext;
@@ -1573,6 +1895,352 @@ function groupKeyComparator(a, b) {
         () => ({ players: players.length, refs: refs.length }),
         [players, refs]
       );
+
+      function rowMatchesSearch(row, query) {
+        const q = String(query || "").trim().toLowerCase();
+        if (!q) return true;
+        return Object.values(row || {}).some((v) => String(v ?? "").toLowerCase().includes(q));
+      }
+
+      const filteredPlayers = useMemo(() => {
+        return (players || []).map((p, idx) => ({ p, idx })).filter(({ p, idx }) => rowMatchesSearch({ ...p, rowNo: idx + 1 }, playerSearch));
+      }, [players, playerSearch]);
+
+      const filteredRefs = useMemo(() => {
+        return (refs || []).map((r, idx) => ({ r, idx })).filter(({ r, idx }) => rowMatchesSearch({ ...r, rowNo: idx + 1 }, refSearch));
+      }, [refs, refSearch]);
+
+      const filteredMgmtRefs = useMemo(() => {
+        const rows = (refs || []).map((r, idx) => ({ r, idx }))
+          .filter(({ r, idx }) => rowMatchesSearch({ ...r, rowNo: idx + 1 }, refMgmtSearch));
+        return refMgmtOnlyFinals ? rows.filter(({ r }) => finalRefPool.includes(r.id)) : rows;
+      }, [refs, refMgmtSearch, refMgmtOnlyFinals, finalRefPool]);
+
+      const refManagementIssues = useMemo(() => {
+        const errors = [];
+        const warnings = [];
+        const byNo = new Map();
+        const byName = new Map();
+        (refs || []).forEach((r, idx) => {
+          const refNo = String(r?.refNo || "").trim();
+          const name = String(r?.name || "").trim();
+          if (!name) warnings.push(`Referee row ${idx + 1} has no name.`);
+          if (!refNo) warnings.push(`Referee row ${idx + 1} has no referee number.`);
+          if (refNo) {
+            if (byNo.has(refNo)) errors.push(`Duplicate referee number #${refNo}.`);
+            byNo.set(refNo, true);
+          }
+          const key = name.toLowerCase();
+          if (key) {
+            if (byName.has(key)) warnings.push(`Possible duplicate referee name: ${name}.`);
+            byName.set(key, true);
+          }
+        });
+
+        const validIds = new Set((refs || []).map((r) => r.id));
+        (finalRefPool || []).forEach((id) => {
+          if (!validIds.has(id)) warnings.push(`Final pool contains a removed referee (${id}). Save/Clean Final Pool to remove it.`);
+        });
+
+        (schedule?.assignments || []).forEach((a) => {
+          const ids = [a.mainRef, a.judge1, a.judge2].filter(Boolean).map(String);
+          const unique = new Set(ids);
+          if (ids.length !== unique.size) errors.push(`Bout #${a.boutNo}: same referee selected more than once in one match.`);
+        });
+
+        const byOrder = new Map();
+        (schedule?.bouts || []).forEach((b, idx) => {
+          const orderKey = String(b.round || b.roundNo || b.orderNo || b.localId || idx + 1);
+          const a = (schedule?.assignments || []).find((x) => String(x.boutNo) === String(b.boutNo));
+          if (!a) return;
+          [a.mainRef, a.judge1, a.judge2].filter(Boolean).forEach((rid) => {
+            const key = `${orderKey}|${rid}`;
+            if (!byOrder.has(key)) byOrder.set(key, []);
+            byOrder.get(key).push(b.gillam || "");
+          });
+        });
+        byOrder.forEach((gillams, key) => {
+          const uniqueGillams = Array.from(new Set(gillams.filter(Boolean)));
+          if (uniqueGillams.length > 1) warnings.push(`One referee appears in multiple Gillams at the same bout order: ${uniqueGillams.join(", ")}.`);
+        });
+
+        return { errors, warnings };
+      }, [refs, schedule, finalRefPool]);
+
+
+      const refMgmtBouts = useMemo(() => {
+        const q = String(refMgmtBoutSearch || "").trim().toLowerCase();
+        const pIndex = new Map((players || []).map((p) => [p.id, p]));
+        return (schedule?.bouts || [])
+          .map((b, idx) => {
+            const A = b.blueId ? pIndex.get(b.blueId) : null;
+            const G = b.greenId ? pIndex.get(b.greenId) : null;
+            const assignment = (schedule?.assignments || []).find((a) => String(a.boutNo) === String(b.boutNo)) || { boutNo: b.boutNo };
+            const ageLabel = ageGroupLabel(b.ageGroupNumb, tournamentScope) || "";
+            const category = [ageLabel, b.sex === "F" ? "Women" : "Men", slotLabel(b)].filter(Boolean).join(" • ");
+            const haystack = [b.boutNo, b.gillam, b.stage, category, A?.name, A?.country, G?.name, G?.country].join(" ").toLowerCase();
+            return { b, idx, A, G, assignment, category, haystack };
+          })
+          .filter((row) => {
+            if (refMgmtStageFilter !== "all" && String(row.b.stage || "") !== refMgmtStageFilter) return false;
+            if (!q) return true;
+            return row.haystack.includes(q);
+          });
+      }, [schedule, players, refMgmtBoutSearch, refMgmtStageFilter, tournamentScope]);
+
+      const refMgmtStages = useMemo(() => {
+        return Array.from(new Set((schedule?.bouts || []).map((b) => String(b.stage || "").trim()).filter(Boolean)));
+      }, [schedule]);
+
+      const refereePerformanceProfile = useMemo(() => {
+        const byId = new Map((refs || []).map((r) => [r.id, {
+          id: r.id,
+          refNo: r.refNo,
+          name: r.name || `#${r.refNo || ""}`,
+          level: r.level || "Local",
+          matches: 0,
+          totals: [],
+          avg: "-",
+          tier: "-"
+        }]));
+        (schedule?.assignments || []).forEach((a) => {
+          [a.mainRef, a.judge1, a.judge2].filter(Boolean).forEach((id) => {
+            const row = byId.get(id);
+            if (row) row.matches += 1;
+          });
+        });
+        (schedule?.bouts || []).forEach((bout) => {
+          (bout.refEvaluations || []).forEach((ev) => {
+            const row = byId.get(ev.refId);
+            const n = Number(ev.total ?? ev.totalScore);
+            if (row && Number.isFinite(n)) row.totals.push(n);
+          });
+        });
+        const rows = Array.from(byId.values()).map((row) => {
+          if (row.totals.length) {
+            const avg = Math.round((row.totals.reduce((a,b)=>a+b,0) / row.totals.length) * 10) / 10;
+            row.avg = avg;
+            row.tier = avg >= 90 ? "A" : avg >= 80 ? "B" : avg >= 70 ? "C" : "D";
+          }
+          return row;
+        });
+        return rows.sort((a, b) => (Number(b.avg) || 0) - (Number(a.avg) || 0) || b.matches - a.matches || String(a.name).localeCompare(String(b.name)));
+      }, [refs, schedule]);
+
+      function eligibleRefsForBout(bout) {
+        const list = (refs || []).filter((r) => {
+          if (refAssignmentMode !== "gillam_pool") return true;
+          if ((r.assignScope || "global") === "global") return true;
+          return (r.poolGillam || "") === (bout?.gillam || "");
+        });
+        return list.length ? list : (refs || []);
+      }
+
+      function autoAssignTopRatedOperational() {
+        if (!ensureWritable("Auto assigning referees")) return;
+        if (!schedule?.bouts?.length) {
+          alert("Generate the draw first.");
+          return;
+        }
+        const ratedRefs = (refs || []).slice().sort((a, b) => {
+          const ap = finalRefPool.includes(a.id) ? 1000 : 0;
+          const bp = finalRefPool.includes(b.id) ? 1000 : 0;
+          const av = Number(refereeAverageScore(a.id)) || 0;
+          const bv = Number(refereeAverageScore(b.id)) || 0;
+          return (bp + bv) - (ap + av) || (Number(a.refNo) || 0) - (Number(b.refNo) || 0);
+        });
+        const next = recalcAssignmentsWithCurrentRules(schedule, ratedRefs);
+        if (next) {
+          setSchedule(next);
+          setDrawValidation(buildRefereeValidationPayload(next));
+          setRefMgmtStatusMsg("Assignments rebuilt inside main web. Review warnings, then Save Assignments.");
+          markUnsynced();
+          saveLocalSnapshot("referee_management_auto_assign");
+        }
+      }
+
+      async function saveOperationalAssignments() {
+        if (!schedule) return;
+        markUnsynced();
+        saveLocalSnapshot("referee_management_assignments_save");
+        await syncScheduleToServer(schedule);
+        setRefMgmtStatusMsg(serverUrl?.trim() ? "Assignments saved locally and sync attempted." : "Assignments saved locally. Offline mode.");
+      }
+
+      async function saveRefereesToServer() {
+        markUnsynced();
+        saveLocalSnapshot("referees_save");
+        const base = normalizedServerBase();
+        if (!base) {
+          setRefMgmtStatusMsg("Referees saved locally. Offline mode.");
+          return;
+        }
+        try {
+          const res = await fetch(base + "/api/referees/save", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refs })
+          });
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          setUnsyncedChanges(false);
+          setSyncMode("online");
+          setRefMgmtStatusMsg("Referees saved to server.");
+        } catch (err) {
+          console.warn("Referee server save failed", err);
+          setSyncMode("unsynced");
+          setRefMgmtStatusMsg("Referees saved locally. Server sync failed.");
+        }
+      }
+
+      async function saveFinalPoolToServer() {
+        const cleaned = Array.from(new Set((finalRefPool || []).filter((id) => (refs || []).some((r) => r.id === id))));
+        setFinalRefPool(cleaned);
+        setRefs((prev) => prev.map((r) => ({ ...r, finalPool: cleaned.includes(r.id) })));
+        markUnsynced();
+        saveLocalSnapshot("final_pool_save");
+        const base = normalizedServerBase();
+        if (!base) {
+          setRefMgmtStatusMsg("Final referee pool saved locally. Offline mode.");
+          return;
+        }
+        try {
+          const res = await fetch(base + "/api/final-referee-pool/save", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ finalRefereePool: cleaned })
+          });
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          setUnsyncedChanges(false);
+          setSyncMode("online");
+          setRefMgmtStatusMsg("Final referee pool saved to server.");
+        } catch (err) {
+          console.warn("Final pool server save failed", err);
+          setSyncMode("unsynced");
+          setRefMgmtStatusMsg("Final pool saved locally. Server sync failed.");
+        }
+      }
+
+      function cleanFinalRefPool() {
+        const cleaned = Array.from(new Set((finalRefPool || []).filter((id) => (refs || []).some((r) => r.id === id))));
+        setFinalRefPool(cleaned);
+        setRefs((prev) => prev.map((r) => ({ ...r, finalPool: cleaned.includes(r.id) })));
+        setRefMgmtStatusMsg("Final referee pool cleaned locally.");
+        markUnsynced();
+      }
+
+      const REF_EVALUATION_CATEGORIES = [
+        ["rules", "Rules Knowledge & Application", 20],
+        ["positioning", "Positioning & Movement", 15],
+        ["timing", "Decision Timing & Accuracy", 20],
+        ["communication", "Communication & Commands", 10],
+        ["control", "Match Control & Awareness", 15],
+        ["penalties", "Penalties Management", 10],
+        ["professionalism", "Professionalism & Presence", 10]
+      ];
+
+      function blankEvaluation(refId, boutNo) {
+        const scores = {};
+        const comments = {};
+        REF_EVALUATION_CATEGORIES.forEach(([key]) => {
+          scores[key] = 0;
+          comments[key] = "";
+        });
+        return {
+          refId,
+          boutNo,
+          evaluatorName: "",
+          refereeLevel: refs.find((r) => String(r.id) === String(refId))?.level || "Local",
+          scores,
+          comments,
+          strengths: "",
+          areas: "",
+          recommendations: ""
+        };
+      }
+
+      function evaluationTotal(draft) {
+        if (!draft?.scores) return 0;
+        return REF_EVALUATION_CATEGORIES.reduce((sum, [key, _label, max]) => {
+          const v = Math.max(0, Math.min(Number(max), Number(draft.scores[key]) || 0));
+          return sum + v;
+        }, 0);
+      }
+
+      function evaluationRating(total) {
+        const n = Number(total) || 0;
+        if (n >= 90) return "Excellent";
+        if (n >= 80) return "Very Good";
+        if (n >= 70) return "Good";
+        return "Needs Improvement";
+      }
+
+      function refereeAverageScore(refId) {
+        const scores = [];
+        (schedule?.bouts || []).forEach((bout) => {
+          (bout.refEvaluations || []).forEach((ev) => {
+            if (String(ev.refId) === String(refId)) {
+              const n = Number(ev.total ?? ev.totalScore);
+              if (Number.isFinite(n)) scores.push(n);
+            }
+          });
+        });
+        if (!scores.length) return "";
+        return Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10;
+      }
+
+      async function saveEvaluationDraft() {
+        if (!evaluationDraft?.refId) return;
+        const total = evaluationTotal(evaluationDraft);
+        const rating = evaluationRating(total);
+        const saved = {
+          ...evaluationDraft,
+          total,
+          rating,
+          date: new Date().toISOString(),
+          savedAt: new Date().toISOString()
+        };
+
+        setSchedule((prev) => {
+          if (!prev?.bouts?.length) return prev;
+          return {
+            ...prev,
+            bouts: prev.bouts.map((bout) => {
+              if (String(bout.boutNo) !== String(saved.boutNo)) return bout;
+              const list = Array.isArray(bout.refEvaluations) ? bout.refEvaluations.slice() : [];
+              const idx = list.findIndex((ev) => String(ev.refId) === String(saved.refId));
+              if (idx >= 0) list[idx] = saved;
+              else list.push(saved);
+              return { ...bout, refEvaluations: list };
+            })
+          };
+        });
+
+        setUnsyncedChanges(true);
+        saveLocalSnapshot("referee_evaluation_save");
+
+        const base = normalizedServerBase();
+        if (base) {
+          try {
+            await fetch(base + "/api/referee-evaluation", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ boutNo: saved.boutNo, refId: saved.refId, evaluation: saved })
+            });
+            setServerStatusMsg("Referee evaluation saved locally and sent to server.");
+            setRefMgmtStatusMsg("Evaluation saved and synced.");
+          } catch (err) {
+            console.warn("Evaluation server save failed; kept locally", err);
+            setServerStatusMsg("Evaluation saved locally. Server sync pending.");
+            setRefMgmtStatusMsg("Evaluation saved locally. Server sync pending.");
+          }
+        } else {
+          setServerStatusMsg("Evaluation saved locally. Offline mode.");
+          setRefMgmtStatusMsg("Evaluation saved locally. Offline mode.");
+        }
+
+        setEvaluationDraft(null);
+      }
+
 
       const weightsWithPlayers = useMemo(() => {
         const s = new Set();
@@ -1681,6 +2349,30 @@ function groupKeyComparator(a, b) {
         }, 1000);
         return () => clearInterval(id);
       }, [timerRunning]);
+
+      useEffect(() => {
+        function isEditableTarget(target) {
+          const tag = String(target?.tagName || "").toLowerCase();
+          return tag === "input" || tag === "textarea" || tag === "select" || target?.isContentEditable;
+        }
+
+        function onKeyDown(e) {
+          if (tab !== "scoreboard" || !activeBoutNo) return;
+          if (e.code !== "Space" && e.key !== " ") return;
+          if (isEditableTarget(e.target) || isEditableTarget(document.activeElement)) return;
+          if (!ensureWritable("Starting/stopping timer")) return;
+          e.preventDefault();
+          e.stopPropagation();
+          setTimerRunning((running) => !running);
+        }
+
+        document.addEventListener("keydown", onKeyDown, true);
+        window.addEventListener("keydown", onKeyDown, true);
+        return () => {
+          document.removeEventListener("keydown", onKeyDown, true);
+          window.removeEventListener("keydown", onKeyDown, true);
+        };
+      }, [tab, activeBoutNo, isTournamentReadOnly]);
 
       useEffect(() => {
         function handleFsChange() {
@@ -2593,6 +3285,48 @@ function groupKeyComparator(a, b) {
         setTimerMs((prev) => Math.max(0, prev + deltaSeconds * 1000));
       }
 
+      function parseManualTimeInput(rawValue, fallbackMs) {
+        const raw = String(rawValue || "").trim();
+        if (!raw) return null;
+
+        if (raw.includes(":")) {
+          const parts = raw.split(":").map((x) => Number(x));
+          if (parts.length === 2 && parts.every((x) => Number.isFinite(x) && x >= 0)) {
+            const [minutes, seconds] = parts;
+            if (seconds >= 60) return null;
+            return Math.max(0, (minutes * 60 + seconds) * 1000);
+          }
+        }
+
+        const n = Number(raw);
+        if (Number.isFinite(n) && n >= 0) {
+          // 0-20 is treated as minutes for fast match-time entry; above 20 as seconds.
+          const seconds = n <= 20 ? n * 60 : n;
+          return Math.max(0, seconds * 1000);
+        }
+
+        return fallbackMs ?? null;
+      }
+
+      function setTimerManuallyFromPrompt() {
+        if (!ensureWritable("Editing timer")) return;
+        const current = formatTime(timerMs);
+        const raw = window.prompt("Enter match time as mm:ss, minutes, or seconds", current);
+        const nextMs = parseManualTimeInput(raw, timerMs);
+        if (nextMs == null) return;
+        setTimerRunning(false);
+        setTimerMs(nextMs);
+        initialFightMsRef.current = nextMs;
+        halfPingDoneRef.current = false;
+      }
+
+      function handleTimerClick(e) {
+        // Keep double-click reserved for manual time editing.
+        if (e?.detail > 1) return;
+        if (!ensureWritable("Starting/stopping timer")) return;
+        setTimerRunning((running) => !running);
+      }
+
       function handleScoreButton(side, type, isRightClick, canAdd, event) {
         if (event) event.preventDefault();
         if (isRightClick) {
@@ -2624,52 +3358,119 @@ function groupKeyComparator(a, b) {
 
       async function sendIntegratedResultToServer(boutNo, payload) {
         const base = normalizedServerBase();
-        if (!base) return null;
+        if (!base) return;
         try {
-          const res = await fetch(base + "/api/bout/" + boutNo + "/save", {
+          await fetch(base + "/api/bout/" + boutNo + "/save", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
           });
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok) {
-            console.error("Integrated scoreboard save failed:", res.status, data);
-            setServerStatus("error");
-            setServerStatusMsg("Result save failed: HTTP " + res.status);
-            return null;
-          }
-          setServerStatus("ok");
-          setServerStatusMsg("Result saved to server.");
-          return data?.bout || null;
         } catch (err) {
           console.error("Integrated scoreboard save error:", err);
-          setServerStatus("error");
-          setServerStatusMsg("Error saving result to server.");
-          return null;
         }
       }
 
-      async function refreshResultsFromServer(silent = false) {
-        const base = normalizedServerBase();
-        if (!base) return;
-        try {
-          const res = await fetch(base + "/api/tournament/current");
-          if (!res.ok) throw new Error("HTTP " + res.status);
-          const data = await res.json();
-          if (!data?.schedule) return;
-          setSchedule(data.schedule);
-          setBoutMeta(buildBoutMetaFromSchedule(data.schedule));
-          if (Array.isArray(data.players)) setPlayers(data.players);
-          if (Array.isArray(data.refs)) setRefs(data.refs);
-          if (data.meta) setCurrentTournamentMeta(data.meta);
-          if (!silent) setTournamentActionMsg("Results refreshed from server.");
-        } catch (err) {
-          console.error("Refresh results error:", err);
-          if (!silent) setTournamentActionMsg("Could not refresh results from server.");
-        }
+      function applyResultToLocalSchedule(boutNo, payload) {
+        let nextScheduleRef = null;
+        setSchedule((prev) => {
+          if (!prev?.bouts?.length) return prev;
+          const updated = {
+            ...prev,
+            bouts: prev.bouts.map((b) => String(b.boutNo) === String(boutNo)
+              ? { ...b, ...payload, finished: true, savedAt: new Date().toISOString() }
+              : { ...b })
+          };
+
+          const currentBout = updated.bouts.find((b) => String(b.boutNo) === String(boutNo));
+          const links = updated.bracketLinks?.[boutNo] || updated.bracketLinks?.[String(boutNo)] || [];
+          const winnerPlayerId = payload.winner === "blue" ? currentBout?.blueId : payload.winner === "green" ? currentBout?.greenId : null;
+
+          if (Array.isArray(links) && links.length) {
+            updated.bouts = updated.bouts.map((b) => {
+              const link = links.find((lnk) => String(lnk.toBoutNo) === String(b.boutNo));
+              if (!link) return b;
+              if (payload.resultType === "double_withdrawal") {
+                if (link.side === "blue") return { ...b, blueId: "BYE_EMPTY" };
+                if (link.side === "green") return { ...b, greenId: "BYE_EMPTY" };
+                return b;
+              }
+              if (winnerPlayerId) {
+                if (link.side === "blue") return { ...b, blueId: winnerPlayerId };
+                if (link.side === "green") return { ...b, greenId: winnerPlayerId };
+              }
+              return b;
+            });
+          }
+
+          // Auto-advance any elimination bout with one empty side.
+          updated.bouts = updated.bouts.map((b) => {
+            if (b.finished) return b;
+            const blueEmpty = !b.blueId || b.blueId === "BYE" || b.blueId === "BYE_EMPTY";
+            const greenEmpty = !b.greenId || b.greenId === "BYE" || b.greenId === "BYE_EMPTY";
+            if (blueEmpty !== greenEmpty) {
+              return {
+                ...b,
+                finished: true,
+                resultType: "walkover",
+                winner: blueEmpty ? "green" : "blue",
+                autoAdvanced: true,
+                savedAt: new Date().toISOString()
+              };
+            }
+            return b;
+          });
+          nextScheduleRef = updated;
+          return updated;
+        });
+        return nextScheduleRef;
       }
 
-      async function saveResultToBout() {
+      function saveWithdrawalResult(whichSide) {
+        if (!ensureWritable("Saving withdrawal") || !activeBoutNo || !schedule) return;
+        const currentBout = schedule.bouts.find((b) => b.boutNo === activeBoutNo);
+        if (!currentBout) return;
+        const both = whichSide === "both";
+        const winner = both ? null : (whichSide === "blue" ? "green" : "blue");
+        const payload = {
+          winner,
+          resultType: both ? "double_withdrawal" : "withdrawal",
+          withdrawnSide: both ? "both" : whichSide,
+          noContest: both,
+          advances: both ? null : winner,
+          meta: [{
+            timeSec: Math.floor(timerMs / 1000),
+            timeStr: formatTime(timerMs),
+            type: both ? "DOUBLE_WITHDRAWAL" : "WITHDRAWAL",
+            side: both ? "both" : whichSide,
+            text: both ? "DOUBLE WITHDRAWAL / NO CONTEST" : (whichSide.toUpperCase() + " WITHDRAWAL")
+          }],
+          durationMs: timerMs,
+          blueScore: { H: 0, YO: 0, CH: 0 },
+          greenScore: { H: 0, YO: 0, CH: 0 },
+          bluePenalties: { T: 0, D: 0, G: 0 },
+          greenPenalties: { T: 0, D: 0, G: 0 }
+        };
+
+        setTimerRunning(false);
+        setBoutMeta((prev) => ({
+          ...prev,
+          [activeBoutNo]: {
+            events: [],
+            durationSec: Math.floor(timerMs / 1000),
+            winner,
+            resultType: payload.resultType,
+            withdrawnSide: payload.withdrawnSide,
+            noContest: payload.noContest,
+            savedAt: new Date().toISOString()
+          }
+        }));
+        applyResultToLocalSchedule(activeBoutNo, payload);
+        markUnsynced();
+        sendIntegratedResultToServer(activeBoutNo, payload);
+        alert(both ? "Double withdrawal saved. No winner will advance." : "Withdrawal result saved.");
+      }
+
+      function saveResultToBout() {
         if (!ensureWritable("Saving results") || !activeBoutNo || !schedule) return;
         const scores = computeScores(sbEvents);
         const isTimeUp = timerMs === 0;
@@ -2680,10 +3481,9 @@ function groupKeyComparator(a, b) {
         }
         const durationMs = timerMs;
         const durationSec = Math.floor(durationMs / 1000);
-        const localMeta = { events: sbEvents, durationSec, winner: winnerSide };
         setBoutMeta((prev) => ({
           ...prev,
-          [activeBoutNo]: localMeta
+          [activeBoutNo]: { events: sbEvents, durationSec, winner: winnerSide, resultType: "points", noContest: false, savedAt: new Date().toISOString() }
         }));
 
         const bluePenalties = { T: 0, D: 0, G: 0 };
@@ -2703,7 +3503,8 @@ function groupKeyComparator(a, b) {
           text: (ev.side === "blue" ? "BLUE " : "GREEN ") + ev.type
         }));
 
-        const savedBoutFromServer = await sendIntegratedResultToServer(activeBoutNo, {
+        markUnsynced();
+        sendIntegratedResultToServer(activeBoutNo, {
           winner: winnerSide,
           blueScore: {
             H: scores.blue.H,
@@ -2718,29 +3519,12 @@ function groupKeyComparator(a, b) {
           bluePenalties,
           greenPenalties,
           meta: metaEvents,
-          durationMs
+          durationMs,
+          resultType: "points",
+          noContest: false
         });
 
-        setSchedule((prev) => {
-          if (!prev) return prev;
-          const updatedBouts = (prev.bouts || []).map((b) => {
-            if (Number(b.boutNo) !== Number(activeBoutNo)) return b;
-            return {
-              ...b,
-              ...(savedBoutFromServer || {}),
-              winner: winnerSide,
-              blueScore: { H: scores.blue.H, YO: scores.blue.YO, CH: scores.blue.CH },
-              greenScore: { H: scores.green.H, YO: scores.green.YO, CH: scores.green.CH },
-              bluePenalties,
-              greenPenalties,
-              meta: metaEvents,
-              durationMs,
-              finished: true,
-              savedAt: savedBoutFromServer?.savedAt || new Date().toISOString()
-            };
-          });
-          return { ...prev, bouts: updatedBouts };
-        });
+        applyResultToLocalSchedule(activeBoutNo, { winner: winnerSide, resultType: "points", noContest: false, meta: metaEvents, durationMs, blueScore: { H: scores.blue.H, YO: scores.blue.YO, CH: scores.blue.CH }, greenScore: { H: scores.green.H, YO: scores.green.YO, CH: scores.green.CH }, bluePenalties, greenPenalties });
 
         // propagate winner to next elimination bout(s) if any
         const currentBout = schedule.bouts.find((b) => b.boutNo === activeBoutNo);
@@ -2793,6 +3577,50 @@ function groupKeyComparator(a, b) {
         });
         return { byGroup, bySex, byCountry };
       }, [players, weightMode, manualGroupsByAge]);
+
+
+      const localLeagueStandings = useMemo(() => {
+        if (!schedule?.bouts?.length) return [];
+        const pIndex = new Map(players.map((p) => [p.id, p]));
+        const groups = new Map();
+        function playable(id) { return id && id !== "BYE" && id !== "BYE_EMPTY"; }
+        function ensure(gk, id) {
+          if (!playable(id)) return null;
+          if (!groups.has(gk)) groups.set(gk, new Map());
+          const g = groups.get(gk);
+          if (!g.has(id)) {
+            const p = pIndex.get(id) || {};
+            g.set(id, { playerId: id, name: p.name || id, country: p.country || "", wins: 0, losses: 0, noContests: 0, tiebreakPoints: 0, scoreFor: { H: 0, YO: 0, CH: 0 } });
+          }
+          return g.get(id);
+        }
+        function priority(b) {
+          if (b.resultType === "withdrawal" || b.resultType === "walkover") return 1;
+          const ws = b.winner === "blue" ? (b.blueScore || {}) : (b.greenScore || {});
+          if (Number(ws.H || 0) > 0) return 5;
+          if (Number(ws.YO || 0) > 0) return 4;
+          if (Number(ws.CH || 0) > 0) return 3;
+          return 2;
+        }
+        for (const b of schedule.bouts) {
+          if (b.isElimination) continue;
+          const gk = b.groupKey || `${b.ageGroupNumb || ""}|${b.sex || ""}|${b.weight || ""}`;
+          const blue = ensure(gk, b.blueId);
+          const green = ensure(gk, b.greenId);
+          if (!blue || !green || !b.finished) continue;
+          const bs = b.blueScore || {}, gs = b.greenScore || {};
+          ["H", "YO", "CH"].forEach((k) => { blue.scoreFor[k] += Number(bs[k] || 0); green.scoreFor[k] += Number(gs[k] || 0); });
+          if (b.resultType === "double_withdrawal" || b.noContest) { blue.losses++; green.losses++; blue.noContests++; green.noContests++; continue; }
+          if (!b.winner) continue;
+          const w = b.winner === "blue" ? blue : green;
+          const l = b.winner === "blue" ? green : blue;
+          w.wins++; l.losses++; w.tiebreakPoints += priority(b);
+        }
+        return Array.from(groups.entries()).map(([groupKey, map]) => ({
+          groupKey,
+          rows: Array.from(map.values()).sort((a,b) => b.wins-a.wins || a.losses-b.losses || b.tiebreakPoints-a.tiebreakPoints || b.scoreFor.H-a.scoreFor.H || b.scoreFor.YO-a.scoreFor.YO || b.scoreFor.CH-a.scoreFor.CH || String(a.name).localeCompare(String(b.name))).map((r,i)=>({rank:i+1,...r}))
+        }));
+      }, [schedule, players]);
 
       // reports data (player / country / matches / penalties / counts)
       const reportsData = useMemo(() => {
@@ -3121,7 +3949,15 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
         Developed by <span className="font-semibold text-sky-300">Dr. Abdullah Hosni Alreedy</span>
       </p>
     </div>
-    <div className="flex items-center gap-3 text-xs">
+    <div className="flex flex-wrap items-center justify-end gap-3 text-xs">
+      <button
+        type="button"
+        onClick={() => setHelpOpen(true)}
+        className="px-3 py-1.5 rounded-full bg-sky-700/80 hover:bg-sky-600 border border-sky-500 text-white font-semibold shadow"
+        title="Open in-app help"
+      >
+        ❓ Help
+      </button>
       <span className="px-2 py-1 rounded-full bg-slate-800 border border-slate-700">
         Players: {stats.players}
       </span>
@@ -3131,16 +3967,17 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
     </div>
   </div>
             <nav className="max-w-[98vw] mx-auto px-2 pb-2">
-              <div className="grid grid-cols-8 gap-2 text-xs md:text-sm">
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-9 gap-2 text-xs md:text-sm">
                 {[
+                  { k: "about", label: "About" },
                   { k: "home", label: "Home" },
                   { k: "settings", label: "Settings" },
                   { k: "players", label: "Players" },
                   { k: "refs", label: "Referees" },
+                  { k: "refMgmt", label: "Referee Management" },
                   { k: "draw", label: "Draw" },
                   { k: "scoreboard", label: "Scoreboard" },
-                  { k: "reports", label: "Reports" },
-                  { k: "help", label: "Help" }
+                  { k: "reports", label: "Reports" }
                 ].map((t) => (
                   <button
                     key={t.k}
@@ -3160,476 +3997,305 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
           </header>
 
           <main className="max-w-[98vw] mx-auto px-4 py-6 space-y-6">
-{tab === "home" && (
+{tab === "about" && (
   <div className="space-y-6">
-    <SectionCard title="Tournament Manager">
-      {!serverUrl.trim() ? (
-        <div className="text-sm text-slate-400">
-          Enter a backend server URL in Settings to use New / Resume / View / Archive / Re-open / Delete.
-        </div>
-      ) : (
-        <div className="space-y-5">
-          <div className="grid lg:grid-cols-2 gap-4">
-            <div className="rounded-2xl border border-slate-800 p-4 bg-slate-950/60 space-y-3">
-              <div className="text-sm font-semibold text-sky-300">Current Tournament</div>
-              {currentTournamentMeta ? (
-                <div className="space-y-2 text-sm">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold text-white">{currentTournamentMeta.name}</span>
-                    <span className={"px-2 py-1 rounded-full border text-xs " + (currentTournamentMeta.status === "archived" ? "bg-slate-900 border-slate-700 text-slate-300" : "bg-emerald-900/30 border-emerald-700 text-emerald-300")}>
-                      {currentTournamentMeta.status === "archived" ? "🔒 Archived" : "🔓 Active"}
-                    </span>
-                    {isTournamentReadOnly && (
-                      <span className="px-2 py-1 rounded-full border text-xs bg-amber-900/30 border-amber-700 text-amber-300">
-                        View Mode
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-slate-300">Date: {currentTournamentMeta.date || "-"}</div>
-                  <div className="text-slate-300">Scope: {TOURNAMENT_SCOPES.find((x) => x.value === tournamentScope)?.label || tournamentScope}</div>
-                  <div className="text-slate-300">Affiliation: {AFFILIATION_MODES.find((x) => x.value === normalizedAffiliationMode(tournamentScope, affiliationMode))?.label || affiliationMode}</div>
-                  <div className="text-slate-300">Weight Mode: {WEIGHT_MODES.find((x) => x.value === weightMode)?.label || weightMode}</div>
-                  <div className="text-slate-300">Duration: {manualDurationSeconds ? `${manualDurationSeconds}s manual` : "Category default"}</div>
-                  <div className="text-slate-500 text-xs">ID: {currentTournamentMeta.id}</div>
-                </div>
-              ) : (
-                <div className="text-sm text-slate-500">No tournament loaded in the app yet.</div>
-              )}
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={loadCurrentTournamentFromServer}
-                  className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-900 hover:border-sky-500"
-                >
-                  Load Current
-                </button>
-                <button
-                  type="button"
-                  onClick={() => archiveTournamentOnServer()}
-                  disabled={!currentTournamentMeta || currentTournamentMeta.status === "archived"}
-                  className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-900 hover:border-amber-500 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  Archive Current
-                </button>
-              </div>
-            </div>
-            <div className="rounded-2xl border border-slate-800 p-4 bg-slate-950/60 space-y-3">
-              <div className="text-sm font-semibold text-sky-300">New Tournament</div>
-              <div className="grid sm:grid-cols-2 gap-3">
-                <input
-                  type="text"
-                  placeholder="Tournament name"
-                  className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2"
-                  value={newTournamentName}
-                  onChange={(e) => setNewTournamentName(e.target.value)}
-                />
-                <input
-                  type="date"
-                  className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2"
-                  value={newTournamentDate}
-                  onChange={(e) => setNewTournamentDate(e.target.value)}
-                />
-                <select
-                  className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2"
-                  value={tournamentScope}
-                  onChange={(e) => handleTournamentScopeChange(e.target.value)}
-                >
-                  {TOURNAMENT_SCOPES.map((x) => (
-                    <option key={x.value} value={x.value}>{x.label}</option>
-                  ))}
-                </select>
-                {isInternalScope(tournamentScope) && (
-                  <select
-                    className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2"
-                    value={normalizedAffiliationMode(tournamentScope, affiliationMode)}
-                    onChange={(e) => setAffiliationModeAndRecalc(e.target.value)}
-                  >
-                    <option value="none">No Affiliation</option>
-                    <option value="club">Club</option>
-                  </select>
-                )}
-                <select
-                  className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2"
-                  value={weightMode}
-                  onChange={(e) => setWeightModeAndRecalc(e.target.value)}
-                >
-                  {WEIGHT_MODES.map((x) => (
-                    <option key={x.value} value={x.value}>{x.label}</option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  min="0"
-                  step="30"
-                  placeholder="Manual duration seconds, 0 = category default"
-                  className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2"
-                  value={manualDurationSeconds || ""}
-                  onChange={(e) => setManualDurationSeconds(Number(e.target.value || 0))}
-                />
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => createTournamentOnServer(false)}
-                  className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-700 bg-sky-700/80 hover:bg-sky-600"
-                >
-                  New Tournament
-                </button>
-                <button
-                  type="button"
-                  onClick={() => createTournamentOnServer(true)}
-                  className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-900 hover:border-emerald-500"
-                >
-                  Archive + New
-                </button>
-              </div>
-            </div>
+    <SectionCard title="About">
+      <div className="grid xl:grid-cols-[1.25fr_1fr] gap-5">
+        <div className="rounded-3xl border border-sky-900/60 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6 shadow-xl">
+          <div className="text-5xl mb-4">🥋</div>
+          <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight">
+            Kurash Tournament Management System
+          </h2>
+          <p className="mt-4 text-slate-300 leading-7 max-w-3xl">
+            A hybrid tournament system designed to manage Kurash competitions from registration to draw generation, match operation, referee assignment, referee evaluation, reports, and backups.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-2 text-xs">
+            <span className="px-3 py-1 rounded-full bg-emerald-950/50 border border-emerald-800 text-emerald-300">Offline Ready</span>
+            <span className="px-3 py-1 rounded-full bg-sky-950/50 border border-sky-800 text-sky-300">Server Sync Optional</span>
+            <span className="px-3 py-1 rounded-full bg-violet-950/50 border border-violet-800 text-violet-300">League & Knockout</span>
+            <span className="px-3 py-1 rounded-full bg-amber-950/50 border border-amber-800 text-amber-300">Referee Evaluation</span>
           </div>
+        </div>
 
-          <div className="rounded-2xl border border-slate-800 p-4 bg-slate-950/60">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-              <div className="text-sm font-semibold text-sky-300">Resume / View</div>
-              <button
-                type="button"
-                onClick={refreshTournamentList}
-                className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-900 hover:border-sky-500"
-              >
-                Refresh List
-              </button>
+        <div className="rounded-3xl border border-slate-800 bg-slate-950/70 p-6">
+          <h3 className="text-sky-300 font-bold text-lg mb-3">Version Information</h3>
+          <div className="space-y-3 text-sm text-slate-300">
+            <div className="flex justify-between gap-4 border-b border-slate-800 pb-2">
+              <span className="text-slate-500">Version</span>
+              <span className="font-semibold text-white">v1.0 / v22 About Update</span>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="text-slate-400 border-b border-slate-800">
-                    <th className="text-left p-2">Name</th>
-                    <th className="text-left p-2">Date</th>
-                    <th className="text-left p-2">Status</th>
-                    <th className="text-left p-2">Updated</th>
-                    <th className="text-left p-2">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tournamentList.length === 0 ? (
-                    <tr>
-                      <td className="p-3 text-slate-500" colSpan={6}>No tournaments found on the server.</td>
-                    </tr>
-                  ) : tournamentList.map((item) => (
-                    <tr key={item.id} className="border-b border-slate-900/80 align-top">
-                      <td className="p-2 font-medium text-white">{item.name}</td>
-                      <td className="p-2 text-slate-300">{item.date || "-"}</td>
-                      <td className="p-2">
-                        <span className={"px-2 py-1 rounded-full border text-xs " + (item.status === "archived" ? "bg-slate-900 border-slate-700 text-slate-300" : "bg-emerald-900/30 border-emerald-700 text-emerald-300")}>
-                          {item.status === "archived" ? "🔒 Archived" : "🔓 Active"}
-                        </span>
-                      </td>
-                      <td className="p-2 text-slate-400">{item.updatedAt ? new Date(item.updatedAt).toLocaleString() : "-"}</td>
-                      <td className="p-2">
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => openTournamentFromServer(item)}
-                            className="px-3 py-1 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-900 hover:border-sky-500"
-                          >
-                            {item.status === "archived" ? "View" : "Resume"}
-                          </button>
-                          {item.status === "archived" ? (
-                            <button
-                              type="button"
-                              onClick={() => reopenTournamentOnServer(item)}
-                              className="px-3 py-1 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-900 hover:border-emerald-500"
-                            >
-                              Re-open
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => archiveTournamentOnServer(item)}
-                              className="px-3 py-1 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-900 hover:border-amber-500"
-                            >
-                              Archive
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => deleteTournamentOnServer(item)}
-                            className="px-3 py-1 rounded-xl text-xs font-semibold border border-red-900 bg-red-950/50 hover:border-red-500"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="flex justify-between gap-4 border-b border-slate-800 pb-2">
+              <span className="text-slate-500">Status</span>
+              <span className="font-semibold text-emerald-300">Production Beta</span>
             </div>
-            {tournamentActionMsg && (
-              <div className="mt-3 text-xs text-slate-400">{tournamentActionMsg}</div>
-            )}
+            <div className="flex justify-between gap-4 border-b border-slate-800 pb-2">
+              <span className="text-slate-500">Developer</span>
+              <span className="font-semibold text-sky-300 text-right">Dr. Abdullah Hosni Alreedy</span>
+            </div>
+            <p className="text-xs text-slate-500 leading-6 pt-2">
+              Use Home for tournament operation and server connection. Use Help for detailed instructions and troubleshooting.
+            </p>
           </div>
         </div>
-      )}
+      </div>
     </SectionCard>
 
-    <SectionCard title="Welcome">
-      <div className="grid md:grid-cols-2 gap-6">
-      <div className="space-y-4">
-        {/* Developer credit on Home page */}
-        <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700">
-          <span className="text-[11px] uppercase tracking-wide text-slate-400">Developer</span>
-          <span className="text-sm font-semibold text-sky-300">
-            Dr. Abdullah Hosni Alreedy
-          </span>
+    <div className="grid xl:grid-cols-3 gap-5">
+      <SectionCard title="Core Features">
+        <ul className="space-y-2 text-sm text-slate-300 list-disc pl-5">
+          <li>Hybrid workflow: full offline operation with optional server synchronization.</li>
+          <li>Player and referee master-data management.</li>
+          <li>Round Robin and Single Elimination draw support.</li>
+          <li>Live scoreboard with keyboard time control and match result saving.</li>
+          <li>Withdrawal and double-withdrawal result handling.</li>
+          <li>Backup, restore, and CSV export tools.</li>
+        </ul>
+      </SectionCard>
+
+      <SectionCard title="Referee System">
+        <ul className="space-y-2 text-sm text-slate-300 list-disc pl-5">
+          <li>Referees tab is the only place to add, edit, or delete referees.</li>
+          <li>Referee Management is for assignments, finals pool, conflict checks, and evaluations.</li>
+          <li>Continuous referee evaluation supports future final selection and referee ranking.</li>
+          <li>Warnings help prevent duplicate referee assignment in the same match or conflicting mats.</li>
+        </ul>
+      </SectionCard>
+
+      <SectionCard title="Quick Start">
+        <ol className="space-y-2 text-sm text-slate-300 list-decimal pl-5">
+          <li>Open <strong>Home</strong> and create a local tournament, or connect to the server if needed.</li>
+          <li>Confirm rules and operating settings from <strong>Settings</strong>.</li>
+          <li>Add athletes in <strong>Players</strong> and officials in <strong>Referees</strong>.</li>
+          <li>Generate the draw, then operate matches from <strong>Scoreboard</strong>.</li>
+          <li>Use <strong>Reports</strong>, backup, and Help during or after the event.</li>
+        </ol>
+      </SectionCard>
+    </div>
+  </div>
+)}
+
+{tab === "home" && (
+  <div className="space-y-6">
+    <SectionCard title="Home Dashboard">
+      <div className="grid xl:grid-cols-4 md:grid-cols-2 gap-4 mb-5">
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+          <div className="text-xs uppercase tracking-wide text-slate-500">Players</div>
+          <div className="text-3xl font-black text-white mt-1">{stats.players}</div>
+        </div>
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+          <div className="text-xs uppercase tracking-wide text-slate-500">Referees</div>
+          <div className="text-3xl font-black text-white mt-1">{stats.refs}</div>
+        </div>
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+          <div className="text-xs uppercase tracking-wide text-slate-500">Bouts</div>
+          <div className="text-3xl font-black text-white mt-1">{schedule?.bouts?.length || 0}</div>
+        </div>
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+          <div className="text-xs uppercase tracking-wide text-slate-500">Mode</div>
+          <div className={"text-lg font-bold mt-2 " + (serverStatus === "ok" ? "text-emerald-300" : unsyncedChanges ? "text-amber-300" : "text-slate-300")}>
+            {serverStatus === "ok" ? "Online Synced" : unsyncedChanges ? "Offline / Unsynced" : "Offline Ready"}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid xl:grid-cols-[1.1fr_1.4fr] gap-5">
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-sky-300">Server Connection</div>
+              <div className="text-xs text-slate-500 mt-1">Optional. The program works offline first, then syncs when the server is connected.</div>
+            </div>
+            <span className={"px-2 py-1 rounded-full border text-xs " + (serverStatus === "ok" ? "bg-emerald-950/40 border-emerald-700 text-emerald-300" : serverStatus === "error" ? "bg-rose-950/40 border-rose-700 text-rose-300" : "bg-slate-900 border-slate-700 text-slate-300")}>
+              {serverStatus === "ok" ? "Connected" : serverStatus === "error" ? "Connection Error" : "Offline"}
+            </span>
+          </div>
+          <div className="flex flex-col gap-2">
+            <input
+              type="text"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2"
+              placeholder="https://kurash-tms.onrender.com or http://localhost:3000"
+              value={serverUrl}
+              onChange={(e) => setServerUrl(e.target.value)}
+            />
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={testServerConnection} className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-900 hover:border-sky-500">Connect / Test</button>
+              <button type="button" onClick={loadCurrentTournamentFromServer} disabled={!serverUrl.trim()} className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-900 hover:border-emerald-500 disabled:opacity-40">Load Current</button>
+              <button type="button" onClick={() => syncScheduleToServer(schedule)} disabled={!serverUrl.trim() || !schedule} className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-900 hover:border-purple-500 disabled:opacity-40">Sync Now</button>
+            </div>
+            <div className="text-xs text-slate-400">
+              {serverStatusMsg || (serverUrl.trim() ? "Server URL entered. Press Connect / Test." : "No server URL. You can run the full tournament offline.")}
+            </div>
+          </div>
         </div>
 
-        <h2 className="text-2xl font-bold">All-in-one Kurash Tournament Engine</h2>
-        <p className="text-slate-300">
-          Hybrid system: automatic Round Robin for small groups (≤5) and Single Elimination for larger
-          weights, with Gillams, referee assignment, scoreboard and medal/affiliation reports.
-        </p>
-        <ul className="list-disc pl-6 text-slate-300 space-y-1">
-
-                      <li>Manual entry or TXT import</li>
-                      <li>Automatic men/women weight bucketing from real kg</li>
-                      <li>Hybrid RR/SE draw per weight</li>
-                      <li>Gillam assignment per weight (Gillam A, B, C…)</li>
-                      <li>Scoreboard with metadata log per bout</li>
-                      <li>Full reports + CSV downloads</li>
-                    </ul>
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-4">
+          <div className="text-sm font-semibold text-sky-300">Tournament Workspace</div>
+          {currentTournamentMeta ? (
+            <div className="grid md:grid-cols-2 gap-3 text-sm">
+              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-3"><span className="text-slate-500">Name:</span> <span className="font-semibold">{currentTournamentMeta.name || "-"}</span></div>
+              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-3"><span className="text-slate-500">Date:</span> {currentTournamentMeta.date || "-"}</div>
+              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-3"><span className="text-slate-500">Status:</span> {currentTournamentMeta.status || "active"}</div>
+              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-3"><span className="text-slate-500">Scope:</span> {TOURNAMENT_SCOPES.find((x) => x.value === tournamentScope)?.label || tournamentScope}</div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-3 text-sm text-slate-400">No tournament loaded yet. You can create one locally or sync it to server if connected.</div>
+          )}
+          <div className="grid md:grid-cols-2 gap-3">
+            <input type="text" placeholder="Tournament name" className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2" value={newTournamentName} onChange={(e) => setNewTournamentName(e.target.value)} />
+            <input type="date" className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2" value={newTournamentDate} onChange={(e) => setNewTournamentDate(e.target.value)} />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={createLocalTournament} className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-700 bg-sky-700/80 hover:bg-sky-600">Create Local Tournament</button>
+            <button type="button" onClick={() => createTournamentOnServer(false)} disabled={!serverUrl.trim()} className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-900 hover:border-emerald-500 disabled:opacity-40">Create on Server</button>
+            <button type="button" onClick={() => createTournamentOnServer(true)} disabled={!serverUrl.trim()} className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-900 hover:border-emerald-500 disabled:opacity-40">Archive + New on Server</button>
+            <button type="button" onClick={() => archiveTournamentOnServer()} disabled={!currentTournamentMeta || currentTournamentMeta.status === "archived" || !serverUrl.trim()} className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-900 hover:border-amber-500 disabled:opacity-40">Archive Current</button>
+          </div>
+          {tournamentList.length > 0 && (
+            <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
+              <div className="text-xs font-semibold text-sky-300 mb-2">Server Tournaments</div>
+              <div className="grid md:grid-cols-2 gap-2 max-h-44 overflow-auto pr-1">
+                {tournamentList.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between gap-2 rounded-xl border border-slate-800 bg-slate-900/40 px-3 py-2">
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold truncate">{item.name || item.id}</div>
+                      <div className="text-[11px] text-slate-500">{item.date || "-"} • {item.status || "idle"}</div>
+                    </div>
+                    <button type="button" onClick={() => openTournamentFromServer(item)} className="px-2 py-1 rounded-lg border border-slate-700 bg-slate-950 hover:border-sky-500 text-[11px]">Open</button>
                   </div>
-                  <div className="rounded-2xl border border-slate-800 p-5 bg-gradient-to-br from-sky-900/30 via-slate-900 to-indigo-900/20 space-y-4">
-                    <div className="grid sm:grid-cols-2 gap-3">
-                      <div>
-                        <div className="text-slate-400 text-xs mb-1">Tournament Type</div>
-                        <select
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2"
-                          value={tournamentScope}
-                          onChange={(e) => handleTournamentScopeChange(e.target.value)}
-                        >
-                          {TOURNAMENT_SCOPES.map((x) => (
-                            <option key={x.value} value={x.value}>{x.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                      {isInternalScope(tournamentScope) && (
-                        <div>
-                          <div className="text-slate-400 text-xs mb-1">Affiliation Mode</div>
-                          <select
-                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2"
-                            value={normalizedAffiliationMode(tournamentScope, affiliationMode)}
-                            onChange={(e) => setAffiliationModeAndRecalc(e.target.value)}
-                          >
-                            <option value="none">No Affiliation</option>
-                            <option value="club">Club</option>
-                          </select>
-                        </div>
-                      )}
-                      <div>
-                        <div className="text-slate-400 text-xs mb-1">Match Duration</div>
-                        <input
-                          type="number"
-                          min="0"
-                          step="30"
-                          placeholder="0 = category default"
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2"
-                          value={manualDurationSeconds || ""}
-                          onChange={(e) => setManualDurationSeconds(Number(e.target.value || 0))}
-                        />
-                      </div>
-                      <div>
-                        <div className="text-slate-400 text-xs mb-1">Weight Mode</div>
-                        <select
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2"
-                          value={weightMode}
-                          onChange={(e) => setWeightModeAndRecalc(e.target.value)}
-                        >
-                          {WEIGHT_MODES.map((x) => (
-                            <option key={x.value} value={x.value}>{x.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {tournamentActionMsg && <div className="text-xs text-slate-400 rounded-xl border border-slate-800 bg-slate-900/40 px-3 py-2">{tournamentActionMsg}</div>}
+        </div>
+      </div>
+    </SectionCard>
 
-                    {isManualGroupsMode(weightMode) && (
-                      <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 space-y-3">
-                        <div className="font-semibold text-sky-300 text-sm">Manual Groups per Age Category</div>
-                        <div className="text-xs text-slate-400">Enter group names separated by commas or new lines. Each age category can have its own groups.</div>
-                        <div className="grid md:grid-cols-2 gap-3">
-                          {competitiveAgeGroups(tournamentScope).map((g) => (
-                            <div key={g.numb}>
-                              <div className="text-xs text-slate-400 mb-1" {...ageGroupTitleProps(g.numb, tournamentScope)}>{g.label}</div>
-                              <textarea
-                                rows={2}
-                                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm"
-                                value={manualGroupsForAge(manualGroupsByAge, g.numb, tournamentScope).join(", ")}
-                                onChange={(e) => updateManualGroupsForAge(g.numb, e.target.value)}
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+    <SectionCard title="Quick Flow">
+      <div className="grid md:grid-cols-5 gap-3 text-sm">
+        {[{n:"1",t:"Settings",d:"Set scope, mats and rules"},{n:"2",t:"Players",d:"Add or import athletes"},{n:"3",t:"Referees",d:"Create master referee list"},{n:"4",t:"Draw",d:"Generate bouts and schedule"},{n:"5",t:"Scoreboard",d:"Run and save results"}].map((x)=>(
+          <div key={x.n} className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+            <div className="w-8 h-8 rounded-full bg-sky-700 flex items-center justify-center font-black mb-2">{x.n}</div>
+            <div className="font-semibold text-white">{x.t}</div>
+            <div className="text-xs text-slate-400 mt-1">{x.d}</div>
+          </div>
+        ))}
+      </div>
+    </SectionCard>
 
-                    <div className="text-xs text-slate-400 rounded-xl border border-slate-800 bg-slate-950/50 p-3">
-                      The default weight list changes automatically based on the selected tournament type:
-                      <span className="text-sky-300 font-semibold ml-1">
-                        {TOURNAMENT_SCOPES.find((x) => x.value === tournamentScope)?.label || tournamentScope}
-                      </span>
-                    </div>
+    <SectionCard title="System Readiness Check">
+      <div className="grid md:grid-cols-4 gap-3 text-sm">
+        {[
+          { label: "Tournament", ok: !!currentTournamentMeta, detail: currentTournamentMeta?.name || "Not created/loaded" },
+          { label: "Players", ok: players.length > 0, detail: players.length + " added" },
+          { label: "Referees", ok: refs.length > 0, detail: refs.length + " added" },
+          { label: "Schedule", ok: !!(schedule?.bouts?.length), detail: (schedule?.bouts?.length || 0) + " bouts" }
+        ].map((x) => (
+          <div key={x.label} className={"rounded-2xl border p-4 " + (x.ok ? "border-emerald-800 bg-emerald-950/20" : "border-slate-800 bg-slate-950/60")}>
+            <div className={"text-xs uppercase tracking-wide " + (x.ok ? "text-emerald-300" : "text-slate-500")}>{x.ok ? "Ready" : "Pending"}</div>
+            <div className="font-semibold text-white mt-1">{x.label}</div>
+            <div className="text-xs text-slate-400 mt-1 truncate">{x.detail}</div>
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-slate-500 mt-3">This check is informational only. The system remains Hybrid: you can operate offline and sync later.</p>
+    </SectionCard>
 
-                    {!isManualGroupsMode(weightMode) && (
-                    <div className="space-y-3 text-sm">
-                      {activeAgeGroups(tournamentScope).filter((g) => g.competitive).map((g) => (
-                        <div key={g.numb} className="bg-slate-900/70 border border-slate-800 rounded-xl p-4">
-                          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                            <div className="font-semibold text-sky-300" {...ageGroupTitleProps(g.numb, tournamentScope)}>{g.label}</div>
-                            <div className="text-xs text-slate-400">
-                              Default duration: <span className="text-slate-200">{g.defaultSeconds ? Math.round(g.defaultSeconds / 60) + " min" : "-"}</span>
-                            </div>
-                          </div>
-                          <div className="grid md:grid-cols-2 gap-3">
-                            <div>
-                              <div className="text-slate-400 text-xs mb-2">Men Weights</div>
-                              <div className="flex flex-wrap gap-2">
-                                {weightsForGroup(g.numb, "M", tournamentScope).map((w) => fmtClass(w)).map((w) => (
-                                  <span key={g.numb + "M" + w} className="px-2 py-1 rounded-full bg-slate-800 border border-slate-700">
-                                    {w}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                            <div>
-                              <div className="text-slate-400 text-xs mb-2">Women Weights</div>
-                              <div className="flex flex-wrap gap-2">
-                                {weightsForGroup(g.numb, "F", tournamentScope).map((w) => fmtClass(w)).map((w) => (
-                                  <span key={g.numb + "F" + w} className="px-2 py-1 rounded-full bg-slate-800 border border-slate-700">
-                                    {w}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    )}
-                  </div>
-                </div>
-              </SectionCard>
+    <SectionCard title="Backup / Restore">
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={exportTournamentJSON} className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-900 hover:border-emerald-500">Export JSON Backup</button>
+        <button type="button" onClick={restoreTournamentFromJSON} className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-900 hover:border-amber-500">Restore JSON Backup</button>
+        <button type="button" onClick={() => { saveLocalSnapshot("manual_snapshot"); setTournamentActionMsg("Local offline snapshot saved."); }} className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-900 hover:border-sky-500">Save Local Snapshot</button>
+        <button type="button" onClick={restoreLocalSnapshot} className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-900 hover:border-sky-500">Restore Local Snapshot</button>
+        <button type="button" onClick={exportLeagueStandingsCSV} className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-900 hover:border-purple-500">Export League Standings CSV</button>
+      </div>
+      <p className="text-xs text-slate-400 mt-3">Keep a JSON backup during real tournaments, especially before closing the laptop or switching networks.</p>
+    </SectionCard>
   </div>
 )}
 
 {tab === "settings" && (
   <SectionCard title="Settings">
-    <div className="space-y-4 text-sm">
-      <div className="flex flex-wrap items-center gap-3">
-        <label className="text-slate-200">
-          Referee main-role avoid span (bouts):
-        </label>
-        <input
-          type="number"
-          min={1}
-          max={20}
-          className="w-24 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1"
-          value={refAvoidSpan}
-          onChange={(e) =>
-            setRefAvoidSpan(Number(e.target.value || 1))
-          }
-        />
-        <span className="text-slate-400">
-          Higher value = more rotation before the same referee is main again.
-        </span>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <label className="text-slate-200">Number of Gillams:</label>
-        <input
-          type="number"
-          min={1}
-          max={8}
-          className="w-24 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1"
-          value={numGillams}
-          onChange={(e) =>
-            setNumGillams(Math.max(1, Number(e.target.value || 1)))
-          }
-        />
-        <span className="text-slate-400">
-          Gillams will be named: {gillamNames.join(", ")}.
-        </span>
-      </div>
-
-      {/* NEW: Round Robin threshold */}
-      <div className="flex flex-wrap items-center gap-3">
-        <label className="text-slate-200">
-          Use Round Robin when players ≤
-        </label>
-        <input
-          type="number"
-          min={3}
-          max={10}
-          className="w-24 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1"
-          value={roundRobinMax}
-          onChange={(e) => {
-            const v = Number(e.target.value || 0);
-            const clamped = Math.min(10, Math.max(3, v));
-            setRoundRobinMax(clamped);
-          }}
-        />
-        <span className="text-slate-400">
-          Groups with {" > "} {roundRobinMax} players will use Single Elimination.
-        </span>
-      </div>
-      {/* END NEW BLOCK */}
-
-      {/* NEW: Backend server URL & Test Connection */}
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="text-slate-200">
-            Backend server URL (for multiple scoreboards):
-          </label>
-          <input
-            type="text"
-            className="w-72 max-w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1"
-            placeholder="http://localhost:3000"
-            value={serverUrl}
-            onChange={(e) => setServerUrl(e.target.value)}
-          />
-          <button
-            type="button"
-            onClick={testServerConnection}
-            className="px-3 py-1 rounded-xl text-xs font-semibold border
-                       border-slate-700 bg-slate-900 hover:border-sky-500"
-          >
-            Test Connection
-          </button>
+    <div className="space-y-5 text-sm">
+      <div className="grid xl:grid-cols-3 md:grid-cols-2 gap-4">
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-3">
+          <div className="text-sm font-semibold text-sky-300">Tournament Type</div>
+          <select className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2" value={tournamentScope} onChange={(e) => handleTournamentScopeChange(e.target.value)}>
+            {TOURNAMENT_SCOPES.map((x) => (<option key={x.value} value={x.value}>{x.label}</option>))}
+          </select>
+          <p className="text-xs text-slate-500">Default is International. Existing old data using External is treated as International.</p>
         </div>
-        <div className="text-xs">
-          {serverStatus === "ok" && (
-            <span className="text-emerald-400">
-              ✅ {serverStatusMsg || "Server is online."}
-            </span>
+
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-3">
+          <div className="text-sm font-semibold text-sky-300">Affiliation Mode</div>
+          {isInternalScope(tournamentScope) ? (
+            <select className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2" value={normalizedAffiliationMode(tournamentScope, affiliationMode)} onChange={(e) => setAffiliationModeAndRecalc(e.target.value)}>
+              <option value="none">No Affiliation</option>
+              <option value="club">Club</option>
+            </select>
+          ) : (
+            <div className="px-3 py-2 rounded-xl border border-slate-800 bg-slate-900 text-slate-300">Country</div>
           )}
-          {serverStatus === "error" && (
-            <span className="text-red-400">
-              ❌ {serverStatusMsg || "Cannot reach server."}
-            </span>
-          )}
-          {serverStatus === "idle" && serverStatusMsg && (
-            <span className="text-slate-400">
-              {serverStatusMsg}
-            </span>
-          )}
-          {!serverStatusMsg && (
-            <span className="text-slate-500">
-              Leave empty for solo mode. If set, schedule will be synced to /api/schedule.
-            </span>
-          )}
+          <p className="text-xs text-slate-500">International tournaments always use country mode.</p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-3">
+          <div className="text-sm font-semibold text-sky-300">Weight / Group Mode</div>
+          <select className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2" value={weightMode} onChange={(e) => setWeightModeAndRecalc(e.target.value)}>
+            {WEIGHT_MODES.map((x) => (<option key={x.value} value={x.value}>{x.label}</option>))}
+          </select>
+          <p className="text-xs text-slate-500">Auto weights classify by age/sex/weight. Manual groups are for custom divisions.</p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-3">
+          <div className="text-sm font-semibold text-sky-300">Gillams</div>
+          <input type="number" min={1} max={8} className="w-28 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2" value={numGillams} onChange={(e) => setNumGillams(Math.max(1, Number(e.target.value || 1)))} />
+          <p className="text-xs text-slate-500">Current: {gillamNames.join(", ")}</p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-3">
+          <div className="text-sm font-semibold text-sky-300">Round Robin Threshold</div>
+          <div className="flex items-center gap-2">
+            <span className="text-slate-400">Use Round Robin when players ≤</span>
+            <input type="number" min={3} max={10} className="w-24 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2" value={roundRobinMax} onChange={(e) => { const v = Number(e.target.value || 0); setRoundRobinMax(Math.min(10, Math.max(3, v))); }} />
+          </div>
+          <p className="text-xs text-slate-500">Groups above this number use Single Elimination.</p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-3">
+          <div className="text-sm font-semibold text-sky-300">Match Duration</div>
+          <input type="number" min="0" step="30" className="w-36 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2" value={manualDurationSeconds || ""} onChange={(e) => setManualDurationSeconds(Number(e.target.value || 0))} placeholder="0" />
+          <p className="text-xs text-slate-500">0 = use category default. Any value overrides all bouts in seconds.</p>
         </div>
       </div>
 
-      <p className="text-slate-400">
-        Timer is now based on tournament category, with optional manual duration override. Half-time alert uses the actual match duration.
-      </p>
+      <div className="grid lg:grid-cols-2 gap-4">
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-3">
+          <div className="text-sm font-semibold text-sky-300">Referee Assignment Settings</div>
+          <select className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2" value={refAssignmentMode} onChange={(e) => setRefAssignmentMode(e.target.value)}>
+            <option value="global">Global Rotation Across All Gillams</option>
+            <option value="gillam_pool">Gillam Pool Assignment</option>
+          </select>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="text-slate-300">Main-role avoid span:</label>
+            <input type="number" min={1} max={20} className="w-24 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2" value={refAvoidSpan} onChange={(e) => setRefAvoidSpan(Number(e.target.value || 1))} />
+          </div>
+          <p className="text-xs text-slate-500">This controls how many bouts should pass before the same referee is used as main referee again.</p>
+        </div>
+
+        {isManualGroupsMode(weightMode) && (
+          <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-3">
+            <div className="text-sm font-semibold text-sky-300">Manual Groups</div>
+            <p className="text-xs text-slate-500">Manual group names are edited in the player classification workflow. This card confirms manual grouping is active.</p>
+            <div className="text-xs text-slate-400">Active age groups: {competitiveAgeGroups(tournamentScope).map((g) => g.label).join(", ")}</div>
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+        <div className="text-sm font-semibold text-sky-300 mb-2">Settings Scope</div>
+        <p className="text-xs text-slate-400">Server connection, tournament creation, backup and restore are now managed from Home. This Settings page is only for tournament rules and operating configuration.</p>
+      </div>
     </div>
   </SectionCard>
 )}
@@ -3664,10 +4330,12 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                   />
                 </div>
 
+                <div className="mb-3 flex flex-wrap items-center gap-3"><input className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 min-w-[280px]" placeholder="Search players..." value={playerSearch} onChange={(e)=>setPlayerSearch(e.target.value)} /><span className="text-sm text-slate-400">Showing {filteredPlayers.length} / {players.length}</span></div>
                 <div className="overflow-x-auto rounded-xl border border-slate-800 w-full">
                   <table className="w-max min-w-full table-auto text-sm whitespace-nowrap">
                     <thead className="bg-slate-900/60 text-slate-300">
                       <tr>
+                        <th className="p-2 text-right whitespace-nowrap">#</th>
                         <th className="p-2 text-right whitespace-nowrap">Name</th>
                         <th className="p-2 text-right whitespace-nowrap">{affiliationLabel(tournamentScope, affiliationMode)}</th>
                         <th className="p-2 text-right whitespace-nowrap">Code</th>
@@ -3683,8 +4351,9 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {players.map((p, idx) => (
-                        <tr key={idx} className="border-t border-slate-800">
+                      {filteredPlayers.map(({ p, idx }) => (
+                        <tr key={idx} className="border-t border-slate-800 odd:bg-slate-950/40 even:bg-slate-900/30 hover:bg-sky-950/30">
+                          <td className="p-2 text-slate-400 font-mono text-center">{idx + 1}</td>
                           <td className="p-2">
                             <input
                               className="w-[clamp(14rem,22vw,24rem)] bg-slate-950 border border-slate-800 rounded-xl px-3 py-1"
@@ -3793,7 +4462,7 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                           </td>
                         </tr>
                       ))}
-                      {players.length === 0 && (
+                      {filteredPlayers.length === 0 && (
                         <tr>
                           <td className="p-3 text-slate-400" colSpan={isManualGroupsMode(weightMode) ? 12 : 11}>
                             No players yet — use Add Player or import TXT.
@@ -3803,11 +4472,15 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                     </tbody>
                   </table>
                 </div>
+                <div className="mt-3 flex justify-end"><button onClick={addPlayer} className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500">Add Player</button></div>
               </SectionCard>
             )}
 
             {tab === "refs" && (
               <SectionCard title="Referees">
+                <div className="mb-3 rounded-2xl border border-sky-900/60 bg-sky-950/20 px-4 py-3 text-sm text-slate-300">
+                  <strong className="text-sky-300">Master Data:</strong> Add, edit, import, and delete referees here only. Use integrated Referee Management for assignments, final-pool selection, conflict review, and evaluations inside Main Web.
+                </div>
                 <div className="flex flex-wrap items-center gap-3 mb-3">
                   <button
                     onClick={addRef}
@@ -3872,10 +4545,12 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                   </div>
                 </div>
 
+                <div className="mb-3 flex flex-wrap items-center gap-3"><input className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 min-w-[280px]" placeholder="Search referees..." value={refSearch} onChange={(e)=>setRefSearch(e.target.value)} /><span className="text-sm text-slate-400">Showing {filteredRefs.length} / {refs.length}</span></div>
                 <div className="overflow-x-auto rounded-xl border border-slate-800">
                   <table className="w-full text-sm">
                     <thead className="bg-slate-900/60 text-slate-300">
                       <tr>
+                        <th className="p-2 text-right">#</th>
                         <th className="p-2 text-right">Ref No</th>
                         <th className="p-2 text-right">Name</th>
                         <th className="p-2 text-right">{affiliationLabel(tournamentScope, affiliationMode)}</th>
@@ -3887,8 +4562,9 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {refs.map((r, idx) => (
-                        <tr key={idx} className="border-t border-slate-800">
+                      {filteredRefs.map(({ r, idx }) => (
+                        <tr key={idx} className="border-t border-slate-800 odd:bg-slate-950/40 even:bg-slate-900/30 hover:bg-sky-950/30">
+                          <td className="p-2 text-slate-400 font-mono text-center">{idx + 1}</td>
                           <td className="p-2">
                             <input
                               className="w-24 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1 text-center font-mono"
@@ -3981,15 +4657,201 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                           </td>
                         </tr>
                       ))}
-                      {refs.length === 0 && (
+                      {filteredRefs.length === 0 && (
                         <tr>
-                          <td className="p-3 text-slate-400" colSpan={isGillamPoolMode ? 8 : 6}>
+                          <td className="p-3 text-slate-400" colSpan={isGillamPoolMode ? 9 : 7}>
                             No referees yet — use Add Referee.
                           </td>
                         </tr>
                       )}
                     </tbody>
                   </table>
+                </div>
+                <div className="mt-3 flex justify-end"><button onClick={addRef} className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500">Add Referee</button></div>
+              </SectionCard>
+            )}
+
+            {tab === "refMgmt" && (
+              <SectionCard title="Integrated Referee Management">
+                <div className="mb-4 rounded-2xl border border-sky-900/60 bg-sky-950/20 p-4">
+                  <div className="text-sky-200 font-bold text-lg">Referee operations are now built into Main Web</div>
+                  <div className="text-sm text-slate-300 mt-1">
+                    Use this tab for match assignments, final referee pool, evaluations, conflict review, and performance profiles. Add/edit/delete referee master data only from the Referees tab.
+                  </div>
+                </div>
+
+                <div className="grid lg:grid-cols-4 gap-4 mb-4">
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                    <div className="text-slate-400 text-xs uppercase">Referees</div>
+                    <div className="text-3xl font-black mt-1">{refs.length}</div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                    <div className="text-slate-400 text-xs uppercase">Bouts</div>
+                    <div className="text-3xl font-black mt-1">{schedule?.bouts?.length || 0}</div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                    <div className="text-slate-400 text-xs uppercase">Conflicts</div>
+                    <div className="text-3xl font-black mt-1 text-amber-300">{refManagementIssues.errors.length + refManagementIssues.warnings.length}</div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                    <div className="text-slate-400 text-xs uppercase">Final Pool</div>
+                    <div className="text-3xl font-black mt-1 text-emerald-300">{finalRefPool.length}</div>
+                  </div>
+                </div>
+
+                <div className="grid lg:grid-cols-3 gap-4 mb-4">
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                    <div className="text-sky-300 font-semibold mb-2">Operational Actions</div>
+                    <div className="flex flex-wrap gap-2">
+                      <button onClick={autoAssignTopRatedOperational} className="px-4 py-2 rounded-xl bg-indigo-700 hover:bg-indigo-600">Auto Assign Top Rated</button>
+                      <button onClick={saveOperationalAssignments} className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600">Save Assignments</button>
+                      <button onClick={saveFinalPoolToServer} className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600">Save Final Pool</button>
+                      <button onClick={cleanFinalRefPool} className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700">Clean Pool</button>
+                    </div>
+                    {refMgmtStatusMsg && <div className="mt-3 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-300">{refMgmtStatusMsg}</div>}
+                  </div>
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                    <div className="text-sky-300 font-semibold mb-2">Final Referee Pool</div>
+                    <div className="text-sm text-slate-400">Selected: {finalRefPool.length}</div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button onClick={() => setRefMgmtOnlyFinals((v) => !v)} className="px-3 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs">{refMgmtOnlyFinals ? "Show All" : "Show Final Pool Only"}</button>
+                      <button onClick={() => setFinalRefPool((refs || []).map((r) => r.id))} className="px-3 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs">Select All</button>
+                      <button onClick={() => setFinalRefPool([])} className="px-3 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs">Clear</button>
+                    </div>
+                    <div className="text-xs text-slate-500 mt-2">Final pool is used to prioritize finals and semi-finals. You can still override manually per bout.</div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                    <div className="text-sky-300 font-semibold mb-2">Conflict Rules</div>
+                    <div className="flex flex-wrap gap-2 text-xs mb-2">
+                      <span className="px-2 py-1 rounded-full bg-rose-950/40 border border-rose-700 text-rose-300">Errors: {refManagementIssues.errors.length}</span>
+                      <span className="px-2 py-1 rounded-full bg-amber-950/40 border border-amber-700 text-amber-300">Warnings: {refManagementIssues.warnings.length}</span>
+                    </div>
+                    <div className="text-xs text-slate-400 space-y-1"><div>• Prevent same referee twice in one match.</div><div>• Warn if same referee is selected on two Gillams in the same bout order.</div><div>• Evaluation score supports finals selection.</div></div>
+                  </div>
+                </div>
+
+                {(refManagementIssues.errors.length > 0 || refManagementIssues.warnings.length > 0) && (
+                  <div className="grid md:grid-cols-2 gap-3 mb-4">
+                    <div className="rounded-2xl border border-rose-800 bg-rose-950/20 p-3">
+                      <div className="text-rose-300 font-semibold text-sm mb-2">Blocking / Critical Issues</div>
+                      {refManagementIssues.errors.length ? refManagementIssues.errors.map((x, i) => <div key={i} className="text-sm text-rose-100 mb-1">• {x}</div>) : <div className="text-sm text-slate-500">No errors.</div>}
+                    </div>
+                    <div className="rounded-2xl border border-amber-800 bg-amber-950/20 p-3">
+                      <div className="text-amber-300 font-semibold text-sm mb-2">Warnings</div>
+                      {refManagementIssues.warnings.length ? refManagementIssues.warnings.map((x, i) => <div key={i} className="text-sm text-amber-100 mb-1">• {x}</div>) : <div className="text-sm text-slate-500">No warnings.</div>}
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid xl:grid-cols-5 gap-4">
+                  <div className="xl:col-span-2 rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                      <h3 className="text-sky-300 font-bold">Referees & Final Pool</h3>
+                      <input className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 min-w-[220px]" placeholder="Search referees..." value={refMgmtSearch} onChange={(e)=>setRefMgmtSearch(e.target.value)} />
+                    </div>
+                    <div className="overflow-x-auto rounded-xl border border-slate-800 max-h-[520px] overflow-y-auto">
+                      <table className="w-full text-sm">
+                        <thead className="sticky top-0 bg-slate-900 text-slate-300 z-10"><tr><th className="p-2 text-right">#</th><th className="p-2 text-right">Final</th><th className="p-2 text-right">Ref</th><th className="p-2 text-right">Level</th><th className="p-2 text-right">Avg</th><th className="p-2 text-right">Action</th></tr></thead>
+                        <tbody>{filteredMgmtRefs.map(({r,idx})=>(<tr key={r.id || idx} className="border-t border-slate-800 odd:bg-slate-950/40 even:bg-slate-900/30 hover:bg-sky-950/30"><td className="p-2 font-mono text-slate-400">{idx+1}</td><td className="p-2"><input type="checkbox" checked={finalRefPool.includes(r.id)} onChange={(e)=>{ setFinalRefPool((prev)=>e.target.checked?[...new Set([...prev,r.id])]:prev.filter((x)=>x!==r.id)); markUnsynced(); }}/></td><td className="p-2">{formatRefDisplay(r, "number_name")}</td><td className="p-2">{r.level || "Local"} / {rankToStars(r.rank)}</td><td className="p-2">{refereeAverageScore(r.id) || "-"}</td><td className="p-2"><button className="px-3 py-1 rounded-xl bg-amber-700 hover:bg-amber-600" onClick={()=>setEvaluationDraft(blankEvaluation(r.id, schedule?.bouts?.[0]?.boutNo || 1))}>Evaluate</button></td></tr>))}{filteredMgmtRefs.length === 0 && <tr><td colSpan={6} className="p-3 text-slate-400">No referees match the current filter.</td></tr>}</tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="xl:col-span-3 rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                      <h3 className="text-sky-300 font-bold">Match Assignments</h3>
+                      <div className="flex flex-wrap gap-2">
+                        <input className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 min-w-[260px]" placeholder="Search bout / gillam / category..." value={refMgmtBoutSearch} onChange={(e)=>setRefMgmtBoutSearch(e.target.value)} />
+                        <select className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2" value={refMgmtStageFilter} onChange={(e)=>setRefMgmtStageFilter(e.target.value)}>
+                          <option value="all">All stages</option>
+                          {refMgmtStages.map((stage)=><option key={stage} value={stage}>{stage}</option>)}
+                        </select>
+                      </div>
+                    </div>
+
+                    {!schedule?.bouts?.length ? (
+                      <div className="rounded-2xl border border-amber-800 bg-amber-950/20 p-5 text-amber-100">
+                        No matches found. Generate the draw first from the Draw tab, then return here for referee assignment.
+                      </div>
+                    ) : (
+                      <div className="overflow-y-auto rounded-xl border border-slate-800 max-h-[620px]">
+                        <table className="w-full table-fixed text-xs">
+                          <thead className="sticky top-0 bg-slate-900 text-slate-300 z-10">
+                            <tr>
+                              <th className="p-2 text-right w-[5%]">#</th>
+                              <th className="p-2 text-right w-[13%]">Bout / Mat</th>
+                              <th className="p-2 text-right w-[26%]">Category & Players</th>
+                              <th className="p-2 text-right w-[40%]">Officials</th>
+                              <th className="p-2 text-right w-[16%]">Evaluate</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {refMgmtBouts.map(({ b, idx, A, G, assignment, category }) => {
+                              const asg = assignment || {};
+                              const refOptions = eligibleRefsForBout(b);
+                              const refSelectClass = "w-full max-w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-[11px]";
+                              const evalButtons = [
+                                [asg.mainRef, "Main"],
+                                [asg.judge1, "J1"],
+                                [asg.judge2, "J2"]
+                              ].filter(([id]) => id);
+                              return (
+                                <tr key={b.boutNo} className="border-t border-slate-800 odd:bg-slate-950/40 even:bg-slate-900/30 hover:bg-sky-950/30 align-top">
+                                  <td className="p-2 font-mono text-slate-400">{idx + 1}</td>
+                                  <td className="p-2">
+                                    <div className="font-bold text-slate-100">#{b.boutNo}</div>
+                                    <div className="text-slate-400 text-[11px]">{b.gillam || "-"}</div>
+                                    <div className="text-slate-500 text-[11px]">{b.stage || "-"}</div>
+                                  </td>
+                                  <td className="p-2 break-words">
+                                    <div className="font-semibold text-slate-200">{category || "-"}</div>
+                                    <div className="mt-1 text-[11px] text-blue-200 break-words">Blue: {A?.name || "-"}</div>
+                                    <div className="text-[11px] text-emerald-200 break-words">Green: {G?.name || "-"}</div>
+                                  </td>
+                                  <td className="p-2">
+                                    <div className="grid md:grid-cols-3 gap-2">
+                                      <label className="text-[11px] text-slate-400">Main
+                                        <select className={refSelectClass} value={asg.mainRef || ""} onChange={(e)=>updateManualAssignment(b.boutNo, { mainRef: e.target.value || null, judge1: asg.judge1 || null, judge2: asg.judge2 || null })}>
+                                          <option value="">-- Select --</option>{refOptions.map((r)=><option key={r.id} value={r.id}>{formatRefDisplay(r, "number_name")}</option>)}
+                                        </select>
+                                      </label>
+                                      <label className="text-[11px] text-slate-400">Judge 1
+                                        <select className={refSelectClass} value={asg.judge1 || ""} onChange={(e)=>updateManualAssignment(b.boutNo, { mainRef: asg.mainRef || null, judge1: e.target.value || null, judge2: asg.judge2 || null })}>
+                                          <option value="">-- Select --</option>{refOptions.map((r)=><option key={r.id} value={r.id}>{formatRefDisplay(r, "number_name")}</option>)}
+                                        </select>
+                                      </label>
+                                      <label className="text-[11px] text-slate-400">Judge 2
+                                        <select className={refSelectClass} value={asg.judge2 || ""} onChange={(e)=>updateManualAssignment(b.boutNo, { mainRef: asg.mainRef || null, judge1: asg.judge1 || null, judge2: e.target.value || null })}>
+                                          <option value="">-- Select --</option>{refOptions.map((r)=><option key={r.id} value={r.id}>{formatRefDisplay(r, "number_name")}</option>)}
+                                        </select>
+                                      </label>
+                                    </div>
+                                  </td>
+                                  <td className="p-2">
+                                    <div className="flex flex-col gap-1">
+                                      {evalButtons.map(([id, label]) => <button key={label} className="px-2 py-1 rounded-lg bg-amber-700 hover:bg-amber-600 text-[11px] whitespace-nowrap" onClick={()=>setEvaluationDraft(blankEvaluation(id, b.boutNo))}>⭐ {label}</button>)}
+                                      {evalButtons.length === 0 && <span className="text-slate-500 text-[11px]">Assign refs first</span>}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                            {refMgmtBouts.length === 0 && <tr><td colSpan={5} className="p-4 text-slate-400">No matches match the current filters.</td></tr>}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                  <h3 className="text-sky-300 font-bold mb-3">Referee Performance Profile</h3>
+                  <div className="overflow-x-auto rounded-xl border border-slate-800 max-h-[360px] overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0 bg-slate-900 text-slate-300 z-10"><tr><th className="p-2 text-right">Rank</th><th className="p-2 text-right">Referee</th><th className="p-2 text-right">Matches</th><th className="p-2 text-right">Avg</th><th className="p-2 text-right">Tier</th><th className="p-2 text-right">Ratings</th></tr></thead>
+                      <tbody>{refereePerformanceProfile.map((r, idx)=>(<tr key={r.id || idx} className="border-t border-slate-800 odd:bg-slate-950/40 even:bg-slate-900/30"><td className="p-2">{idx + 1}</td><td className="p-2">#{r.refNo} {r.name}</td><td className="p-2">{r.matches}</td><td className="p-2">{r.avg}</td><td className="p-2">{r.tier}</td><td className="p-2">{r.totals?.length || 0}</td></tr>))}{refereePerformanceProfile.length === 0 && <tr><td colSpan={6} className="p-3 text-slate-400">No referee data.</td></tr>}</tbody>
+                    </table>
+                  </div>
                 </div>
               </SectionCard>
             )}
@@ -4403,13 +5265,6 @@ Hybrid logic per weight:
                       <span className="text-sm text-slate-400">
                         Participant affiliation and weights/groups are locked from the draw.
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => refreshResultsFromServer(false)}
-                        className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-900 hover:border-sky-500"
-                      >
-                        Refresh Results
-                      </button>
                     </div>
 
                     {activeBoutNo && (() => {
@@ -4488,8 +5343,8 @@ Hybrid logic per weight:
                               <div className="w-full h-full flex flex-col justify-between">
                                 <div className="flex items-center justify-between mb-2 px-4">
                                   <div className="text-left">
-                                    <div className="text-xs text-yellow-400">{bout.gillam}</div>
-                                    <div className="text-sm text-yellow-300">
+                                    <div className="text-2xl md:text-5xl font-extrabold text-yellow-400 leading-tight">{bout.gillam}</div>
+                                    <div className="text-xl md:text-4xl font-bold text-yellow-300 leading-tight">
                                       {(bout.ageGroupLabel ? bout.ageGroupLabel + " • " : "") + sexForLabel + " " + bout.weight} ({bout.stage || ""})
                                     </div>
                                   </div>
@@ -4546,8 +5401,9 @@ Hybrid logic per weight:
                                     </button>
                                   </div>
                                   <div
-                                    onClick={() => setTimerRunning((running) => !running)}
-                                    title="Left click to start/stop timer"
+                                    onClick={handleTimerClick}
+                                    onDoubleClick={setTimerManuallyFromPrompt}
+                                    title="Click to start/stop timer • double-click to enter time manually • Spacebar also starts/stops"
                                     className={
                                       "flex-1 flex items-center justify-center font-bold tabular-nums cursor-pointer " +
                                       timerColorClass +
@@ -4561,8 +5417,8 @@ Hybrid logic per weight:
                             ) : (
                               <>
                                 <div className="text-left">
-                                  <div className="text-xs text-yellow-400">{bout.gillam}</div>
-                                  <div className="text-sm text-yellow-300">
+                                  <div className="text-2xl md:text-5xl font-extrabold text-yellow-400 leading-tight">{bout.gillam}</div>
+                                  <div className="text-xl md:text-4xl font-bold text-yellow-300 leading-tight">
                                     {(bout.ageGroupLabel ? bout.ageGroupLabel + " • " : "") + sexForLabel + " " + bout.weight} ({bout.stage || ""})
                                   </div>
                                 </div>
@@ -4584,8 +5440,9 @@ Hybrid logic per weight:
                                     </button>
                                   </div>
                                   <div
-                                    onClick={() => setTimerRunning((running) => !running)}
-                                    title="Left click to start/stop timer"
+                                    onClick={handleTimerClick}
+                                    onDoubleClick={setTimerManuallyFromPrompt}
+                                    title="Click to start/stop timer • double-click to enter time manually • Spacebar also starts/stops"
                                     className={
                                       "font-bold tabular-nums cursor-pointer " +
                                       timerColorClass +
@@ -4937,6 +5794,9 @@ Hybrid logic per weight:
                             >
                               FULL RESET
                             </button>
+                            <button onClick={()=>saveWithdrawalResult("blue")} className="px-4 py-2 rounded-xl bg-orange-700 hover:bg-orange-600 text-sm">Blue Withdrawal</button>
+                            <button onClick={()=>saveWithdrawalResult("green")} className="px-4 py-2 rounded-xl bg-orange-700 hover:bg-orange-600 text-sm">Green Withdrawal</button>
+                            <button onClick={()=>saveWithdrawalResult("both")} className="px-4 py-2 rounded-xl bg-red-800 hover:bg-red-700 text-sm">Double Withdrawal</button>
                             <button
                               onClick={() => setShowMeta((v) => !v)}
                               className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm"
@@ -4998,6 +5858,27 @@ Hybrid logic per weight:
               </SectionCard>
             )}
 
+
+          {evaluationDraft && (
+            <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+              <div className="w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl border border-slate-700 bg-slate-950 p-5 shadow-2xl">
+                <div className="flex items-center justify-between gap-3 mb-4"><h2 className="text-xl font-bold text-sky-300">Kurash Referee Evaluation Form – Mat Referee</h2><button className="px-3 py-1 rounded-xl bg-slate-800" onClick={()=>setEvaluationDraft(null)}>Close</button></div>
+                <div className="grid md:grid-cols-3 gap-3 mb-4 text-sm">
+                  <input className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2" placeholder="Evaluator Name" value={evaluationDraft.evaluatorName} onChange={(e)=>setEvaluationDraft({...evaluationDraft,evaluatorName:e.target.value})}/>
+                  <select className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2" value={evaluationDraft.refereeLevel} onChange={(e)=>setEvaluationDraft({...evaluationDraft,refereeLevel:e.target.value})}><option>Local</option><option>National</option><option>Continental</option><option>International</option></select>
+                  <div className="rounded-xl border border-slate-800 px-3 py-2 text-slate-300">Total: {evaluationTotal(evaluationDraft)} / 100 — {evaluationRating(evaluationTotal(evaluationDraft))}</div>
+                </div>
+                {REF_EVALUATION_CATEGORIES.map(([key,label,max])=>(
+                  <div key={key} className="rounded-2xl border border-slate-800 bg-slate-900/50 p-3 mb-3">
+                    <div className="font-semibold text-slate-200 mb-2">{label} ({max})</div>
+                    <div className="grid md:grid-cols-[160px_1fr] gap-3"><input type="number" min="0" max={max} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2" value={evaluationDraft.scores[key]} onChange={(e)=>setEvaluationDraft({...evaluationDraft,scores:{...evaluationDraft.scores,[key]:Math.max(0,Math.min(Number(max),Number(e.target.value)||0))}})}/><textarea className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2" placeholder="Comments" value={evaluationDraft.comments[key]} onChange={(e)=>setEvaluationDraft({...evaluationDraft,comments:{...evaluationDraft.comments,[key]:e.target.value}})}/></div>
+                  </div>
+                ))}
+                <div className="grid md:grid-cols-3 gap-3"><textarea className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2" placeholder="Strengths" value={evaluationDraft.strengths} onChange={(e)=>setEvaluationDraft({...evaluationDraft,strengths:e.target.value})}/><textarea className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2" placeholder="Areas for Improvement" value={evaluationDraft.areas} onChange={(e)=>setEvaluationDraft({...evaluationDraft,areas:e.target.value})}/><textarea className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2" placeholder="Recommendations" value={evaluationDraft.recommendations} onChange={(e)=>setEvaluationDraft({...evaluationDraft,recommendations:e.target.value})}/></div>
+                <div className="mt-4 flex justify-end"><button onClick={saveEvaluationDraft} className="px-5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600">Save Evaluation</button></div>
+              </div>
+            </div>
+          )}
           
 {tab === "reports" && (() => {
   // ======== SHARED HELPERS FOR REPORTS =========
@@ -6289,12 +7170,12 @@ const renderTable = () => {
                     <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
                       <h4 className="font-semibold mb-2 text-sky-300">Quick Start</h4>
                       <ol className="list-decimal pl-5 space-y-1">
-                        <li>Go to <strong>Settings</strong> and enter the backend server URL if you want multi-device mode.</li>
+                        <li>Choose your mode: work Offline, or enter the backend server URL for Hybrid / multi-device mode.</li>
                         <li>Create or load a tournament from <strong>Home</strong>.</li>
                         <li>Add players, then add referees with referee numbers.</li>
                         <li>Open <strong>Draw</strong>, assign each group to a Gillam, then click <strong>Generate</strong>.</li>
                         <li>Use <strong>Scoreboard</strong> to score fights and save results.</li>
-                        <li>Use <strong>Reports</strong> for medals, rankings, brackets, CSV, and referee reports.</li>
+                        <li>Use <strong>Reports</strong> and <strong>Home → Backup / Restore</strong> for medals, rankings, brackets, CSV, JSON backup, and referee reports.</li>
                       </ol>
                     </div>
                     <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
@@ -6372,14 +7253,29 @@ const renderTable = () => {
                     </div>
                   </div>
 
+
+                  <div className="rounded-2xl border border-emerald-900/60 bg-emerald-950/20 p-4">
+                    <h4 className="font-semibold mb-2 text-emerald-300">v1.0 Final Workflow Safety</h4>
+                    <ul className="list-disc pl-5 space-y-1">
+                      <li><strong>Offline first:</strong> every important edit can be preserved locally even when there is no server.</li>
+                      <li><strong>Export JSON Backup:</strong> creates a complete tournament file with players, referees, schedule, results, evaluations, and final referee pool.</li>
+                      <li><strong>Restore JSON Backup:</strong> reloads a saved tournament into the app and marks it as unsynced until you push it to the server.</li>
+                      <li><strong>League Standings CSV:</strong> exports round-robin rankings using wins/losses first, then tiebreak points.</li>
+                      <li><strong>Referee evaluation:</strong> stored evaluations are used for overall referee profiling and final referee candidate selection.</li>
+                    </ul>
+                  </div>
+
                   <div>
                     <h4 className="font-semibold mb-1">Recommended Workflow</h4>
                     <ol className="list-decimal pl-5 space-y-1">
-                      <li>Connect to the server from <strong>Settings</strong>.</li>
+                      <li>Connect to the server from <strong>Home</strong>.</li>
                       <li>Create a new tournament or load an existing one from <strong>Home</strong>.</li>
                       <li>Add players with real weight and DOB, or import them from TXT.</li>
                       <li>Add referees and assign referee numbers.</li>
-                      <li>Generate the draw and sync it to the server.</li>
+                      <li><strong>Phase 4 Live Tools:</strong> when a server URL is connected, the app refreshes the active tournament snapshot every 3 seconds when there are no unsynced local edits.</li>
+                        <li><strong>League Standings:</strong> RR tie-breaker now uses wins/losses first, then stored tiebreak points from throwing/scoring/penalty/withdrawal results.</li>
+                        <li><strong>Final Referee Candidates:</strong> server can rank referees by average evaluation for finals selection.</li>
+                        <li>Generate the draw and sync it to the server.</li>
                       <li>Use the scoreboard during the event and save each fight result.</li>
                       <li>Review outputs in <strong>Reports</strong> and export CSV when needed.</li>
                     </ol>
@@ -6389,6 +7285,185 @@ const renderTable = () => {
             )}
           </main>
 
+
+
+            {helpOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 md:p-6" role="dialog" aria-modal="true">
+                <div className="w-full max-w-6xl max-h-[92vh] overflow-hidden rounded-3xl border border-sky-800 bg-slate-950 shadow-2xl">
+                  <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 bg-slate-950/95 px-5 py-4">
+                    <div>
+                      <h2 className="text-xl md:text-2xl font-black text-sky-300">Kurash Tournament Manager Help</h2>
+                      <p className="text-xs md:text-sm text-slate-400 mt-1">In-app quick guide • Offline/Server workflow • Scoreboard • Referees • League • Troubleshooting</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setHelpOpen(false)}
+                      className="px-4 py-2 rounded-xl bg-rose-700 hover:bg-rose-600 border border-rose-500 text-white font-semibold"
+                    >
+                      Close
+                    </button>
+                  </div>
+
+                  <div className="max-h-[78vh] overflow-y-auto p-5 space-y-5 text-sm text-slate-300">
+                    <div className="grid lg:grid-cols-2 gap-4">
+                      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                        <h3 className="text-sky-300 font-bold mb-2">1) Recommended Tournament Flow</h3>
+                        <ol className="list-decimal pl-5 space-y-1">
+                          <li>Open <strong>Home</strong>.</li>
+                          <li>Create a <strong>Local Tournament</strong> for offline-first operation, or connect the server and use <strong>Create on Server</strong>.</li>
+                          <li>Open <strong>Settings</strong> once and confirm tournament type, Gillams, weights/groups, durations, and referee assignment rules.</li>
+                          <li>Add/import players in <strong>Players</strong>.</li>
+                          <li>Add/edit/delete referees only in <strong>Referees</strong>.</li>
+                          <li>Use <strong>Referee Management</strong> for assignments, final referee pool, conflicts, and evaluations.</li>
+                          <li>Generate the draw, operate the scoreboard, save every result, then review reports and backups.</li>
+                        </ol>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                        <h3 className="text-sky-300 font-bold mb-2">2) Home vs Settings</h3>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li><strong>Home:</strong> tournament creation/loading, server card, sync, backup/restore, readiness check.</li>
+                          <li><strong>Settings:</strong> rules and configuration only: International/Internal/School, affiliation mode, weight mode, Gillams, durations, referee assignment rules.</li>
+                          <li>The server connection belongs in <strong>Home</strong>, not Settings.</li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div className="grid lg:grid-cols-2 gap-4">
+                      <div className="rounded-2xl border border-emerald-900/60 bg-emerald-950/20 p-4">
+                        <h3 className="text-emerald-300 font-bold mb-2">3) Hybrid Offline / Server Mode</h3>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li>The system is <strong>offline-first</strong>; you can run a tournament without a server.</li>
+                          <li>When the server is connected, use <strong>Sync Now</strong> and <strong>Load Current</strong> to share data across screens.</li>
+                          <li>If the server fails, continue offline and export a JSON backup.</li>
+                          <li><strong>Unsynced changes</strong> means local data is newer than the server copy.</li>
+                        </ul>
+                      </div>
+
+                      <div className="rounded-2xl border border-amber-900/60 bg-amber-950/20 p-4">
+                        <h3 className="text-amber-300 font-bold mb-2">4) Backup / Restore Safety</h3>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li>Use <strong>Export JSON Backup</strong> before the tournament, during breaks, and after completion.</li>
+                          <li>The backup should preserve players, referees, schedule, results, referee evaluations, and final referee pool.</li>
+                          <li>Use <strong>Restore JSON Backup</strong> to recover from browser/server problems.</li>
+                          <li>Use CSV exports for standings and reports when needed in Excel.</li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                      <h3 className="text-sky-300 font-bold mb-2">5) Players Import Formats</h3>
+                      <div className="space-y-2">
+                        <div>
+                          <div className="font-semibold text-slate-100">Recommended TXT format</div>
+                          <code className="block mt-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs overflow-auto">name | affiliation | sex(M/F) | actualKg | [seed] | [dob YYYY-MM-DD]</code>
+                          <p className="mt-1 text-slate-400">Example: <span className="font-mono">Abdullah Alreedy | Al-Hilal Club | M | 81.4 | 1 | 1990-05-20</span></p>
+                        </div>
+                        <div>
+                          <div className="font-semibold text-slate-100">Legacy format</div>
+                          <code className="block mt-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs overflow-auto">name | affiliation | weightLabel | [seed]</code>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid lg:grid-cols-2 gap-4">
+                      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                        <h3 className="text-sky-300 font-bold mb-2">6) Referees vs Referee Management</h3>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li><strong>Referees Tab:</strong> the only source for adding, editing, deleting, searching, and importing basic referee data.</li>
+                          <li><strong>Referee Management:</strong> operational use only: assignments, conflict review, final pool, evaluation, and finals selection.</li>
+                          <li>Do not create duplicate referee records in the management screen.</li>
+                        </ul>
+                        <div className="mt-3">
+                          <div className="font-semibold text-slate-100">Referees TXT format</div>
+                          <code className="block mt-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs overflow-auto">refNo | name | affiliation | rank | [assignScope] | [poolGillam]</code>
+                          <p className="mt-1 text-slate-400">Example: <span className="font-mono">07 | Ref A | Al-Hilal Club | 3 | pool | Gillam A</span></p>
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                        <h3 className="text-sky-300 font-bold mb-2">7) Referee Evaluation & Finals</h3>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li>Evaluate referees by match from <strong>Referee Management</strong>.</li>
+                          <li>Evaluation domains: rules, positioning, timing, communication, match control, penalties, professionalism.</li>
+                          <li>Total score is /100 and rating is calculated automatically.</li>
+                          <li>Stored evaluations support overall referee profile and help choose referees for finals.</li>
+                          <li>Final referee pool can be selected manually or assisted by evaluation ranking.</li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                      <h3 className="text-sky-300 font-bold mb-2">8) Scoreboard Controls</h3>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li><strong>H / YO / CH:</strong> scores.</li>
+                          <li><strong>T / D / G:</strong> penalties.</li>
+                          <li><strong>Left click:</strong> add score/penalty.</li>
+                          <li><strong>Right click:</strong> remove the last same score/penalty.</li>
+                          <li><strong>Save Result:</strong> stores the match result locally and on server if connected.</li>
+                        </ul>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li><strong>Spacebar:</strong> start/stop timer unless typing in an input.</li>
+                          <li><strong>Single click on timer:</strong> start/stop timer.</li>
+                          <li><strong>Double click on timer:</strong> manually edit match time.</li>
+                          <li><strong>Gillam / age group / weight:</strong> enlarged for visibility.</li>
+                          <li><strong>Fullscreen:</strong> recommended during live matches.</li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div className="grid lg:grid-cols-2 gap-4">
+                      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                        <h3 className="text-sky-300 font-bold mb-2">9) Withdrawal Rules</h3>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li><strong>Single withdrawal / no show:</strong> the opponent wins automatically.</li>
+                          <li><strong>Knockout:</strong> the valid opponent advances to the next round.</li>
+                          <li><strong>League:</strong> withdrawal win counts lower than technical/scoring wins for tie-break purposes.</li>
+                          <li><strong>Double withdrawal:</strong> No Contest, no winner, no points, no one advances from that match.</li>
+                          <li>If a double-withdrawal creates an empty bracket slot, the next valid opponent receives a bye/walkover.</li>
+                          <li>In semi-final double withdrawal, the winner from the other semi-final may receive gold by walkover and silver may be withheld according to the adopted rules.</li>
+                        </ul>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                        <h3 className="text-sky-300 font-bold mb-2">10) League Standings</h3>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li>Primary ranking: wins/losses.</li>
+                          <li>Tie-breaker uses saved performance points only when wins/losses are tied.</li>
+                          <li>Throwing/scoring wins rank higher than penalty-based wins.</li>
+                          <li>Withdrawal wins rank lower than technical/scoring wins.</li>
+                          <li>Export standings CSV from Home/Reports when needed.</li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div className="grid lg:grid-cols-2 gap-4">
+                      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                        <h3 className="text-sky-300 font-bold mb-2">11) System Readiness Check</h3>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li>Check players count, referees count, schedule availability, unsynced changes, and server status.</li>
+                          <li>Before live use, confirm all screens are using the same server URL if online.</li>
+                          <li>Always create a backup before starting the first match.</li>
+                        </ul>
+                      </div>
+
+                      <div className="rounded-2xl border border-rose-900/60 bg-rose-950/20 p-4">
+                        <h3 className="text-rose-300 font-bold mb-2">12) Troubleshooting</h3>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li><strong>Black screen:</strong> use the latest package; Error Boundary should show the error instead of a blank screen.</li>
+                          <li><strong>Server not connected:</strong> continue offline, export JSON backup, then sync later.</li>
+                          <li><strong>Scoreboard not updating:</strong> verify the same server URL, use Sync Now, then reload scoreboard.</li>
+                          <li><strong>Wrong data after reload:</strong> Restore JSON Backup from the latest saved tournament backup.</li>
+                          <li><strong>Referee conflict:</strong> review Referee Management warnings before saving assignments.</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
           <footer className="max-w-[98vw] mx-auto px-4 pb-10 text-xs text-slate-400">
             Single-page web app – open index.html directly in your browser.
           </footer>
@@ -6396,8 +7471,40 @@ const renderTable = () => {
       );
     }
 
+    class AppErrorBoundary extends React.Component {
+      constructor(props) {
+        super(props);
+        this.state = { error: null };
+      }
+      static getDerivedStateFromError(error) {
+        return { error };
+      }
+      componentDidCatch(error, info) {
+        console.error("Kurash UI crash", error, info);
+      }
+      render() {
+        if (this.state.error) {
+          return (
+            <div className="min-h-screen bg-slate-950 text-slate-100 p-6">
+              <div className="max-w-3xl mx-auto rounded-3xl border border-rose-800 bg-rose-950/20 p-5">
+                <h1 className="text-2xl font-bold text-rose-300 mb-3">Kurash UI Error</h1>
+                <p className="text-slate-300 mb-3">The page did not go black. A JavaScript error was caught so you can report it safely.</p>
+                <pre className="whitespace-pre-wrap text-xs bg-black/40 rounded-xl p-3 overflow-auto">{String(this.state.error?.message || this.state.error)}</pre>
+                <button className="mt-4 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700" onClick={() => location.reload()}>Reload</button>
+              </div>
+            </div>
+          );
+        }
+        return this.props.children;
+      }
+    }
+
+    window.addEventListener("error", (event) => {
+      console.error("Global Kurash error", event.error || event.message);
+    });
+
     const root = ReactDOM.createRoot(document.getElementById("root"));
-    root.render(<App />);
+    root.render(<AppErrorBoundary><App /></AppErrorBoundary>);
   </script>
   <!-- APP SCRIPT END -->
 </body>
