@@ -311,8 +311,8 @@
               {noAff ? "NA" : (code || "CLB")}
             </div>
           )}
-          <span className="mt-1 text-sm md:text-base font-mono tracking-wide">{noAff ? "NA" : code}</span>
-          <span className="text-[10px] md:text-xs text-slate-300 max-w-[7rem] truncate" title={full}>{full}</span>
+          <span className="mt-1 text-xl md:text-3xl font-mono tracking-wide">{noAff ? "NA" : code}</span>
+          <span className="text-base md:text-2xl text-slate-300 max-w-[7rem] truncate" title={full}>{full}</span>
         </div>
       );
     }
@@ -568,6 +568,7 @@
       const [bout, setBout] = useState(persisted.bout);
       const [timerMs, setTimerMs] = useState(persisted.timerMs);
       const [timerRunning, setTimerRunning] = useState(false);
+      const [withdrawalMsg, setWithdrawalMsg] = useState("");
       const [sbEvents, setSbEvents] = useState(persisted.events || []);
       const [isFullscreen, setIsFullscreen] = useState(false);
       const [editOpen, setEditOpen] = useState(false);
@@ -719,6 +720,37 @@
         setTimerRunning(false);
       }
 
+      function handleTimerClick(e) {
+        // Keep double-click available for manual time editing.
+        if (e.detail > 1) return;
+        setTimerRunning((running) => !running);
+      }
+
+      
+      useEffect(() => {
+        function isEditableTarget(target) {
+          const tag = String(target?.tagName || "").toLowerCase();
+          return tag === "input" || tag === "textarea" || tag === "select" || target?.isContentEditable;
+        }
+
+        function onKeyDown(e) {
+          // Spacebar = Start / Stop timer from anywhere on the scoreboard screen.
+          // It is ignored only while typing in an editable field.
+          if (e.code !== "Space" && e.key !== " ") return;
+          if (isEditableTarget(e.target) || isEditableTarget(document.activeElement)) return;
+          e.preventDefault();
+          e.stopPropagation();
+          setTimerRunning((running) => !running);
+        }
+
+        document.addEventListener("keydown", onKeyDown, true);
+        window.addEventListener("keydown", onKeyDown, true);
+        return () => {
+          document.removeEventListener("keydown", onKeyDown, true);
+          window.removeEventListener("keydown", onKeyDown, true);
+        };
+      }, []);
+
       function addEvent(side, type) {
         setSbEvents((prev) => [...prev, { side, type, atMs: timerMs }]);
       }
@@ -826,6 +858,20 @@
         }
       }
 
+      function saveWithdrawalResult(kind) {
+        let resultType = "withdrawal";
+        let withdrawnSide = null;
+        let winnerSide = null;
+        if (kind === "blue") { withdrawnSide = "blue"; winnerSide = "green"; }
+        else if (kind === "green") { withdrawnSide = "green"; winnerSide = "blue"; }
+        else { resultType = "double_withdrawal"; }
+        setTimerRunning(false);
+        setWithdrawalMsg(resultType === "double_withdrawal" ? "Double withdrawal saved locally: No Contest / no winner." : `Withdrawal saved locally. Winner: ${winnerSide}`);
+        try {
+          localStorage.setItem(STORAGE_KEY + "_last_withdrawal", JSON.stringify({ resultType, withdrawnSide, winnerSide, bout, timerMs, savedAt: new Date().toISOString() }));
+        } catch (e) {}
+      }
+
       const scoreLabelClass = isFullscreen ? "font-bold text-xl md:text-2xl" : "font-bold text-base md:text-lg";
       const scoreValueClass = isFullscreen ? "font-mono text-4xl md:text-5xl" : "font-mono text-2xl md:text-3xl";
       const penLabelClass = isFullscreen ? "font-bold text-lg md:text-xl" : "font-bold text-sm md:text-base";
@@ -862,7 +908,7 @@
                   <div>
                     Bout: <span className="font-mono font-semibold">#{bout.boutNo}</span>
                   </div>
-                  <div className="text-slate-400">{bout.gillam} • {boutAgeLabel} • {sexForLabel} {boutSlot} ({bout.stage || "RR"})</div>
+                  <div className="text-sky-200 font-extrabold tracking-wide text-2xl md:text-4xl leading-tight">{bout.gillam} • {boutAgeLabel} • {sexForLabel} {boutSlot} ({bout.stage || "RR"})</div>
                 </button>
               </div>
             </div>
@@ -876,37 +922,37 @@
                   <div className="w-full h-full flex flex-col justify-between">
                     <div className="flex items-center justify-between mb-2 px-4">
                       <button onClick={quickEditMeta} className="text-left hover:text-sky-300 transition">
-                        <div className="text-xs text-yellow-400">{bout.gillam}</div>
-                        <div className="text-sm text-yellow-300">{boutAgeLabel} • {sexForLabel} {boutSlot} ({bout.stage || ""})</div>
+                        <div className="text-3xl md:text-6xl font-extrabold text-yellow-400 leading-tight">{bout.gillam}</div>
+                        <div className="text-2xl md:text-5xl font-bold text-yellow-300 leading-tight">{boutAgeLabel} • {sexForLabel} {boutSlot} ({bout.stage || ""})</div>
                       </button>
                       <div className="flex gap-2">
                         <button onClick={() => setTimerRunning(true)} className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs md:text-sm">Start</button>
                         <button onClick={() => setTimerRunning(false)} className="px-3 py-1 rounded-xl bg-amber-600 hover:bg-amber-500 text-xs md:text-sm">Stop</button>
-                        <button onClick={resetAllFields} className="px-3 py-1 rounded-xl bg-red-700 hover:bg-red-600 text-xs md:text-sm">FULL RESET</button>
+                        <button onClick={resetAllFields} className="px-3 py-1 rounded-xl bg-red-700 hover:bg-red-600 text-xs md:text-sm">FULL RESET</button><button onClick={() => saveWithdrawalResult("blue")} className="px-3 py-1 rounded-xl bg-orange-700 hover:bg-orange-600 text-xs md:text-sm">Blue WO</button><button onClick={() => saveWithdrawalResult("green")} className="px-3 py-1 rounded-xl bg-orange-700 hover:bg-orange-600 text-xs md:text-sm">Green WO</button><button onClick={() => saveWithdrawalResult("both")} className="px-3 py-1 rounded-xl bg-red-800 hover:bg-red-700 text-xs md:text-sm">Double WO</button>
                         <button onClick={() => document.fullscreenElement ? exitFullscreen() : enterFullscreen()} className="px-3 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs md:text-sm">{isFullscreen ? "Exit FS" : "Fullscreen"}</button>
                       </div>
                     </div>
                     <div className="flex-1 flex items-center justify-center gap-4">
                       <button onClick={() => adjustTimerBySeconds(1)} className="px-3 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-2xl md:text-4xl leading-none" title="Add 1 second">▲</button>
-                      <div onClick={() => setTimerRunning((running) => !running)} onDoubleClick={handleTimerDoubleClick} title="Click start/stop • Double click enter time" className={"flex-1 flex items-center justify-center font-bold tabular-nums cursor-pointer " + timerColorClass + " text-[18vh] leading-none select-none"}>{formatTime(timerMs)}</div>
+                      <div onClick={handleTimerClick} onDoubleClick={handleTimerDoubleClick} title="Click start/stop • Double click enter time" className={"flex-1 flex items-center justify-center font-bold tabular-nums cursor-pointer " + timerColorClass + " text-[18vh] leading-none select-none"}>{formatTime(timerMs)}</div>
                       <button onClick={() => adjustTimerBySeconds(-1)} className="px-3 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-2xl md:text-4xl leading-none" title="Subtract 1 second">▼</button>
                     </div>
                   </div>
                 ) : (
                   <>
                     <button onClick={quickEditMeta} className="text-left hover:text-sky-300 transition">
-                      <div className="text-xs text-yellow-400">{bout.gillam}</div>
-                      <div className="text-sm text-yellow-300">{boutAgeLabel} • {sexForLabel} {boutSlot} ({bout.stage || ""})</div>
+                      <div className="text-3xl md:text-6xl font-extrabold text-yellow-400 leading-tight">{bout.gillam}</div>
+                      <div className="text-2xl md:text-5xl font-bold text-yellow-300 leading-tight">{boutAgeLabel} • {sexForLabel} {boutSlot} ({bout.stage || ""})</div>
                     </button>
                     <div className="flex items-center gap-2">
                       <button onClick={() => adjustTimerBySeconds(1)} className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-lg leading-none" title="Add 1 second">▲</button>
-                      <div onClick={() => setTimerRunning((running) => !running)} onDoubleClick={handleTimerDoubleClick} title="Click start/stop • Double click enter time" className={"font-bold tabular-nums cursor-pointer " + timerColorClass + " text-5xl"}>{formatTime(timerMs)}</div>
+                      <div onClick={handleTimerClick} onDoubleClick={handleTimerDoubleClick} title="Click start/stop • Double click enter time" className={"font-bold tabular-nums cursor-pointer " + timerColorClass + " text-5xl"}>{formatTime(timerMs)}</div>
                       <button onClick={() => adjustTimerBySeconds(-1)} className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-lg leading-none" title="Subtract 1 second">▼</button>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <button onClick={() => setTimerRunning(true)} className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-sm">Start</button>
                       <button onClick={() => setTimerRunning(false)} className="px-3 py-1 rounded-xl bg-amber-600 hover:bg-amber-500 text-sm">Stop</button>
-                      <button onClick={resetAllFields} className="px-3 py-1 rounded-xl bg-red-700 hover:bg-red-600 text-sm">FULL RESET</button>
+                      <button onClick={resetAllFields} className="px-3 py-1 rounded-xl bg-red-700 hover:bg-red-600 text-sm">FULL RESET</button><button onClick={() => saveWithdrawalResult("blue")} className="px-3 py-1 rounded-xl bg-orange-700 hover:bg-orange-600 text-sm">Blue WO</button><button onClick={() => saveWithdrawalResult("green")} className="px-3 py-1 rounded-xl bg-orange-700 hover:bg-orange-600 text-sm">Green WO</button><button onClick={() => saveWithdrawalResult("both")} className="px-3 py-1 rounded-xl bg-red-800 hover:bg-red-700 text-sm">Double WO</button>
                       <button onClick={clearScoreboard} className="px-3 py-1 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm">Reset Bout</button>
                       <button onClick={newBout} className="px-3 py-1 rounded-xl bg-sky-700 hover:bg-sky-600 text-sm">New Bout</button>
                       <button onClick={() => document.fullscreenElement ? exitFullscreen() : enterFullscreen()} className="px-3 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm">{isFullscreen ? "Exit Fullscreen" : "Fullscreen"}</button>
@@ -915,6 +961,7 @@
                 )}
               </div>
 
+              {withdrawalMsg && <div className="rounded-xl border border-orange-700 bg-orange-950/50 text-orange-200 px-4 py-2 text-sm">{withdrawalMsg}</div>}
               <div className="flex-1 space-y-4">
                 <div className="bg-sky-900/60 border border-sky-700 rounded-2xl p-4">
                   <div className="flex justify-between items-center mb-2">
