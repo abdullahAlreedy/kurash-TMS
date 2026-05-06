@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charSet="UTF-8" />
+  <title>Kurash Offline Scoreboard v35 Final Stable</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-black text-slate-100">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useEffect, useMemo, useRef, useState } = React;
+
+    const MEN_FIGHT_SECONDS = 4 * 60;   // legacy fallback
+    const WOMEN_FIGHT_SECONDS = 3 * 60; // legacy fallback
+    const STORAGE_KEY = "kurash-scoreboard-offline-v35-final-stable";
+    const LEGACY_STORAGE_KEYS = ["kurash-scoreboard-offline-v7-affiliation-duration"];
+
+    const TOURNAMENT_SCOPES = [
+      { value: "external", label: "External" },
+      { value: "internal_local", label: "Internal Local" },
+      { value: "internal_school", label: "Internal School" }
+    ];
+
+    const AFFILIATION_MODES = [
+      { value: "country", label: "Country" },
+      { value: "club", label: "Club" },
+      { value: "none", label: "No Affiliation" }
+    ];
+
+    const WEIGHT_MODES = [
+      { value: "auto_weights", label: "Auto Weights" },
+      { value: "manual_groups", label: "Manual Group / No Weight" }
+    ];
+
+    const EXTERNAL_AGE_GROUPS = [
+      { numb: 101, label: "Senior", defaultSeconds: 5 * 60, weightGr: "senior" },
+      { numb: 102, label: "Junior", defaultSeconds: 4 * 60, weightGr: "junior" },
+      { numb: 103, label: "Cadet", defaultSeconds: 4 * 60, weightGr: "cadet" }
+    ];
+
+    const INTERNAL_AGE_GROUPS = [
+      { numb: 1, label: "First Division (+21)", defaultSeconds: 5 * 60, weightGr: 1 },
+      { numb: 2, label: "Youth B (-21)", defaultSeconds: 4 * 60, weightGr: 2 },
+      { numb: 3, label: "Youth A (-17)", defaultSeconds: 4 * 60, weightGr: 3 },
+      { numb: 4, label: "Cadets (-15)", defaultSeconds: 3 * 60, weightGr: 4 },
+      { numb: 5, label: "Cubs (-13)", defaultSeconds: 3 * 60, weightGr: 5 },
+      { numb: 6, label: "Flowers (-11)", defaultSeconds: 2 * 60, weightGr: 6 }
+    ];
+
+    const SCHOOL_AGE_GROUPS = [
+      { numb: 8, label: "Lower Primary", defaultSeconds: 2 * 60, weightGr: 6 },
+      { numb: 7, label: "Upper Primary", defaultSeconds: 3 * 60, weightGr: 5 },
+      { numb: 9, label: "Middle School", defaultSeconds: 3 * 60, weightGr: 4 },
+      { numb: 10, label: "High School", defaultSeconds: 4 * 60, weightGr: 3 }
+    ];
+
+    const INTERNAL_MALE_WEIGHTS_BY_GR = {
+      1: [60, 66, 73, 81, 90, 100, "100+"],
+      2: [55, 60, 66, 73, 81, 90, 100, "100+"],
+      3: [50, 55, 60, 66, 73, 81, 90, "90+"],
+      4: [34, 38, 42, 46, 50, 55, 60, 66, "66+"],
+      5: [27, 30, 34, 38, 42, 46, 50, 55, "55+"],
+      6: [24, 28, 32, 36, 42, 46, 52, 56, 60, "60+"]
+    };
+
+    const INTERNAL_FEMALE_WEIGHTS_BY_GR = {
+      1: [48, 52, 57, 63, 70, 78, "78+"],
+      2: [48, 52, 57, 63, 70, 78, "78+"],
+      3: [40, 44, 48, 52, 57, 63, 70, "70+"],
+      4: [32, 36, 40, 44, 48, 52, 57, 63, "63+"],
+      5: [24, 27, 30, 34, 38, 42, 46, 50, "50+"],
+      6: [20, 24, 28, 32, 36, 40, 44, 48, 52, "52+"]
+    };
+
+    const EXTERNAL_WEIGHTS = {
+      senior: { M: [60, 66, 73, 81, 90, 100, "100+"], F: [48, 52, 57, 63, 70, 78, "78+"] },
+      junior: { M: [60, 66, 73, 81, 90, 100, "100+"], F: [48, 52, 57, 63, 70, 78, "78+"] },
+      cadet: { M: [50, 55, 60, 66, 73, 81, 90, "90+"], F: [40, 44, 48, 52, 57, 63, 70, "70+"] }
+    };
+
+    const COUNTRY_CODE_OVERRIDES = {
+      "Saudi Arabia": "KSA",
+      "United Arab Emirates": "UAE",
+      "Qatar": "QAT",
+      "Bahrain": "BHR",
+      "Oman": "OMA",
+      "Kuwait": "KUW",
+      "Yemen": "YEM",
+      "Jordan": "JOR",
+      "Iraq": "IRQ",
+      "Syria": "SYR",
+      "Lebanon": "LBN",
+      "Palestine": "PLE",
+      "Iran": "IRI",
+      "Uzbekistan": "UZB",
+      "Kazakhstan": "KAZ",
+      "Tajikistan": "TJK",
+      "Kyrgyzstan": "KGZ",
+      "Turkmenistan": "TKM",
+      "Azerbaijan": "AZE",
+      "Georgia": "GEO",
+      "Armenia": "ARM",
+      "Turkey": "TUR",
+      "Russia": "RUS",
+      "Mongolia": "MGL",
+      "China": "CHN",
+      "Japan": "JPN",
+      "South Korea": "KOR",
+      "North Korea": "PRK",
+      "India": "IND",
+      "Pakistan": "PAK",
+      "Indonesia": "INA",
+      "Malaysia": "MAS",
+      "Singapore": "SGP",
+      "Thailand": "THA",
+      "Philippines": "PHI",
+      "Vietnam": "VIE",
+      "Sri Lanka": "SRI",
+      "Bangladesh": "BAN",
+      "Australia": "AUS",
+      "New Zealand": "NZL",
+      "United States": "USA",
+      "Canada": "CAN",
+      "Mexico": "MEX",
+      "Brazil": "BRA",
+      "Argentina": "ARG",
+      "Chile": "CHI",
+      "Colombia": "COL",
+      "Peru": "PER",
+      "Venezuela": "VEN",
+      "Egypt": "EGY",
+      "Morocco": "MAR",
+      "Algeria": "ALG",
+      "Tunisia": "TUN",
+      "Sudan": "SUD",
+      "Ethiopia": "ETH",
+      "Kenya": "KEN",
+      "Nigeria": "NGR",
+      "South Africa": "RSA",
+      "France": "FRA",
+      "Germany": "GER",
+      "Italy": "ITA",
+      "Spain": "ESP",
+      "Portugal": "POR",
+      "Belgium": "BEL",
+      "Netherlands": "NED",
+      "Switzerland": "SUI",
+      "Austria": "AUT",
+      "Sweden": "SWE",
+      "Norway": "NOR",
+      "Denmark": "DEN",
+      "Finland": "FIN",
+      "Greece": "GRE",
+      "Poland": "POL",
+      "Romania": "ROU",
+      "Serbia": "SRB",
+      "Croatia": "CRO",
+      "Ireland": "IRL",
+      "United Kingdom": "GBR"
+    };
+
+    const ALL_COUNTRY_NAMES = [
+      "Saudi Arabia","United Arab Emirates","Qatar","Bahrain","Oman","Kuwait","Yemen","Jordan","Iraq","Syria","Lebanon","Palestine","Iran",
+      "Uzbekistan","Kazakhstan","Tajikistan","Kyrgyzstan","Turkmenistan","Azerbaijan","Georgia","Armenia","Turkey","Russia","Mongolia","China","Japan","South Korea","North Korea","India","Pakistan","Indonesia","Malaysia","Singapore","Thailand","Philippines","Vietnam","Sri Lanka","Bangladesh","Australia","New Zealand",
+      "United States","Canada","Mexico","Brazil","Argentina","Chile","Colombia","Peru","Venezuela",
+      "Egypt","Morocco","Algeria","Tunisia","Sudan","Ethiopia","Kenya","Nigeria","South Africa",
+      "France","Germany","Italy","Spain","Portugal","Belgium","Netherlands","Switzerland","Austria","Sweden","Norway","Denmark","Finland","Greece","Poland","Romania","Serbia","Croatia","Ireland","United Kingdom"
+    ];
+
+    function autoCodeFromName(name) {
+      const letters = String(name || "").replace(/[^A-Za-z]/g, "").toUpperCase();
+      if (!letters) return "UNK";
+      return letters.length <= 3 ? letters : letters.slice(0, 3);
+    }
+
+    const COUNTRY_NAME_TO_CODE = Object.fromEntries(
+      ALL_COUNTRY_NAMES.map((fullName) => [fullName, COUNTRY_CODE_OVERRIDES[fullName] || autoCodeFromName(fullName)])
+    );
+
+    function isExternalScope(scope) { return scope === "external"; }
+    function activeAgeGroups(scope) {
+      if (scope === "internal_school") return SCHOOL_AGE_GROUPS;
+      if (scope === "internal_local") return INTERNAL_AGE_GROUPS;
+      return EXTERNAL_AGE_GROUPS;
+    }
+    function defaultAgeGroupNumb(scope) {
+      if (scope === "internal_school") return 8;
+      if (scope === "internal_local") return 1;
+      return 101;
+    }
+    function ageGroupByNumb(numb, scope) {
+      const groups = activeAgeGroups(scope);
+      return groups.find((g) => Number(g.numb) === Number(numb)) || groups[0];
+    }
+    function normalizedAffiliationMode(scope, mode) {
+      if (isExternalScope(scope)) return "country";
+      return mode === "club" ? "club" : "none";
+    }
+    function fmtClass(x) {
+      const t = String(x);
+      return t.endsWith("+") ? "+" + t.replace("+", "") : "-" + t;
+    }
+    function weightsForBoutDraft(draft) {
+      if (draft.weightMode === "manual_groups") return [];
+      const group = ageGroupByNumb(draft.ageGroupNumb, draft.tournamentScope);
+      if (!group) return [];
+      if (isExternalScope(draft.tournamentScope)) return (EXTERNAL_WEIGHTS[group.weightGr]?.[draft.sex === "F" ? "F" : "M"] || []).map(fmtClass);
+      const source = draft.sex === "F" ? INTERNAL_FEMALE_WEIGHTS_BY_GR : INTERNAL_MALE_WEIGHTS_BY_GR;
+      return (source[group.weightGr] || []).map(fmtClass);
+    }
+    function defaultWeightForDraft(draft) {
+      const arr = weightsForBoutDraft(draft);
+      return arr[0] || "Group A";
+    }
+    function defaultFightMsForBout(bout) {
+      if (Number(bout?.manualDurationSec) > 0) return Number(bout.manualDurationSec) * 1000;
+      const group = ageGroupByNumb(bout?.ageGroupNumb, bout?.tournamentScope || "external");
+      if (group?.defaultSeconds) return group.defaultSeconds * 1000;
+      return (bout?.sex === "F" ? WOMEN_FIGHT_SECONDS : MEN_FIGHT_SECONDS) * 1000;
+    }
+    function slotLabel(bout) {
+      return bout?.weightMode === "manual_groups" ? (bout.manualGroup || bout.weight || "Group A") : (bout?.weight || "");
+    }
+    function ageGroupLabel(bout) {
+      return ageGroupByNumb(bout?.ageGroupNumb, bout?.tournamentScope || "external")?.label || "";
+    }
+    function makeCodeFromText(text) {
+      const letters = String(text || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+      return letters ? letters.slice(0, 6) : "CLB";
+    }
+    function defaultAffiliationFor(scope, mode) {
+      const m = normalizedAffiliationMode(scope, mode);
+      if (m === "country") return { country: "", countryFull: "" };
+      if (m === "club") return { country: "CLB", countryFull: "" };
+      return { country: "NA", countryFull: "No Affiliation" };
+    }
+    function affiliationCode(player) {
+      const code = String(player?.country || "").trim().toUpperCase();
+      if (code) return code;
+      return makeCodeFromText(player?.countryFull || "");
+    }
+    function affiliationFull(player) {
+      return String(player?.countryFull || player?.club || "").trim() || affiliationCode(player) || "No Affiliation";
+    }
+    function isNoAffiliation(player) {
+      const c = affiliationCode(player);
+      const f = affiliationFull(player).toLowerCase();
+      return c === "NA" || c === "NONE" || c === "N/A" || f === "no affiliation";
+    }
+    function showFlagFor(player, scope, mode) {
+      return normalizedAffiliationMode(scope, mode) === "country" && !isNoAffiliation(player);
+    }
+
+    function formatTime(ms) {
+      const totalSec = Math.floor(ms / 1000);
+      const m = Math.floor(totalSec / 60);
+      const s = totalSec % 60;
+      return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+    }
+
+    function parseTimeToMs(input) {
+      const raw = String(input || "").trim();
+      if (!raw) return null;
+      if (/^\d+$/.test(raw)) {
+        return Math.max(0, Number(raw)) * 1000;
+      }
+      const parts = raw.split(":").map((x) => x.trim());
+      if (parts.length === 2 && parts.every((p) => /^\d+$/.test(p))) {
+        const mins = Number(parts[0]);
+        const secs = Number(parts[1]);
+        if (secs >= 60) return null;
+        return Math.max(0, mins * 60 + secs) * 1000;
+      }
+      return null;
+    }
+
+    function CountryFlag({ code }) {
+      const upper = (code || "").toUpperCase();
+      const baseClass = "w-10 h-6 md:w-14 md:h-8 rounded border border-slate-300 shadow-inner object-cover";
+      if (!upper) {
+        return <div className={baseClass + " bg-transparent"} aria-label="flag" />;
+      }
+      const lower = upper.toLowerCase();
+      const jpgPath = `flags/${lower}_m.jpg`;
+      const pngPath = `flags/${lower}_m.png`;
+      const handleError = (e) => {
+        if (e.target.src.includes(".jpg")) {
+          e.target.src = pngPath;
+        } else {
+          e.target.style.display = "none";
+        }
+      };
+      return <img src={jpgPath} alt={`${upper} flag`} className={baseClass} onError={handleError} />;
+    }
+
+    function AffiliationBadge({ player, scope, mode }) {
+      const code = affiliationCode(player);
+      const full = affiliationFull(player);
+      const noAff = isNoAffiliation(player);
+      const useFlag = showFlagFor(player, scope, mode);
+      return (
+        <div className="flex flex-col items-center justify-center min-w-[4.5rem] md:min-w-[5.25rem]">
+          {useFlag ? (
+            <CountryFlag code={code} />
+          ) : (
+            <div className="w-10 h-6 md:w-14 md:h-8 rounded border border-slate-600 bg-slate-800 flex items-center justify-center text-[10px] md:text-xs font-bold text-slate-300">
+              {noAff ? "NA" : (code || "CLB")}
+            </div>
+          )}
+          <span className="mt-1 text-xl md:text-3xl font-mono tracking-wide">{noAff ? "NA" : code}</span>
+          <span className="text-base md:text-2xl text-slate-300 max-w-[7rem] truncate" title={full}>{full}</span>
+        </div>
+      );
+    }
+
+    function computeScores(events) {
+      const base = {
+        blue: { H: 0, YO: 0, CH: 0, penaltyLevel: 0 },
+        green: { H: 0, YO: 0, CH: 0, penaltyLevel: 0 },
+        halalWinner: null,
+        lastScoreSide: null,
+        lastPenaltySide: null
+      };
+
+      function sideKey(s) { return s === "blue" ? "blue" : "green"; }
+
+      for (const ev of events || []) {
+        const s = sideKey(ev.side);
+        const o = s === "blue" ? "green" : "blue";
+
+        if (ev.type === "H" || ev.type === "YO" || ev.type === "CH") {
+          if (ev.type === "H") {
+            base[s].H += 1;
+            if (!base.halalWinner) base.halalWinner = s;
+          } else if (ev.type === "YO") {
+            base[s].YO += 1;
+          } else if (ev.type === "CH") {
+            base[s].CH += 1;
+          }
+          while (base[s].YO >= 2) {
+            base[s].YO -= 2;
+            base[s].H += 1;
+            if (!base.halalWinner) base.halalWinner = s;
+          }
+          base.lastScoreSide = s;
+        } else if (ev.type === "T" || ev.type === "D" || ev.type === "G") {
+          const lvl = ev.type === "T" ? 1 : ev.type === "D" ? 2 : 3;
+          if (lvl > base[s].penaltyLevel) {
+            base[s].penaltyLevel = lvl;
+            base.lastScoreSide = o;
+            if (lvl === 3 && !base.halalWinner) {
+              base.halalWinner = o;
+            }
+          }
+          base.lastPenaltySide = s;
+        }
+      }
+
+      const disp = {
+        blue: { H: base.blue.H, YO: base.blue.YO, CH: base.blue.CH, penaltyLevel: base.blue.penaltyLevel },
+        green: { H: base.green.H, YO: base.green.YO, CH: base.green.CH, penaltyLevel: base.green.penaltyLevel },
+        halalWinner: base.halalWinner,
+        lastScoreSide: base.lastScoreSide,
+        lastPenaltySide: base.lastPenaltySide
+      };
+
+      const pBlue = base.blue.penaltyLevel;
+      const pGreen = base.green.penaltyLevel;
+
+      if (pGreen === 1) disp.blue.CH += 1;
+      else if (pGreen === 2) disp.blue.YO += 1;
+      else if (pGreen === 3) disp.blue.H += 1;
+
+      if (pBlue === 1) disp.green.CH += 1;
+      else if (pBlue === 2) disp.green.YO += 1;
+      else if (pBlue === 3) disp.green.H += 1;
+
+      ["blue", "green"].forEach((side) => {
+        const s = disp[side];
+        while (s.YO >= 2) {
+          s.YO -= 2;
+          s.H += 1;
+          if (!disp.halalWinner) disp.halalWinner = side;
+        }
+      });
+
+      return disp;
+    }
+
+    function decideWinner(state, isTimeUp) {
+      if (state.halalWinner) return state.halalWinner;
+      const b = state.blue;
+      const g = state.green;
+      if (b.H !== g.H) return b.H > g.H ? "blue" : "green";
+      if (b.YO !== g.YO) return b.YO > g.YO ? "blue" : "green";
+      if (b.CH !== g.CH) return b.CH > g.CH ? "blue" : "green";
+      if (!isTimeUp) return null;
+      if (b.penaltyLevel !== g.penaltyLevel) return b.penaltyLevel > g.penaltyLevel ? "green" : "blue";
+      if (state.lastPenaltySide) return state.lastPenaltySide === "blue" ? "green" : "blue";
+      if (state.lastScoreSide) return state.lastScoreSide;
+      return null;
+    }
+
+    function defaultState() {
+      const sex = "M";
+      return {
+        bout: {
+          boutNo: 1,
+          gillam: "Gillam A",
+          tournamentScope: "external",
+          affiliationMode: "country",
+          weightMode: "auto_weights",
+          ageGroupNumb: 101,
+          manualDurationSec: 0,
+          sex,
+          weight: "-60",
+          manualGroup: "Group A",
+          stage: "RR",
+          blue: { name: "Blue", country: "", countryFull: "" },
+          green: { name: "Green", country: "", countryFull: "" }
+        },
+        timerMs: defaultFightMsForBout({ tournamentScope: "external", ageGroupNumb: 101, sex }),
+        timerRunning: false,
+        events: [],
+        isFullscreen: false
+      };
+    }
+
+    function readState() {
+      try {
+        let raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) {
+          for (const legacyKey of LEGACY_STORAGE_KEYS) {
+            raw = localStorage.getItem(legacyKey);
+            if (raw) break;
+          }
+        }
+        if (!raw) return defaultState();
+        const parsed = JSON.parse(raw);
+        return {
+          ...defaultState(),
+          ...parsed,
+          bout: {
+            ...defaultState().bout,
+            ...(parsed?.bout || {}),
+            blue: { ...defaultState().bout.blue, ...(parsed?.bout?.blue || {}) },
+            green: { ...defaultState().bout.green, ...(parsed?.bout?.green || {}) }
+          },
+          events: Array.isArray(parsed?.events) ? parsed.events : []
+        };
+      } catch {
+        return defaultState();
+      }
+    }
+
+    function EditModal({ open, onClose, draft, setDraft, onSave }) {
+      if (!open) return null;
+      const effectiveAffiliationMode = normalizedAffiliationMode(draft.tournamentScope, draft.affiliationMode);
+      const weightOptions = weightsForBoutDraft(draft);
+      const ageGroups = activeAgeGroups(draft.tournamentScope);
+      return (
+        <div className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-4xl rounded-3xl border border-slate-700 bg-slate-950 shadow-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold">Edit bout data</h2>
+                <p className="text-xs text-slate-400">Offline mode • local/external, affiliation, age group, weight/manual group, and duration.</p>
+              </div>
+              <button onClick={onClose} className="px-3 py-1 rounded-xl bg-slate-800 hover:bg-slate-700">Close</button>
+            </div>
+
+            <div className="p-5 grid md:grid-cols-2 gap-5">
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Tournament Type</label>
+                    <select value={draft.tournamentScope} onChange={(e) => {
+                      const nextScope = e.target.value;
+                      const nextMode = normalizedAffiliationMode(nextScope, draft.affiliationMode);
+                      const ageGroupNumb = defaultAgeGroupNumb(nextScope);
+                      setDraft((d) => {
+                        const base = { ...d, tournamentScope: nextScope, affiliationMode: nextMode, ageGroupNumb };
+                        const aff = defaultAffiliationFor(nextScope, nextMode);
+                        const weight = base.weightMode === "manual_groups" ? base.weight : defaultWeightForDraft(base);
+                        return { ...base, weight, blue: { ...base.blue, ...aff }, green: { ...base.green, ...aff } };
+                      });
+                    }} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2">
+                      {TOURNAMENT_SCOPES.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Affiliation Mode</label>
+                    <select value={effectiveAffiliationMode} disabled={draft.tournamentScope === "external"} onChange={(e) => {
+                      const mode = normalizedAffiliationMode(draft.tournamentScope, e.target.value);
+                      setDraft((d) => {
+                        const aff = defaultAffiliationFor(d.tournamentScope, mode);
+                        return { ...d, affiliationMode: mode, blue: { ...d.blue, ...aff }, green: { ...d.green, ...aff } };
+                      });
+                    }} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 disabled:opacity-60">
+                      {AFFILIATION_MODES.filter((x) => draft.tournamentScope === "external" ? x.value === "country" : x.value !== "country").map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="block text-xs text-slate-400 mb-1">Bout No</label><input type="number" min="1" value={draft.boutNo} onChange={(e) => setDraft((d) => ({ ...d, boutNo: Math.max(1, Number(e.target.value) || 1) }))} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2" /></div>
+                  <div><label className="block text-xs text-slate-400 mb-1">Gillam</label><input value={draft.gillam} onChange={(e) => setDraft((d) => ({ ...d, gillam: e.target.value }))} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2" /></div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Age Group</label>
+                    <select value={draft.ageGroupNumb} onChange={(e) => { const ageGroupNumb = Number(e.target.value); setDraft((d) => { const base = { ...d, ageGroupNumb }; const weight = base.weightMode === "manual_groups" ? base.weight : defaultWeightForDraft(base); return { ...base, weight }; }); }} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2">
+                      {ageGroups.map((g) => <option key={g.numb} value={g.numb}>{g.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Sex</label>
+                    <select value={draft.sex} onChange={(e) => { const nextSex = e.target.value; setDraft((d) => { const base = { ...d, sex: nextSex }; const weight = base.weightMode === "manual_groups" ? base.weight : defaultWeightForDraft(base); return { ...base, weight }; }); }} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2">
+                      <option value="M">Men</option><option value="F">Women</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Weight Mode</label>
+                    <select value={draft.weightMode} onChange={(e) => setDraft((d) => ({ ...d, weightMode: e.target.value, weight: e.target.value === "manual_groups" ? (d.manualGroup || d.weight || "Group A") : defaultWeightForDraft({ ...d, weightMode: e.target.value }) }))} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2">
+                      {WEIGHT_MODES.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">{draft.weightMode === "manual_groups" ? "Manual Group" : "Weight"}</label>
+                    {draft.weightMode === "manual_groups" ? <input value={draft.manualGroup || ""} onChange={(e) => setDraft((d) => ({ ...d, manualGroup: e.target.value, weight: e.target.value }))} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2" /> : <select value={draft.weight} onChange={(e) => setDraft((d) => ({ ...d, weight: e.target.value }))} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2">{weightOptions.map((w) => <option key={w} value={w}>{w}</option>)}</select>}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="block text-xs text-slate-400 mb-1">Manual Duration Sec</label><input type="number" min="0" step="30" value={draft.manualDurationSec || ""} placeholder="0 = age default" onChange={(e) => setDraft((d) => ({ ...d, manualDurationSec: Number(e.target.value || 0) }))} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2" /></div>
+                  <div><label className="block text-xs text-slate-400 mb-1">Stage</label><input value={draft.stage} onChange={(e) => setDraft((d) => ({ ...d, stage: e.target.value }))} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2" /></div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {[["blue", "Blue side"], ["green", "Green side"]].map(([side, label]) => (
+                  <div key={side} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 space-y-3">
+                    <div className="font-semibold">{label}</div>
+                    <div><label className="block text-xs text-slate-400 mb-1">Name</label><input value={draft[side].name} onChange={(e) => setDraft((d) => ({ ...d, [side]: { ...d[side], name: e.target.value } }))} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2" /></div>
+                    {effectiveAffiliationMode === "country" ? (
+                      <div><label className="block text-xs text-slate-400 mb-1">Country / Flag</label><select value={draft[side].country} onChange={(e) => { const code = e.target.value; const full = Object.keys(COUNTRY_NAME_TO_CODE).find((k) => COUNTRY_NAME_TO_CODE[k] === code) || ""; setDraft((d) => ({ ...d, [side]: { ...d[side], country: code, countryFull: full } })); }} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2"><option value="">Not selected</option>{ALL_COUNTRY_NAMES.map((name) => { const code = COUNTRY_NAME_TO_CODE[name]; return <option key={name} value={code}>{name} ({code})</option>; })}</select></div>
+                    ) : effectiveAffiliationMode === "club" ? (
+                      <div><label className="block text-xs text-slate-400 mb-1">Club</label><input value={draft[side].countryFull || ""} onChange={(e) => { const full = e.target.value; setDraft((d) => ({ ...d, [side]: { ...d[side], countryFull: full, country: makeCodeFromText(full) } })); }} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2" /></div>
+                    ) : <div className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-400">No Affiliation</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="px-5 py-4 border-t border-slate-800 flex justify-between items-center">
+              <span className="text-xs text-slate-400">Timer is calculated from age group unless manual duration is set.</span>
+              <div className="flex gap-2"><button onClick={onClose} className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700">Cancel</button><button onClick={onSave} className="px-4 py-2 rounded-xl bg-sky-700 hover:bg-sky-600">Save</button></div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const persisted = readState();
+      const [bout, setBout] = useState(persisted.bout);
+      const [timerMs, setTimerMs] = useState(persisted.timerMs);
+      const [timerRunning, setTimerRunning] = useState(false);
+      const [withdrawalMsg, setWithdrawalMsg] = useState("");
+      const [sbEvents, setSbEvents] = useState(persisted.events || []);
+      const [isFullscreen, setIsFullscreen] = useState(false);
+      const [editOpen, setEditOpen] = useState(false);
+      const [draft, setDraft] = useState(persisted.bout);
+      const sbContainerRef = useRef(null);
+      const audioCtxRef = useRef(null);
+      const halfPingDoneRef = useRef(false);
+      const initialFightMsRef = useRef(defaultFightMsForBout(persisted.bout));
+      const sbComputedRef = useRef(null);
+
+      const sexForLabel = bout.sex === "F" ? "Women" : "Men";
+      const effectiveAffiliationMode = normalizedAffiliationMode(bout.tournamentScope, bout.affiliationMode);
+      const boutAgeLabel = ageGroupLabel(bout);
+      const boutSlot = slotLabel(bout);
+      const sbComputed = useMemo(() => computeScores(sbEvents), [sbEvents]);
+      sbComputedRef.current = sbComputed;
+
+      useEffect(() => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ bout, timerMs, events: sbEvents }));
+      }, [bout, timerMs, sbEvents]);
+
+      useEffect(() => {
+        function handleFsChange() {
+          setIsFullscreen(!!document.fullscreenElement);
+        }
+        document.addEventListener("fullscreenchange", handleFsChange);
+        return () => document.removeEventListener("fullscreenchange", handleFsChange);
+      }, []);
+
+      useEffect(() => {
+        if (sbComputed?.halalWinner && timerRunning) {
+          setTimerRunning(false);
+        }
+      }, [sbComputed, timerRunning]);
+
+      useEffect(() => {
+        if (!timerRunning) return;
+        const id = setInterval(() => {
+          setTimerMs((ms) => {
+            if (ms <= 1000) {
+              if (ms > 0) playBell();
+              setTimerRunning(false);
+              return 0;
+            }
+            const newMs = ms - 1000;
+            const initial = initialFightMsRef.current || 0;
+            const halfMs = initial / 2;
+            if (!halfPingDoneRef.current && initial > 0 && ms > halfMs && newMs <= halfMs) {
+              const scores = sbComputedRef.current;
+              if (scores) {
+                const allZero = ["blue", "green"].every((side) => {
+                  const s = scores[side];
+                  return s && s.H === 0 && s.YO === 0 && s.CH === 0 && s.penaltyLevel === 0;
+                });
+                if (allZero) {
+                  playHalfPing();
+                  halfPingDoneRef.current = true;
+                  setTimerRunning(false);
+                }
+              }
+            }
+            return newMs;
+          });
+        }, 1000);
+        return () => clearInterval(id);
+      }, [timerRunning]);
+
+      function ensureAudioContext() {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        if (!audioCtxRef.current) audioCtxRef.current = new AC();
+        const ctx = audioCtxRef.current;
+        if (ctx.state === "suspended") ctx.resume();
+        return ctx;
+      }
+
+      function playBell() {
+        try {
+          const ctx = ensureAudioContext();
+          if (!ctx) return;
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = "sine";
+          o.frequency.setValueAtTime(1000, ctx.currentTime);
+          g.gain.setValueAtTime(0.0001, ctx.currentTime);
+          g.gain.exponentialRampToValueAtTime(0.6, ctx.currentTime + 0.1);
+          g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 3);
+          o.connect(g);
+          g.connect(ctx.destination);
+          o.start();
+          o.stop(ctx.currentTime + 3);
+        } catch {}
+      }
+
+      function playHalfPing() {
+        try {
+          const ctx = ensureAudioContext();
+          if (!ctx) return;
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = "square";
+          o.frequency.setValueAtTime(600, ctx.currentTime);
+          g.gain.setValueAtTime(0.0001, ctx.currentTime);
+          g.gain.exponentialRampToValueAtTime(0.4, ctx.currentTime + 0.05);
+          g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 3);
+          o.connect(g);
+          g.connect(ctx.destination);
+          o.start();
+          o.stop(ctx.currentTime + 3);
+        } catch {}
+      }
+
+      function adjustTimerBySeconds(deltaSeconds) {
+        setTimerMs((prev) => Math.max(0, prev + deltaSeconds * 1000));
+      }
+
+      function resetTimer() {
+        const ms = defaultFightMsForBout(bout);
+        setTimerMs(ms);
+        initialFightMsRef.current = ms;
+        halfPingDoneRef.current = false;
+        setTimerRunning(false);
+      }
+
+      function resetAllFields() {
+        const ok = window.confirm("Reset the full scoreboard and reinitialize all fields?");
+        if (!ok) return;
+        const fresh = defaultState();
+        setBout(fresh.bout);
+        setTimerMs(fresh.timerMs);
+        initialFightMsRef.current = fresh.timerMs;
+        halfPingDoneRef.current = false;
+        setTimerRunning(false);
+        setSbEvents([]);
+        setEditOpen(false);
+      }
+
+      function handleTimerDoubleClick() {
+        const entered = window.prompt("Enter time as seconds or MM:SS", formatTime(timerMs));
+        if (entered == null) return;
+        const parsed = parseTimeToMs(entered);
+        if (parsed == null) {
+          alert("Invalid time. Use seconds like 180 or MM:SS like 03:00");
+          return;
+        }
+        setTimerMs(parsed);
+        initialFightMsRef.current = parsed;
+        halfPingDoneRef.current = false;
+        setTimerRunning(false);
+      }
+
+      function handleTimerClick(e) {
+        // Keep double-click available for manual time editing.
+        if (e.detail > 1) return;
+        setTimerRunning((running) => !running);
+      }
+
+      
+      useEffect(() => {
+        function isEditableTarget(target) {
+          const tag = String(target?.tagName || "").toLowerCase();
+          return tag === "input" || tag === "textarea" || tag === "select" || target?.isContentEditable;
+        }
+
+        function onKeyDown(e) {
+          // Spacebar = Start / Stop timer from anywhere on the scoreboard screen.
+          // It is ignored only while typing in an editable field.
+          if (e.code !== "Space" && e.key !== " ") return;
+          if (isEditableTarget(e.target) || isEditableTarget(document.activeElement)) return;
+          e.preventDefault();
+          e.stopPropagation();
+          setTimerRunning((running) => !running);
+        }
+
+        document.addEventListener("keydown", onKeyDown, true);
+        window.addEventListener("keydown", onKeyDown, true);
+        return () => {
+          document.removeEventListener("keydown", onKeyDown, true);
+          window.removeEventListener("keydown", onKeyDown, true);
+        };
+      }, []);
+
+      function addEvent(side, type) {
+        setSbEvents((prev) => [...prev, { side, type, atMs: timerMs }]);
+      }
+
+      function removeLastEvent(side, type) {
+        setSbEvents((prev) => {
+          const next = prev.slice();
+          for (let i = next.length - 1; i >= 0; i--) {
+            const ev = next[i];
+            if (ev.side === side && ev.type === type) {
+              next.splice(i, 1);
+              break;
+            }
+          }
+          return next;
+        });
+      }
+
+      function handleScoreButton(side, type, isRightClick, canAdd, event) {
+        if (event) event.preventDefault();
+        if (isRightClick) {
+          removeLastEvent(side, type);
+        } else {
+          if (!canAdd) return;
+          addEvent(side, type);
+        }
+      }
+
+      function openEditor() {
+        setDraft({
+          ...defaultState().bout,
+          ...bout,
+          blue: { ...defaultState().bout.blue, ...bout.blue },
+          green: { ...defaultState().bout.green, ...bout.green }
+        });
+        setEditOpen(true);
+      }
+
+      function saveDraft() {
+        const effectiveMode = normalizedAffiliationMode(draft.tournamentScope, draft.affiliationMode);
+        const cleanDraft = {
+          ...draft,
+          affiliationMode: effectiveMode,
+          weight: draft.weightMode === "manual_groups" ? (draft.manualGroup || draft.weight || "Group A") : draft.weight,
+          blue: { ...draft.blue },
+          green: { ...draft.green }
+        };
+        if (effectiveMode === "none") {
+          cleanDraft.blue = { ...cleanDraft.blue, country: "NA", countryFull: "No Affiliation" };
+          cleanDraft.green = { ...cleanDraft.green, country: "NA", countryFull: "No Affiliation" };
+        }
+        const nextTimerMs = defaultFightMsForBout(cleanDraft);
+        setBout((prev) => ({ ...prev, ...cleanDraft }));
+        setTimerMs(nextTimerMs);
+        initialFightMsRef.current = nextTimerMs;
+        halfPingDoneRef.current = false;
+        setTimerRunning(false);
+        setEditOpen(false);
+      }
+
+      function quickEditName(side) {
+        const current = bout[side].name || "";
+        const entered = window.prompt(`Enter ${side} name`, current);
+        if (entered == null) return;
+        setBout((prev) => ({ ...prev, [side]: { ...prev[side], name: entered || (side === "blue" ? "Blue" : "Green") } }));
+      }
+
+      function quickEditCountry(side) {
+        openEditor();
+      }
+
+      function quickEditMeta() {
+        openEditor();
+      }
+
+      function clearScoreboard() {
+        const ok = window.confirm("Reset scores and timer for this bout?");
+        if (!ok) return;
+        setSbEvents([]);
+        resetTimer();
+      }
+
+      function newBout() {
+        const ok = window.confirm("Start a new empty bout? This resets current scores.");
+        if (!ok) return;
+        setBout((prev) => ({
+          ...prev,
+          boutNo: Number(prev.boutNo || 1) + 1,
+          blue: { ...prev.blue, name: "Blue" },
+          green: { ...prev.green, name: "Green" }
+        }));
+        setSbEvents([]);
+        resetTimer();
+      }
+
+      function enterFullscreen() {
+        if (sbContainerRef.current && !document.fullscreenElement) {
+          sbContainerRef.current.requestFullscreen().catch(() => {});
+        }
+      }
+
+      function exitFullscreen() {
+        if (document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {});
+        }
+      }
+
+      function saveWithdrawalResult(kind) {
+        let resultType = "withdrawal";
+        let withdrawnSide = null;
+        let winnerSide = null;
+        if (kind === "blue") { withdrawnSide = "blue"; winnerSide = "green"; }
+        else if (kind === "green") { withdrawnSide = "green"; winnerSide = "blue"; }
+        else { resultType = "double_withdrawal"; }
+        setTimerRunning(false);
+        setWithdrawalMsg(resultType === "double_withdrawal" ? "Double withdrawal saved locally: No Contest / no winner." : `Withdrawal saved locally. Winner: ${winnerSide}`);
+        try {
+          localStorage.setItem(STORAGE_KEY + "_last_withdrawal", JSON.stringify({ resultType, withdrawnSide, winnerSide, bout, timerMs, savedAt: new Date().toISOString() }));
+        } catch (e) {}
+      }
+
+      const scoreLabelClass = isFullscreen ? "font-bold text-xl md:text-2xl" : "font-bold text-base md:text-lg";
+      const scoreValueClass = isFullscreen ? "font-mono text-4xl md:text-5xl" : "font-mono text-2xl md:text-3xl";
+      const penLabelClass = isFullscreen ? "font-bold text-lg md:text-xl" : "font-bold text-sm md:text-base";
+      const bluePenLevel = sbComputed.blue.penaltyLevel || 0;
+      const greenPenLevel = sbComputed.green.penaltyLevel || 0;
+      const blueTActive = bluePenLevel >= 1;
+      const blueDActive = bluePenLevel >= 2;
+      const blueGActive = bluePenLevel >= 3;
+      const greenTActive = greenPenLevel >= 1;
+      const greenDActive = greenPenLevel >= 2;
+      const greenGActive = greenPenLevel >= 3;
+      const isTimeUp = timerMs === 0;
+      const finalWinnerSide = decideWinner(sbComputed, isTimeUp);
+      const liveWinnerSide = decideWinner(sbComputed, false);
+      const endedNow = !!sbComputed.halalWinner || isTimeUp;
+      const fightFinished = endedNow;
+      const timerColorClass = timerRunning ? "text-white" : "text-red-500";
+
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100 flex flex-col">
+          <header className="sticky top-0 z-20 bg-slate-950/70 backdrop-blur border-b border-slate-800">
+            <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+              <div>
+                <h1 className="text-xl font-semibold tracking-wide">Kurash Scoreboard – Offline</h1>
+				                <p className="text-[11px] text-slate-500 mt-1">
+                  Developed by{" "}
+                  <span className="font-semibold text-sky-300">
+                    Dr. Abdullah Hosni Alreedy
+                  </span>
+                </p>
+              </div>
+              <div className="flex flex-col items-end gap-1 text-xs">
+                <button onClick={quickEditMeta} className="text-right hover:text-sky-300 transition">
+                  <div>
+                    Bout: <span className="font-mono font-semibold">#{bout.boutNo}</span>
+                  </div>
+                  <div className="text-sky-200 font-extrabold tracking-wide text-2xl md:text-4xl leading-tight">{bout.gillam} • {boutAgeLabel} • {sexForLabel} {boutSlot} ({bout.stage || "RR"})</div>
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <main className="max-w-5xl mx-auto px-4 py-4 space-y-4 flex-1 w-full">
+
+            <div ref={sbContainerRef} className={isFullscreen ? "fixed inset-0 z-50 bg-black p-4 md:p-8 overflow-auto flex flex-col gap-4" : "space-y-4"}>
+              <div className={isFullscreen ? "flex-1 flex items-center justify-center bg-black rounded-2xl border border-slate-800 px-4 py-3" : "flex items-center justify-between bg-black rounded-2xl border border-slate-800 px-4 py-3"}>
+                {isFullscreen ? (
+                  <div className="w-full h-full flex flex-col justify-between">
+                    <div className="flex items-center justify-between mb-2 px-4">
+                      <button onClick={quickEditMeta} className="text-left hover:text-sky-300 transition">
+                        <div className="text-3xl md:text-6xl font-extrabold text-yellow-400 leading-tight">{bout.gillam}</div>
+                        <div className="text-2xl md:text-5xl font-bold text-yellow-300 leading-tight">{boutAgeLabel} • {sexForLabel} {boutSlot} ({bout.stage || ""})</div>
+                      </button>
+                      <div className="flex gap-2">
+                        <button onClick={() => setTimerRunning(true)} className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs md:text-sm">Start</button>
+                        <button onClick={() => setTimerRunning(false)} className="px-3 py-1 rounded-xl bg-amber-600 hover:bg-amber-500 text-xs md:text-sm">Stop</button>
+                        <button onClick={resetAllFields} className="px-3 py-1 rounded-xl bg-red-700 hover:bg-red-600 text-xs md:text-sm">FULL RESET</button><button onClick={() => saveWithdrawalResult("blue")} className="px-3 py-1 rounded-xl bg-orange-700 hover:bg-orange-600 text-xs md:text-sm">Blue WO</button><button onClick={() => saveWithdrawalResult("green")} className="px-3 py-1 rounded-xl bg-orange-700 hover:bg-orange-600 text-xs md:text-sm">Green WO</button><button onClick={() => saveWithdrawalResult("both")} className="px-3 py-1 rounded-xl bg-red-800 hover:bg-red-700 text-xs md:text-sm">Double WO</button>
+                        <button onClick={() => document.fullscreenElement ? exitFullscreen() : enterFullscreen()} className="px-3 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs md:text-sm">{isFullscreen ? "Exit FS" : "Fullscreen"}</button>
+                      </div>
+                    </div>
+                    <div className="flex-1 flex items-center justify-center gap-4">
+                      <button onClick={() => adjustTimerBySeconds(1)} className="px-3 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-2xl md:text-4xl leading-none" title="Add 1 second">▲</button>
+                      <div onClick={handleTimerClick} onDoubleClick={handleTimerDoubleClick} title="Click start/stop • Double click enter time" className={"flex-1 flex items-center justify-center font-bold tabular-nums cursor-pointer " + timerColorClass + " text-[18vh] leading-none select-none"}>{formatTime(timerMs)}</div>
+                      <button onClick={() => adjustTimerBySeconds(-1)} className="px-3 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-2xl md:text-4xl leading-none" title="Subtract 1 second">▼</button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <button onClick={quickEditMeta} className="text-left hover:text-sky-300 transition">
+                      <div className="text-3xl md:text-6xl font-extrabold text-yellow-400 leading-tight">{bout.gillam}</div>
+                      <div className="text-2xl md:text-5xl font-bold text-yellow-300 leading-tight">{boutAgeLabel} • {sexForLabel} {boutSlot} ({bout.stage || ""})</div>
+                    </button>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => adjustTimerBySeconds(1)} className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-lg leading-none" title="Add 1 second">▲</button>
+                      <div onClick={handleTimerClick} onDoubleClick={handleTimerDoubleClick} title="Click start/stop • Double click enter time" className={"font-bold tabular-nums cursor-pointer " + timerColorClass + " text-5xl"}>{formatTime(timerMs)}</div>
+                      <button onClick={() => adjustTimerBySeconds(-1)} className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-lg leading-none" title="Subtract 1 second">▼</button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button onClick={() => setTimerRunning(true)} className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-sm">Start</button>
+                      <button onClick={() => setTimerRunning(false)} className="px-3 py-1 rounded-xl bg-amber-600 hover:bg-amber-500 text-sm">Stop</button>
+                      <button onClick={resetAllFields} className="px-3 py-1 rounded-xl bg-red-700 hover:bg-red-600 text-sm">FULL RESET</button><button onClick={() => saveWithdrawalResult("blue")} className="px-3 py-1 rounded-xl bg-orange-700 hover:bg-orange-600 text-sm">Blue WO</button><button onClick={() => saveWithdrawalResult("green")} className="px-3 py-1 rounded-xl bg-orange-700 hover:bg-orange-600 text-sm">Green WO</button><button onClick={() => saveWithdrawalResult("both")} className="px-3 py-1 rounded-xl bg-red-800 hover:bg-red-700 text-sm">Double WO</button>
+                      <button onClick={clearScoreboard} className="px-3 py-1 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm">Reset Bout</button>
+                      <button onClick={newBout} className="px-3 py-1 rounded-xl bg-sky-700 hover:bg-sky-600 text-sm">New Bout</button>
+                      <button onClick={() => document.fullscreenElement ? exitFullscreen() : enterFullscreen()} className="px-3 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm">{isFullscreen ? "Exit Fullscreen" : "Fullscreen"}</button>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {withdrawalMsg && <div className="rounded-xl border border-orange-700 bg-orange-950/50 text-orange-200 px-4 py-2 text-sm">{withdrawalMsg}</div>}
+              <div className="flex-1 space-y-4">
+                <div className="bg-sky-900/60 border border-sky-700 rounded-2xl p-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center gap-3">
+                      <span className="w-4 h-4 rounded-full bg-sky-500" />
+                      <button onClick={() => quickEditName("blue")} className={"font-semibold text-left hover:text-sky-200 " + (isFullscreen ? "text-lg md:text-xl" : "")}>{bout.blue.name || "Blue"}</button>
+                    </div>
+                    {fightFinished && finalWinnerSide === "blue" && <span className="px-3 py-1 rounded-full bg-emerald-500 text-black text-xs md:text-sm font-bold">WINNER</span>}
+                  </div>
+                  <div className="flex items-stretch gap-3">
+                    <div className="flex-1">
+                      <div className="grid grid-cols-3 gap-2 text-center text-xs md:text-sm">
+                        {["H", "YO", "CH"].map((scoreType) => {
+                          const s = sbComputed.blue;
+                          const cannotAdd = endedNow || (scoreType === "H" && s.H >= 1);
+                          const canAddScore = !cannotAdd;
+                          const val = scoreType === "H" ? s.H : scoreType === "YO" ? s.YO : s.CH;
+                          const penKey = scoreType === "H" ? "G" : scoreType === "YO" ? "D" : "T";
+                          const penActive = penKey === "T" ? blueTActive : penKey === "D" ? blueDActive : blueGActive;
+                          const canAddPen = !endedNow;
+                          return (
+                            <div key={scoreType} className="flex flex-col gap-1">
+                              <button onClick={(e) => handleScoreButton("blue", penKey, false, canAddPen, e)} onContextMenu={(e) => handleScoreButton("blue", penKey, true, true, e)} className={"flex flex-col justify-center items-center rounded-xl py-1.5 border select-none " + (canAddPen ? "bg-slate-800 border-slate-500 hover:bg-slate-700 cursor-pointer" : "bg-slate-800/40 border-slate-700/60 text-slate-500 cursor-default")}>
+                                <span className={penLabelClass}>{penKey}</span>
+                                <div className={"mt-1 w-8 h-3 rounded-md " + (penActive ? "bg-red-400 shadow-[0_0_15px_rgba(248,113,113,1)]" : "bg-slate-500/30")} />
+                              </button>
+                              <button onClick={(e) => handleScoreButton("blue", scoreType, false, canAddScore, e)} onContextMenu={(e) => handleScoreButton("blue", scoreType, true, true, e)} className={"flex flex-col justify-center items-center rounded-xl py-3 md:py-4 border select-none " + (canAddScore ? "bg-sky-700 border-sky-500 hover:bg-sky-600 cursor-pointer" : "bg-slate-800/40 border-slate-700/60 text-slate-500 cursor-default")}>
+                                <span className={scoreLabelClass}>{scoreType}</span>
+                                <span className={scoreValueClass}>{val}</span>
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <button onClick={() => quickEditCountry("blue")} className="hover:opacity-90">
+                      <AffiliationBadge player={bout.blue} scope={bout.tournamentScope} mode={effectiveAffiliationMode} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-green-900/60 border border-green-700 rounded-2xl p-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center gap-3">
+                      <span className="w-4 h-4 rounded-full bg-green-500" />
+                      <button onClick={() => quickEditName("green")} className={"font-semibold text-left hover:text-green-200 " + (isFullscreen ? "text-lg md:text-xl" : "")}>{bout.green.name || "Green"}</button>
+                    </div>
+                    {fightFinished && finalWinnerSide === "green" && <span className="px-3 py-1 rounded-full bg-emerald-500 text-black text-xs md:text-sm font-bold">WINNER</span>}
+                  </div>
+                  <div className="flex items-stretch gap-3">
+                    <div className="flex-1">
+                      <div className="grid grid-cols-3 gap-2 text-center text-xs md:text-sm">
+                        {["H", "YO", "CH"].map((scoreType) => {
+                          const s = sbComputed.green;
+                          const cannotAdd = endedNow || (scoreType === "H" && s.H >= 1);
+                          const canAddScore = !cannotAdd;
+                          const val = scoreType === "H" ? s.H : scoreType === "YO" ? s.YO : s.CH;
+                          const penKey = scoreType === "H" ? "G" : scoreType === "YO" ? "D" : "T";
+                          const penActive = penKey === "T" ? greenTActive : penKey === "D" ? greenDActive : greenGActive;
+                          const canAddPen = !endedNow;
+                          return (
+                            <div key={scoreType} className="flex flex-col gap-1">
+                              <button onClick={(e) => handleScoreButton("green", scoreType, false, canAddScore, e)} onContextMenu={(e) => handleScoreButton("green", scoreType, true, true, e)} className={"flex flex-col justify-center items-center rounded-xl py-3 md:py-4 border select-none " + (canAddScore ? "bg-green-700 border-green-500 hover:bg-green-600 cursor-pointer" : "bg-slate-800/40 border-slate-700/60 text-slate-500 cursor-default")}>
+                                <span className={scoreLabelClass}>{scoreType}</span>
+                                <span className={scoreValueClass}>{val}</span>
+                              </button>
+                              <button onClick={(e) => handleScoreButton("green", penKey, false, canAddPen, e)} onContextMenu={(e) => handleScoreButton("green", penKey, true, true, e)} className={"flex flex-col justify-center items-center rounded-xl py-1.5 border select-none " + (canAddPen ? "bg-slate-800 border-slate-500 hover:bg-slate-700 cursor-pointer" : "bg-slate-800/40 border-slate-700/60 text-slate-500 cursor-default")}>
+                                <span className={penLabelClass}>{penKey}</span>
+                                <div className={"mt-1 w-8 h-3 rounded-md " + (penActive ? "bg-red-400 shadow-[0_0_15px_rgba(248,113,113,1)]" : "bg-slate-500/30")} />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <button onClick={() => quickEditCountry("green")} className="hover:opacity-90">
+                      <AffiliationBadge player={bout.green} scope={bout.tournamentScope} mode={effectiveAffiliationMode} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="text-sm text-slate-300">
+                    Live winner: <span className="font-semibold">{liveWinnerSide === "blue" ? bout.blue.name : liveWinnerSide === "green" ? bout.green.name : "-"}</span>
+                  </div>
+                  <div className="text-sm text-slate-400">
+                    Right click any score/penalty button to remove last event.
+                  </div>
+                </div>
+              </div>
+                <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 overflow-y-auto flex-none" style={{ height: isFullscreen ? "10rem" : "12rem" }}>
+                  <div className="font-semibold mb-2 text-sm">Event log</div>
+
+                  {sbEvents.length === 0 && (
+                    <div className="text-slate-400 text-sm">No events yet.</div>
+                  )}
+
+                  {sbEvents.map((ev, i) => (
+                    <div key={i} className="flex justify-between text-sm">
+                      <span className="font-mono text-xs md:text-sm">
+                        {formatTime(ev.atMs)}
+                      </span>
+                      <span>
+                        {ev.side.toUpperCase()}{" "}
+                        <span className="font-semibold">{ev.type}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+            </div>
+          </main>
+
+          <EditModal open={editOpen} onClose={() => setEditOpen(false)} draft={draft} setDraft={setDraft} onSave={saveDraft} />
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

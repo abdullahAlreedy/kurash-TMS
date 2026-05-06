@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 
 const app = express();
+const APP_VERSION = "v35 Final Stable";
 app.use(cors());
 app.use(express.json({ limit: "5mb" }));
 
@@ -364,7 +365,7 @@ app.delete("/api/tournament/:id", (req, res) => {
   fs.unlinkSync(file);
   clearCurrentIfMatches(id);
 
-  return res.json({ ok: true });
+  return res.json({ ok: true, version: APP_VERSION });
 });
 
 // ---------------- Existing system API ----------------
@@ -491,6 +492,7 @@ app.post("/api/referee-evaluation", (req, res) => {
   bout.refEvaluations = Array.isArray(bout.refEvaluations) ? bout.refEvaluations : [];
   const idx = bout.refEvaluations.findIndex((x) => String(x.refId) === String(refId));
   if (idx >= 0) bout.refEvaluations[idx] = saved; else bout.refEvaluations.push(saved);
+  if (store.schedule) store.schedule.updatedAt = new Date().toISOString();
   touchStore("referee_evaluation");
   return res.json({ ok: true, evaluation: saved, tournament: fullTournamentPayload(store) });
 });
@@ -528,6 +530,23 @@ function ensureScheduleContainers() {
   return store.schedule;
 }
 
+const GLOBAL_CONFLICT_GAP = 1;
+
+function boutWaveNumberForConflict(schedule, bout) {
+  if (!schedule || !bout) return 0;
+  if (Number.isFinite(Number(bout.timeSlot))) return Number(bout.timeSlot);
+  if (Number.isFinite(Number(bout.orderNo))) return Number(bout.orderNo);
+  if (Number.isFinite(Number(bout.roundNo))) return Number(bout.roundNo);
+  const sameGillam = (schedule.bouts || []).filter((x) => String(x.gillam || "") === String(bout.gillam || ""));
+  const idx = sameGillam.findIndex((x) => String(x.boutNo) === String(bout.boutNo));
+  return idx >= 0 ? idx + 1 : Number(bout.boutNo) || 0;
+}
+
+function isGlobalRefForConflict(refId) {
+  const r = (store.refs || []).find((x) => String(x.id) === String(refId));
+  return !r || (r.assignScope || "global") === "global";
+}
+
 function validateAssignmentConflicts(assignments) {
   const conflicts = [];
   const byBout = Array.isArray(assignments) ? assignments : [];
@@ -544,6 +563,7 @@ function validateAssignmentConflicts(assignments) {
       if (seen.has(key)) {
         conflicts.push({
           type: "same_bout_duplicate",
+          blocking: true,
           boutNo: a.boutNo,
           refId: key,
           roles: [seen.get(key), role],
@@ -569,6 +589,7 @@ function validateAssignmentConflicts(assignments) {
       if (prev && prev.gillam !== gillam) {
         conflicts.push({
           type: "same_time_different_gillam",
+          blocking: true,
           refId: String(refId),
           boutNo: a.boutNo,
           otherBoutNo: prev.boutNo,
@@ -579,6 +600,41 @@ function validateAssignmentConflicts(assignments) {
         });
       } else if (!prev) {
         slots.set(key, { boutNo: a.boutNo, gillam });
+      }
+    }
+  }
+
+
+  // Global referees may move between mats, but must not be assigned on another Gillam
+  // in the same wave or within +/- GLOBAL_CONFLICT_GAP waves.
+  const usage = [];
+  for (const a of byBout) {
+    const bout = (store.schedule?.bouts || []).find((b) => String(b.boutNo) === String(a.boutNo)) || {};
+    const gillam = String(a.gillam || bout?.gillam || "");
+    const wave = boutWaveNumberForConflict(store.schedule, bout);
+    for (const role of ["mainRef", "judge1", "judge2"]) {
+      const refId = a[role];
+      if (!refId) continue;
+      usage.push({ refId: String(refId), role, boutNo: a.boutNo, gillam, wave, global: isGlobalRefForConflict(refId) });
+    }
+  }
+  for (let i = 0; i < usage.length; i++) {
+    for (let j = i + 1; j < usage.length; j++) {
+      const A = usage[i], B = usage[j];
+      if (A.refId !== B.refId) continue;
+      if (!A.gillam || !B.gillam || A.gillam === B.gillam) continue;
+      if (!A.global && !B.global) continue;
+      if (Math.abs(Number(A.wave) - Number(B.wave)) <= GLOBAL_CONFLICT_GAP) {
+        conflicts.push({
+          type: "global_cross_mat_gap",
+          blocking: true,
+          refId: A.refId,
+          boutNo: A.boutNo,
+          otherBoutNo: B.boutNo,
+          gillam: A.gillam,
+          otherGillam: B.gillam,
+          message: `Global referee ${A.refId} cross-Gillam conflict: bout ${A.boutNo} (${A.gillam}, order ${A.wave}) and bout ${B.boutNo} (${B.gillam}, order ${B.wave}). Gap=${GLOBAL_CONFLICT_GAP}`
+        });
       }
     }
   }
@@ -635,7 +691,8 @@ app.get("/api/referee-management", (req, res) => {
     conflicts: validateAssignmentConflicts(schedule.assignments),
     stats: refereeStatsPayload(),
     meta: makeMeta(store),
-    lastSavedAt: store.lastSavedAt || null
+    lastSavedAt: store.lastSavedAt || null,
+    scheduleVersion: store.schedule?.updatedAt || store.lastSavedAt || null
   });
 });
 
@@ -656,7 +713,12 @@ app.post("/api/referee-assignments/save", (req, res) => {
   if (!Array.isArray(assignments)) return res.status(400).json({ error: "assignments array is required" });
   const schedule = ensureScheduleContainers();
   schedule.assignments = assignments.map((a) => ({ ...a, manual: true }));
+  schedule.updatedAt = new Date().toISOString();
   const conflicts = validateAssignmentConflicts(schedule.assignments);
+  const blocking = conflicts.filter((c) => c.blocking);
+  if (blocking.length) {
+    return res.status(409).json({ error: "Blocking referee assignment conflicts", conflicts, blocking });
+  }
   if (store.tournamentId) touchStore("ref_assignments_save");
   return res.json({ ok: true, conflicts, assignments: schedule.assignments, tournament: fullTournamentPayload(store) });
 });
@@ -666,6 +728,7 @@ app.post("/api/final-referee-pool/save", (req, res) => {
   if (!Array.isArray(finalRefereePool)) return res.status(400).json({ error: "finalRefereePool array is required" });
   store.tournamentMeta = normalizeTournamentMeta(store.tournamentMeta || {});
   store.tournamentMeta.finalRefereePool = finalRefereePool.map(String);
+  if (store.schedule) store.schedule.updatedAt = new Date().toISOString();
   if (store.tournamentId) touchStore("final_referee_pool_save");
   return res.json({ ok: true, finalRefereePool: store.tournamentMeta.finalRefereePool, tournament: fullTournamentPayload(store) });
 });

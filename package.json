@@ -1,8 +1,8 @@
 {
-  "name": "kurash-server",
-  "version": "1.0.0",
+  "name": "kurash-tms",
+  "version": "35.0.0",
   "private": true,
-  "description": "Kurash tournament backend server",
+  "description": "Kurash Tournament Management System v35 Final Stable",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

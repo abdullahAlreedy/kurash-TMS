@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kurash Referee Screen v35 Final Stable</title>
+  <style>
+    :root {
+      --bg: #020617;
+      --panel: #0f172a;
+      --panel-2: #111827;
+      --border: #1e293b;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --done: #475569;
+      --danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: Arial, Helvetica, sans-serif;
+      background: radial-gradient(circle at top, #0f172a, var(--bg));
+      color: var(--text);
+    }
+    body { min-height: 100vh; }
+
+    .wrap {
+      width: min(98vw, 1800px);
+      margin: 0 auto;
+      padding: clamp(8px, 1.2vw, 16px);
+    }
+
+    .card {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--border);
+      border-radius: clamp(18px, 2vw, 24px);
+      box-shadow: 0 30px 60px rgba(0,0,0,0.45);
+      overflow: hidden;
+      min-height: calc(100vh - 2 * clamp(8px, 1.2vw, 16px));
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: clamp(10px, 1.4vw, 16px);
+      border-bottom: 1px solid var(--border);
+      background: rgba(2,6,23,0.9);
+    }
+
+    .titleRow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .title h1 {
+      margin: 0;
+      font-size: clamp(22px, 2vw, 32px);
+      text-align: center;
+      line-height: 1.1;
+    }
+
+    .title .sub {
+      margin-top: 4px;
+      font-size: clamp(11px, 0.9vw, 13px);
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    input, select, button {
+      height: clamp(36px, 4.2vh, 42px);
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #020617;
+      color: var(--text);
+      padding: 0 14px;
+      font-size: clamp(13px, 1vw, 14px);
+    }
+
+    input, select { min-width: 180px; }
+    button { cursor: pointer; }
+    button:hover { border-color: var(--accent); }
+    button.primary { background: rgba(14,165,233,0.16); border-color: rgba(56,189,248,0.55); }
+
+    .status {
+      font-size: clamp(12px, 0.95vw, 13px);
+      color: var(--muted);
+      padding: 0 8px;
+    }
+
+    .gillamHero {
+      text-align: center;
+      padding: 8px 12px 0;
+    }
+
+    .gillamHero .k {
+      font-size: clamp(12px, 0.8vw, 13px);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .gillamHero .v {
+      margin-top: 4px;
+      font-size: clamp(34px, 5vw, 76px);
+      font-weight: 900;
+      line-height: 0.98;
+      color: #f8fafc;
+      word-break: break-word;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: clamp(8px, 1vw, 12px);
+      padding: 0 clamp(10px, 1.2vw, 16px) clamp(8px, 1vw, 12px);
+    }
+
+    .mini {
+      background: rgba(2,6,23,0.75);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: clamp(10px, 1.2vw, 14px);
+      text-align: center;
+      min-height: clamp(64px, 9vh, 88px);
+    }
+
+    .mini .k { color: var(--muted); font-size: clamp(11px, 0.8vw, 12px); }
+    .mini .v { margin-top: 6px; font-size: clamp(18px, 1.8vw, 28px); font-weight: 700; }
+
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: 1.35fr 1fr 1fr;
+      gap: clamp(10px, 1vw, 16px);
+      padding: 0 clamp(10px, 1.2vw, 16px) 10px;
+    }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(15,23,42,0.98), rgba(2,6,23,0.98));
+      border: 1px solid var(--border);
+      border-radius: clamp(18px, 1.6vw, 24px);
+      padding: clamp(14px, 1.4vw, 20px);
+      min-height: clamp(260px, 42vh, 430px);
+      display: flex;
+      flex-direction: column;
+      gap: clamp(10px, 1vw, 14px);
+      min-width: 0;
+    }
+
+    .panel.current {
+      border-color: rgba(56,189,248,0.6);
+      box-shadow: 0 0 0 1px rgba(56,189,248,0.18) inset;
+    }
+
+    .panel.empty {
+      justify-content: center;
+      align-items: center;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .labelRow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .label {
+      font-size: clamp(12px, 0.9vw, 13px);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: bold;
+    }
+
+    .badge {
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      font-size: clamp(11px, 0.9vw, 12px);
+      white-space: nowrap;
+    }
+
+    .badge.current { background: rgba(14,165,233,0.14); color: #7dd3fc; }
+    .badge.next { background: rgba(245,158,11,0.14); color: #fcd34d; }
+    .badge.then { background: rgba(100,116,139,0.18); color: #cbd5e1; }
+
+    .fightNo {
+      font-size: clamp(20px, 2.6vw, 34px);
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: clamp(11px, 0.9vw, 13px);
+      color: var(--muted);
+    }
+
+    .meta span {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(2,6,23,0.8);
+      max-width: 100%;
+    }
+
+    .refGrid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: clamp(10px, 1vw, 14px);
+      flex: 1;
+      min-width: 0;
+    }
+
+    .refBox {
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: clamp(12px, 1vw, 16px);
+      background: rgba(2,6,23,0.85);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-width: 0;
+      text-align: center;
+    }
+
+    .refRole {
+      font-size: clamp(11px, 0.8vw, 12px);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .refNo {
+      font-size: clamp(34px, 4vw, 72px);
+      font-weight: 900;
+      line-height: 1;
+      margin-top: 10px;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
+    .refNo.missing {
+      color: var(--danger);
+      font-size: clamp(18px, 1.4vw, 26px);
+      font-weight: 700;
+    }
+
+    .refAff {
+      margin-top: 8px;
+      font-size: clamp(11px, 0.9vw, 13px);
+      color: var(--muted);
+      max-width: 100%;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      line-height: 1.25;
+    }
+
+    .refAff .code {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 4px;
+      padding: 3px 8px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: #cbd5e1;
+      background: rgba(2,6,23,0.8);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-weight: 700;
+    }
+
+    .footerRow {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: auto;
+      font-size: clamp(12px, 0.9vw, 13px);
+      color: var(--muted);
+      flex-wrap: wrap;
+    }
+
+    .hint {
+      padding: 0 16px 16px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .fs-hide {
+      transition: opacity .2s ease, max-height .2s ease, margin .2s ease, padding .2s ease;
+    }
+
+    .is-fullscreen .fs-hide {
+      display: none !important;
+    }
+
+    .mode-fixed-only { display: none; }
+    .show-fixed .mode-fixed-only { display: inline-flex; }
+
+    @media (max-width: 1280px) {
+      .panel { min-height: clamp(230px, 38vh, 360px); }
+    }
+
+    @media (max-width: 1100px) {
+      .board { grid-template-columns: 1fr; }
+      .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 700px) {
+      .wrap { width: 100vw; padding: 8px; }
+      .summary { grid-template-columns: 1fr; }
+      .controls { width: 100%; }
+      input, select { min-width: 0; width: 100%; }
+      .refGrid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card" id="screenRoot">
+      <div class="topbar">
+        <div class="titleRow">
+          <div class="title">
+            <h1>Kurash Referee Screen</h1>
+            <div class="sub">Numbers only • choose rotating all Gillams or fixed Gillam before fullscreen</div>
+          </div>
+          <button id="btnFullscreen">Fullscreen</button>
+        </div>
+
+        <div class="controls fs-hide" id="controlsWrap">
+          <input id="serverUrl" type="text" placeholder="http://localhost:3000" />
+          <button id="btnTest">Test</button>
+
+          <select id="modeSelect">
+            <option value="rotate">Rotating All Gillams</option>
+            <option value="fixed">Fixed Gillam</option>
+          </select>
+
+          <select id="gillamSelect" class="mode-fixed-only">
+            <option value="">-- Select Gillam --</option>
+          </select>
+
+          <button id="btnCurrent">Load Current Tournament</button>
+          <button id="btnGillams">Load Gillams</button>
+          <button id="btnStart" class="primary">Start</button>
+          <button id="btnRefresh">Refresh Now</button>
+          <div class="status" id="status">Idle.</div>
+        </div>
+      </div>
+
+      <div class="gillamHero">
+        <div class="k">Gillam</div>
+        <div class="v" id="heroGillam">-</div>
+      </div>
+
+      <div class="summary">
+        <div class="mini"><div class="k">Mode</div><div class="v" id="sumMode">Rotate</div></div>
+        <div class="mini"><div class="k">Gillam</div><div class="v" id="sumGillam">-</div></div>
+        <div class="mini"><div class="k">Total fights</div><div class="v" id="sumTotal">0</div></div>
+        <div class="mini"><div class="k">Remaining</div><div class="v" id="sumRemain">0</div></div>
+        <div class="mini"><div class="k">Affiliation</div><div class="v" id="sumAffiliation">-</div></div>
+      </div>
+
+      <div class="content">
+        <div class="board">
+          <div id="panelCurrent" class="panel current empty"></div>
+          <div id="panelNext" class="panel empty"></div>
+          <div id="panelAfter" class="panel empty"></div>
+        </div>
+      </div>
+
+      <div class="hint fs-hide">
+        This screen reads the current tournament from <code>/api/tournament/current</code>, then uses the schedule assignments and referee list to show referee numbers only. Refresh interval is <strong>5 seconds</strong>. In rotating mode it switches to the next Gillam on every cycle. In fixed mode it stays on the selected Gillam and refreshes it every 5 seconds.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const el = {
+      root: document.getElementById('screenRoot'),
+      serverUrl: document.getElementById('serverUrl'),
+      btnTest: document.getElementById('btnTest'),
+      modeSelect: document.getElementById('modeSelect'),
+      gillamSelect: document.getElementById('gillamSelect'),
+      btnGillams: document.getElementById('btnGillams'),
+      btnCurrent: document.getElementById('btnCurrent'),
+      btnStart: document.getElementById('btnStart'),
+      btnRefresh: document.getElementById('btnRefresh'),
+      btnFullscreen: document.getElementById('btnFullscreen'),
+      status: document.getElementById('status'),
+      heroGillam: document.getElementById('heroGillam'),
+      sumMode: document.getElementById('sumMode'),
+      sumGillam: document.getElementById('sumGillam'),
+      sumTotal: document.getElementById('sumTotal'),
+      sumRemain: document.getElementById('sumRemain'),
+      sumAffiliation: document.getElementById('sumAffiliation'),
+      panelCurrent: document.getElementById('panelCurrent'),
+      panelNext: document.getElementById('panelNext'),
+      panelAfter: document.getElementById('panelAfter'),
+      controlsWrap: document.getElementById('controlsWrap')
+    };
+
+    const state = {
+      serverUrl: '',
+      gillams: [],
+      activeGillamIndex: 0,
+      currentGillam: '',
+      mode: 'rotate',
+      fixedGillam: '',
+      timerId: null,
+      started: false,
+      tournamentMeta: { tournamentScope: 'external', affiliationMode: 'country', weightMode: 'auto_weights' },
+      refs: []
+    };
+
+    function setStatus(msg, tone = 'muted') {
+      el.status.textContent = msg;
+      el.status.style.color =
+        tone === 'ok' ? '#86efac' :
+        tone === 'error' ? '#fca5a5' :
+        tone === 'warn' ? '#fcd34d' : '#94a3b8';
+    }
+
+    function normalizedBaseUrl() {
+      const raw = String(el.serverUrl.value || '').trim();
+      return raw ? raw.replace(/\/+$/, '') : '';
+    }
+
+    function setModeUI() {
+      state.mode = el.modeSelect.value;
+      el.sumMode.textContent = state.mode === 'fixed' ? 'Fixed' : 'Rotate';
+      if (state.mode === 'fixed') {
+        el.controlsWrap.classList.add('show-fixed');
+      } else {
+        el.controlsWrap.classList.remove('show-fixed');
+      }
+    }
+
+    function formatRefNo(refObj) {
+      if (!refObj) return 'Not set';
+      const no = refObj.refNo;
+      if (no === null || no === undefined || no === '') return 'Not set';
+      return String(no);
+    }
+
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function isExternalTournament() {
+      return (state.tournamentMeta?.tournamentScope || 'external') === 'external';
+    }
+
+    function noAffiliationCode(code) {
+      return ['', 'NA', 'NONE', 'NO', 'N/A'].includes(String(code || '').trim().toUpperCase());
+    }
+
+    function affiliationFullName(obj) {
+      const full = String(obj?.countryFull || obj?.affiliationFull || obj?.club || '').trim();
+      const code = String(obj?.country || obj?.affiliationCode || '').trim().toUpperCase();
+      if (!full && noAffiliationCode(code)) return 'No Affiliation';
+      if (!full) return code || 'No Affiliation';
+      return full;
+    }
+
+    function affiliationCode(obj) {
+      const code = String(obj?.country || obj?.affiliationCode || '').trim().toUpperCase();
+      if (code) return code;
+      const letters = affiliationFullName(obj).replace(/[^A-Za-z]/g, '').toUpperCase();
+      return letters ? letters.slice(0, 3) : 'NA';
+    }
+
+    function affiliationText(obj) {
+      const full = affiliationFullName(obj);
+      const code = affiliationCode(obj);
+      if (String(full).toLowerCase() === 'no affiliation' || noAffiliationCode(code)) return 'No Affiliation';
+      if (isExternalTournament()) return code ? `${full} (${code})` : full;
+      return full || code || 'No Affiliation';
+    }
+
+    function affiliationModeLabel() {
+      if (isExternalTournament()) return 'Country';
+      const mode = state.tournamentMeta?.affiliationMode || 'none';
+      return mode === 'club' ? 'Club' : 'No Affiliation';
+    }
+
+    function formatRefAffiliation(refObj) {
+      if (!refObj) return '';
+      const text = affiliationText(refObj);
+      const code = affiliationCode(refObj);
+      const codePart = noAffiliationCode(code) ? 'NA' : code;
+      return `<div class="refAff"><div>${escapeHtml(text)}</div><span class="code">${escapeHtml(codePart)}</span></div>`;
+    }
+
+    function formatRefLabel(refObj) {
+      if (!refObj) return 'Not set';
+      const name = String(refObj.name || '').trim();
+      return name ? escapeHtml(name) : 'No name';
+    }
+
+    function renderEmpty(panelEl, title, badgeText) {
+      panelEl.className = 'panel empty' + (title === 'Current Referees' ? ' current' : '');
+      panelEl.innerHTML = `
+        <div class="labelRow">
+          <div class="label">${title}</div>
+          <div class="badge ${badgeText === 'Current' ? 'current' : badgeText === 'Next' ? 'next' : 'then'}">${badgeText}</div>
+        </div>
+        <div>No assigned fight</div>
+      `;
+    }
+
+    function renderRefPanel(panelEl, title, badgeText, bout, payload, refsById) {
+      if (!bout) {
+        renderEmpty(panelEl, title, badgeText);
+        return;
+      }
+
+      const assignment = (payload.schedule.assignments || []).find(a => Number(a.boutNo) === Number(bout.boutNo)) || null;
+      const mainRef = assignment ? refsById.get(assignment.mainRef) : null;
+      const judge1 = assignment ? refsById.get(assignment.judge1) : null;
+      const judge2 = assignment ? refsById.get(assignment.judge2) : null;
+      const remain = payload.bouts.filter(b => !b.finished).length;
+
+      panelEl.className = 'panel' + (title === 'Current Referees' ? ' current' : '');
+      panelEl.innerHTML = `
+        <div class="labelRow">
+          <div class="label">${title}</div>
+          <div class="badge ${badgeText === 'Current' ? 'current' : badgeText === 'Next' ? 'next' : 'then'}">${badgeText}</div>
+        </div>
+
+        <div class="fightNo">Fight #${bout.boutNo || '-'}</div>
+
+        <div class="meta">
+          <span>${bout.sex === 'F' ? 'Women' : 'Men'} ${bout.weight || ''}</span>
+          <span>${bout.stage || '-'}</span>
+          <span>${bout.gillam || '-'}</span>
+          <span>${remain} remaining</span>
+        </div>
+
+        <div class="refGrid">
+          <div class="refBox">
+            <div class="refRole">Main Ref</div>
+            <div class="refNo ${mainRef ? '' : 'missing'}">${formatRefNo(mainRef)}</div>
+            <div class="refAff">${formatRefLabel(mainRef)}</div>
+            ${formatRefAffiliation(mainRef)}
+          </div>
+
+          <div class="refBox">
+            <div class="refRole">Judge 1</div>
+            <div class="refNo ${judge1 ? '' : 'missing'}">${formatRefNo(judge1)}</div>
+            <div class="refAff">${formatRefLabel(judge1)}</div>
+            ${formatRefAffiliation(judge1)}
+          </div>
+
+          <div class="refBox">
+            <div class="refRole">Judge 2</div>
+            <div class="refNo ${judge2 ? '' : 'missing'}">${formatRefNo(judge2)}</div>
+            <div class="refAff">${formatRefLabel(judge2)}</div>
+            ${formatRefAffiliation(judge2)}
+          </div>
+        </div>
+
+        <div class="footerRow">
+          <span>Current fight assignment</span>
+          <span>${payload.schedule.assignments ? payload.schedule.assignments.length : 0} total assignments</span>
+        </div>
+      `;
+    }
+
+    function populateGillamSelect(gillams) {
+      el.gillamSelect.innerHTML = '<option value="">-- Select Gillam --</option>';
+      gillams.forEach(g => {
+        const opt = document.createElement('option');
+        opt.value = g;
+        opt.textContent = g;
+        el.gillamSelect.appendChild(opt);
+      });
+    }
+
+    async function fetchJson(url) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return await res.json();
+    }
+
+    async function testConnection() {
+      const base = normalizedBaseUrl();
+      if (!base) {
+        setStatus('Enter server URL first.', 'warn');
+        return;
+      }
+      try {
+        setStatus('Testing connection...');
+        await fetchJson(base + '/api/ping');
+        setStatus('Server is online.', 'ok');
+      } catch (err) {
+        console.error(err);
+        setStatus('Cannot reach server.', 'error');
+      }
+    }
+
+    async function loadCurrentTournament() {
+      const base = normalizedBaseUrl();
+      if (!base) {
+        setStatus('Enter server URL first.', 'warn');
+        return null;
+      }
+      try {
+        setStatus('Loading current tournament...');
+        const payload = await fetchJson(base + '/api/tournament/current');
+        if (!payload) {
+          state.refs = [];
+          state.tournamentMeta = { tournamentScope: 'external', affiliationMode: 'country', weightMode: 'auto_weights' };
+          el.sumAffiliation.textContent = '-';
+          setStatus('No current tournament found.', 'warn');
+          return null;
+        }
+        state.refs = Array.isArray(payload.refs) ? payload.refs : [];
+        state.tournamentMeta = payload.meta || payload.tournamentMeta || state.tournamentMeta;
+        el.sumAffiliation.textContent = affiliationModeLabel();
+        setStatus('Current tournament loaded.', 'ok');
+        return payload;
+      } catch (err) {
+        console.error(err);
+        setStatus('Error loading current tournament.', 'error');
+        return null;
+      }
+    }
+
+    async function loadGillams() {
+
+      const base = normalizedBaseUrl();
+      if (!base) {
+        setStatus('Enter server URL first.', 'warn');
+        return [];
+      }
+      try {
+        setStatus('Loading Gillams...');
+        const list = await fetchJson(base + '/api/gillams');
+        state.gillams = Array.isArray(list) ? list : [];
+        populateGillamSelect(state.gillams);
+        if (state.gillams.length && !state.fixedGillam) {
+          state.fixedGillam = state.gillams[0];
+          el.gillamSelect.value = state.fixedGillam;
+        }
+        setStatus(state.gillams.length ? 'Gillams loaded.' : 'No Gillams found.', state.gillams.length ? 'ok' : 'warn');
+        return state.gillams;
+      } catch (err) {
+        console.error(err);
+        setStatus('Error loading Gillams.', 'error');
+        return [];
+      }
+    }
+
+    function getTargetGillam() {
+      if (!state.gillams.length) return '';
+      if (state.mode === 'fixed') {
+        return state.fixedGillam || state.gillams[0] || '';
+      }
+      return state.gillams[state.activeGillamIndex] || state.gillams[0] || '';
+    }
+
+    async function refreshScreen() {
+      const base = normalizedBaseUrl();
+      if (!base) {
+        setStatus('Enter server URL first.', 'warn');
+        return;
+      }
+
+      try {
+        const gillams = state.gillams.length ? state.gillams : await loadGillams();
+        if (!gillams.length) {
+          el.heroGillam.textContent = '-';
+          el.sumGillam.textContent = '-';
+          el.sumTotal.textContent = '0';
+          el.sumRemain.textContent = '0';
+          el.sumAffiliation.textContent = affiliationModeLabel();
+          renderEmpty(el.panelCurrent, 'Current Referees', 'Current');
+          renderEmpty(el.panelNext, 'Next Referees', 'Next');
+          renderEmpty(el.panelAfter, 'Then Referees', 'Then');
+          return;
+        }
+
+        const targetGillam = getTargetGillam();
+        state.currentGillam = targetGillam;
+
+        setStatus('Refreshing ' + targetGillam + '...');
+        const payload = await fetchJson(base + '/api/tournament/current');
+        if (payload?.meta || payload?.tournamentMeta) {
+          state.tournamentMeta = payload.meta || payload.tournamentMeta || state.tournamentMeta;
+        }
+        const schedule = payload && payload.schedule ? payload.schedule : null;
+        const refs = Array.isArray(payload && payload.refs) ? payload.refs : state.refs;
+
+        if (!schedule || !Array.isArray(schedule.bouts)) {
+          throw new Error('No active schedule');
+        }
+
+        const refsById = new Map(refs.map(r => [r.id, r]));
+        const bouts = schedule.bouts.filter(b => b.gillam === targetGillam);
+        const pending = bouts.filter(b => !b.finished);
+
+        el.heroGillam.textContent = targetGillam || '-';
+        el.sumGillam.textContent = targetGillam || '-';
+        el.sumTotal.textContent = String(bouts.length);
+        el.sumRemain.textContent = String(pending.length);
+        el.sumAffiliation.textContent = affiliationModeLabel();
+
+        renderRefPanel(el.panelCurrent, 'Current Referees', 'Current', pending[0], { bouts, schedule }, refsById);
+        renderRefPanel(el.panelNext, 'Next Referees', 'Next', pending[1], { bouts, schedule }, refsById);
+        renderRefPanel(el.panelAfter, 'Then Referees', 'Then', pending[2], { bouts, schedule }, refsById);
+
+        setStatus('Updated ' + targetGillam + '.', 'ok');
+
+        if (state.mode === 'rotate' && state.gillams.length > 1) {
+          state.activeGillamIndex = (state.activeGillamIndex + 1) % state.gillams.length;
+        }
+      } catch (err) {
+        console.error(err);
+        setStatus(err.message === 'No active schedule' ? 'No active tournament schedule on server.' : 'Refresh failed.', 'error');
+      }
+    }
+
+    function stopLoop() {
+      if (state.timerId) {
+        clearInterval(state.timerId);
+        state.timerId = null;
+      }
+    }
+
+    function startLoop() {
+      stopLoop();
+      state.started = true;
+      state.serverUrl = normalizedBaseUrl();
+      state.fixedGillam = el.gillamSelect.value || state.fixedGillam;
+      if (state.mode === 'rotate') state.activeGillamIndex = 0;
+      refreshScreen();
+      state.timerId = setInterval(refreshScreen, 5000);
+    }
+
+    async function enterFullscreen() {
+      try {
+        if (!document.fullscreenElement) {
+          await el.root.requestFullscreen();
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function handleFsChange() {
+      el.root.classList.toggle('is-fullscreen', !!document.fullscreenElement);
+      el.btnFullscreen.textContent = document.fullscreenElement ? 'Exit Fullscreen' : 'Fullscreen';
+    }
+
+    el.btnTest.addEventListener('click', testConnection);
+    el.btnGillams.addEventListener('click', loadGillams);
+    el.btnCurrent.addEventListener('click', loadCurrentTournament);
+    el.btnRefresh.addEventListener('click', refreshScreen);
+    el.btnStart.addEventListener('click', startLoop);
+    el.btnFullscreen.addEventListener('click', async () => {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen().catch(() => {});
+      } else {
+        await enterFullscreen();
+      }
+    });
+
+    el.modeSelect.addEventListener('change', () => {
+      setModeUI();
+      state.fixedGillam = el.gillamSelect.value || state.fixedGillam;
+    });
+
+    el.gillamSelect.addEventListener('change', () => {
+      state.fixedGillam = el.gillamSelect.value;
+      if (state.mode === 'fixed' && state.started) {
+        refreshScreen();
+      }
+    });
+
+    document.addEventListener('fullscreenchange', handleFsChange);
+
+    setModeUI();
+    el.sumAffiliation.textContent = affiliationModeLabel();
+    renderEmpty(el.panelCurrent, 'Current Referees', 'Current');
+    renderEmpty(el.panelNext, 'Next Referees', 'Next');
+    renderEmpty(el.panelAfter, 'Then Referees', 'Then');
+  </script>
+</body>
+</html>
+
+<!-- Enhancement notes: zebra row contrast and referee/player management search handled in main_web_v35 Final Stable. -->

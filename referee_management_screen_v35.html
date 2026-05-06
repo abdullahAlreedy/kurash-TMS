@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kurash Referee Management v35 Final Stable</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100">
+  <div class="max-w-[1900px] mx-auto p-4 space-y-4">
+    <header class="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-2xl">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 class="text-3xl font-black text-sky-200">Kurash Referee Management Screen <span class="text-base text-slate-400">v35 Final Stable</span></h1>
+          <p class="text-slate-400 text-sm mt-1">v35 Final Stable • External screen for the Referee Committee Chair. Same assignments, evaluations, final pool, and conflict rules as Main Web.</p>
+          <p class="text-amber-300 text-xs mt-1">Global referee cross-Gillam conflict prevention: same order and ±1 order are blocked.</p>
+        </div>
+        <div class="flex flex-wrap gap-2 items-center">
+          <input id="serverUrl" class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-w-[320px]" placeholder="https://kurash-tms.onrender.com" />
+          <button id="btnConnect" class="rounded-xl px-4 py-2 bg-sky-700 hover:bg-sky-600 font-bold">Connect / Load</button>
+          <button id="btnSaveAll" class="rounded-xl px-4 py-2 bg-emerald-700 hover:bg-emerald-600 font-bold">Save Operations</button>
+        </div>
+      </div>
+      <div id="status" class="mt-3 text-sm text-slate-400">Offline view. Enter server URL to load current tournament.</div>
+    </header>
+
+    <section class="grid lg:grid-cols-4 gap-4">
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4"><div class="text-slate-400 text-xs uppercase">Referees</div><div id="statRefs" class="text-3xl font-black">0</div></div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4"><div class="text-slate-400 text-xs uppercase">Bouts</div><div id="statBouts" class="text-3xl font-black">0</div></div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4"><div class="text-slate-400 text-xs uppercase">Blocking Conflicts</div><div id="statConflicts" class="text-3xl font-black text-orange-300">0</div></div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4"><div class="text-slate-400 text-xs uppercase">Last Saved</div><div id="statSaved" class="text-base font-bold text-slate-200">—</div></div>
+    </section>
+
+    <main class="grid xl:grid-cols-[0.9fr_1.6fr] gap-4">
+      <section class="rounded-3xl border border-slate-800 bg-slate-900/70 p-4 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h2 class="text-xl font-bold text-sky-200">Referees</h2>
+          <input id="refSearch" class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2" placeholder="Search referee..." />
+        </div>
+        <div class="rounded-xl px-3 py-2 bg-slate-800/50 text-slate-400 text-sm">Master data is read-only here. Add/edit referees from the Main Web Referees tab.</div>
+        <div class="overflow-auto max-h-[60vh] rounded-2xl border border-slate-800">
+          <table class="w-full text-sm" id="refsTable"></table>
+        </div>
+      </section>
+
+      <section class="rounded-3xl border border-slate-800 bg-slate-900/70 p-4 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h2 class="text-xl font-bold text-sky-200">Match Assignments</h2>
+          <div class="flex flex-wrap gap-2 items-center">
+            <input id="boutSearch" class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-w-[220px]" placeholder="Search bout / category..." />
+            <select id="matFilter" class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2"><option value="all">All Gillams</option></select>
+            <select id="stageFilter" class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2"><option value="all">All stages</option></select>
+            <label class="flex items-center gap-1 text-xs text-slate-300 px-2 py-1 rounded-xl bg-slate-950 border border-slate-800"><input id="matRefsOnly" type="checkbox" /> Gillam refs only</label>
+            <label class="flex items-center gap-1 text-xs text-slate-300 px-2 py-1 rounded-xl bg-slate-950 border border-slate-800"><input id="includeGlobal" type="checkbox" checked /> Include global</label>
+            <button id="btnAutoTop" class="rounded-xl px-3 py-2 bg-indigo-700 hover:bg-indigo-600">Auto Assign</button>
+            <button id="btnSaveAssignments" class="rounded-xl px-3 py-2 bg-emerald-700 hover:bg-emerald-600">Save</button>
+          </div>
+        </div>
+        <div id="conflictBox" class="hidden rounded-2xl border border-orange-500/40 bg-orange-950/40 p-3 text-sm text-orange-100"></div>
+        <div class="overflow-y-auto max-h-[70vh] rounded-2xl border border-slate-800">
+          <table class="w-full table-fixed text-xs" id="assignTable"></table>
+        </div>
+      </section>
+    </main>
+
+    <section class="grid xl:grid-cols-2 gap-4">
+      <div class="rounded-3xl border border-slate-800 bg-slate-900/70 p-4 space-y-3">
+        <h2 class="text-xl font-bold text-sky-200">Final Referee Pool</h2>
+        <p class="text-sm text-slate-400">Select referees eligible for finals. Auto assignment prioritizes this pool for final bouts when possible.</p>
+        <div id="finalPoolBox" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-2"></div>
+        <button id="btnSavePool" class="rounded-xl px-4 py-2 bg-emerald-700 hover:bg-emerald-600 font-bold">Save Final Pool</button>
+      </div>
+      <div class="rounded-3xl border border-slate-800 bg-slate-900/70 p-4 space-y-3">
+        <h2 class="text-xl font-bold text-sky-200">Referee Performance Profile</h2>
+        <div class="overflow-auto max-h-[420px] rounded-2xl border border-slate-800"><table class="w-full text-sm" id="statsTable"></table></div>
+      </div>
+    </section>
+  </div>
+
+  <div id="evalModal" class="hidden fixed inset-0 bg-black/70 z-50 p-4 overflow-auto">
+    <div class="max-w-5xl mx-auto rounded-3xl border border-slate-700 bg-slate-950 p-5 space-y-4">
+      <div class="flex items-center justify-between gap-3">
+        <h2 class="text-2xl font-black text-sky-200">Referee Evaluation</h2>
+        <button id="btnCloseEval" class="rounded-xl px-3 py-2 bg-slate-800">Close</button>
+      </div>
+      <div id="evalInfo" class="text-sm text-slate-300"></div>
+      <div class="grid md:grid-cols-3 gap-3">
+        <input id="evalEvaluator" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2" placeholder="Evaluator Name" />
+        <select id="evalLevel" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2"><option>Local</option><option>National</option><option>Continental</option><option>International</option></select>
+        <div id="evalTotal" class="rounded-xl border border-slate-700 px-3 py-2 text-slate-100 font-bold">Total: 0 / 100</div>
+      </div>
+      <div id="evalSections" class="space-y-3"></div>
+      <div class="grid md:grid-cols-3 gap-3">
+        <textarea id="evalStrengths" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2" placeholder="Strengths"></textarea>
+        <textarea id="evalAreas" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2" placeholder="Areas for Improvement"></textarea>
+        <textarea id="evalRecommendations" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2" placeholder="Recommendations"></textarea>
+      </div>
+      <button id="btnSaveEval" class="rounded-xl px-4 py-2 bg-emerald-700 hover:bg-emerald-600 font-bold">Save Evaluation</button>
+    </div>
+  </div>
+
+<script>
+const GLOBAL_CONFLICT_GAP = 1;
+const state = { refs: [], bouts: [], assignments: [], finalRefereePool: [], conflicts: [], stats: [], meta: null, lastSavedAt: null, eval: null };
+const $ = (id) => document.getElementById(id);
+function baseUrl(){ return $('serverUrl').value.trim().replace(/\/+$/, ''); }
+function setStatus(msg, cls='text-slate-400'){ $('status').className='mt-3 text-sm '+cls; $('status').textContent=msg; }
+function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
+function refById(id){ return (state.refs||[]).find(x=>String(x.id)===String(id)); }
+function refName(id){ const r=refById(id); return r ? `${r.refNo ? '#'+r.refNo+' ' : ''}${r.name || r.id}`.trim() : (id || ''); }
+function formatRef(r){ return `${r.refNo ? '#'+r.refNo+' ' : ''}${r.name || r.id || 'Unnamed'}${r.country ? ' ('+r.country+')' : ''}${(r.assignScope||'global')==='pool' ? ' • '+(r.poolGillam||'Pool') : ' • Global'}`; }
+function categoriesText(b){ return [b.ageGroupNumb ? 'Age '+b.ageGroupNumb : '', b.sex, b.weight || b.manualGroup || '', b.stage || b.round || ''].filter(Boolean).join(' | '); }
+function boutByNo(boutNo){ return (state.bouts||[]).find(x=>String(x.boutNo)===String(boutNo)); }
+function assignmentFor(boutNo){ let a=(state.assignments||[]).find(x=>String(x.boutNo)===String(boutNo)); if(!a){ const b=boutByNo(boutNo); a={boutNo:boutNo, gillam:b?.gillam||'', mainRef:'', judge1:'', judge2:''}; state.assignments.push(a); } return a; }
+function avgScore(refId){ const row=(state.stats||[]).find(s=>String(s.ref?.id||s.refId||s.id)===String(refId)); const v=row?.avgScore ?? row?.average ?? row?.avgEval ?? 0; return Number(v)>0 ? Number(v).toFixed(Number(v)%1?1:0) : ''; }
+function isGlobalRef(refId){ const r=refById(refId); return !r || (r.assignScope || 'global') === 'global'; }
+function boutWave(b){ if(!b) return 0; if(Number.isFinite(Number(b.timeSlot))) return Number(b.timeSlot); if(Number.isFinite(Number(b.orderNo))) return Number(b.orderNo); if(Number.isFinite(Number(b.roundNo))) return Number(b.roundNo); const same=(state.bouts||[]).filter(x=>String(x.gillam||'')===String(b.gillam||'')); const idx=same.findIndex(x=>String(x.boutNo)===String(b.boutNo)); return idx>=0 ? idx+1 : Number(b.boutNo)||0; }
+function currentGillam(){ return $('matFilter')?.value || 'all'; }
+function includeGlobal(){ return $('includeGlobal')?.checked !== false; }
+function matRefsOnly(){ return $('matRefsOnly')?.checked === true; }
+function eligibleRefsForBout(b){ const mat=b?.gillam||''; const list=(state.refs||[]).filter(r=>{ const scope=r.assignScope||'global'; const assigned=scope==='pool' && (r.poolGillam||'')===mat; const global=scope==='global'; if(matRefsOnly()) return assigned; if(assigned) return true; if(global && includeGlobal()) return true; return false; }); return list.length ? list : (matRefsOnly()?[]:(state.refs||[])); }
+function refOptions(selected,b){ const current=String(selected||''); const refs=eligibleRefsForBout(b); const opts=['<option value="">— Select —</option>']; for(const r of refs){ const id=String(r.id||''); opts.push(`<option value="${esc(id)}" ${id===current?'selected':''}>${esc(formatRef(r))}</option>`); } return opts.join(''); }
+async function api(path, opts={}){ const b=baseUrl(); if(!b) throw new Error('Server URL required'); const res=await fetch(b+path, opts); const data=await res.json().catch(()=>({})); if(!res.ok) throw new Error((data.blocking ? data.blocking.map(x=>x.message).join('\n') : '') || data.error || ('HTTP '+res.status)); return data; }
+
+async function load(){ try{ setStatus('Loading referee management data...', 'text-sky-300'); const data=await api('/api/referee-management?ts='+Date.now()); Object.assign(state, data); populateFilters(); render(); setStatus('Loaded: '+(state.meta?.name || 'current tournament')+' • '+(state.lastSavedAt || ''), 'text-emerald-300'); localStorage.setItem('kurash_ref_mgmt_server', baseUrl()); }catch(e){ setStatus('Load failed: '+e.message, 'text-red-300'); } }
+function populateFilters(){ const Gillams=[...new Set((state.bouts||[]).map(b=>String(b.gillam||'').trim()).filter(Boolean))].sort(); const stages=[...new Set((state.bouts||[]).map(b=>String(b.stage||'').trim()).filter(Boolean))].sort(); const matVal=$('matFilter').value || 'all'; $('matFilter').innerHTML='<option value="all">All Gillams</option>'+Gillams.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join(''); $('matFilter').value=Gillams.includes(matVal)?matVal:'all'; const stageVal=$('stageFilter').value || 'all'; $('stageFilter').innerHTML='<option value="all">All stages</option>'+stages.map(st=>`<option value="${esc(st)}">${esc(st)}</option>`).join(''); $('stageFilter').value=stages.includes(stageVal)?stageVal:'all'; }
+function render(){ validateLocal(false); $('statRefs').textContent=state.refs.length; $('statBouts').textContent=state.bouts.length; $('statConflicts').textContent=(state.conflicts||[]).filter(c=>c.blocking!==false).length; $('statSaved').textContent=state.lastSavedAt ? new Date(state.lastSavedAt).toLocaleString() : '—'; renderRefs(); renderAssignments(); renderPool(); renderStats(); renderConflicts(); }
+function rowMatch(obj, q){ q=String(q||'').toLowerCase().trim(); if(!q) return true; return Object.values(obj||{}).some(v=>String(v??'').toLowerCase().includes(q)); }
+function renderRefs(){ const q=$('refSearch').value; const rows=(state.refs||[]).filter(r=>rowMatch(r,q)); $('refsTable').innerHTML=`<thead class="sticky top-0 bg-slate-950"><tr><th class="p-2 text-left">#</th><th class="p-2 text-left">Referee</th><th class="p-2 text-left">Scope</th><th class="p-2 text-left">Avg</th></tr></thead><tbody>${rows.map((r,i)=>`<tr class="${i%2?'bg-slate-900/80':'bg-slate-800/40'}"><td class="p-2 text-slate-400">${i+1}</td><td class="p-2">${esc(formatRef(r))}</td><td class="p-2 text-slate-400">${esc((r.assignScope||'global')==='pool' ? 'Pool • '+(r.poolGillam||'-') : 'Global')}</td><td class="p-2 font-bold">${esc(avgScore(r.id)||'-')}</td></tr>`).join('')}</tbody>`; }
+function filteredBouts(){ const q=$('boutSearch').value; const mat=$('matFilter').value; const stage=$('stageFilter').value; return (state.bouts||[]).filter(b=>{ if(mat!=='all' && String(b.gillam||'')!==mat) return false; if(stage!=='all' && String(b.stage||'')!==stage) return false; const a=assignmentFor(b.boutNo); return rowMatch({boutNo:b.boutNo,gillam:b.gillam,stage:b.stage,cat:categoriesText(b),refs:[a.mainRef,a.judge1,a.judge2].map(refName).join(' ')}, q); }); }
+function evalButtonHtml(boutNo, role, label, refId){ return refId ? `<button data-eval="${esc(boutNo+':'+role)}" class="rounded-lg px-2 py-1 bg-amber-700 hover:bg-amber-600 text-[11px] whitespace-nowrap">⭐ ${label}</button>` : `<span class="text-slate-500 text-[11px]">${label}: assign first</span>`; }
+function renderAssignments(){ const bouts=filteredBouts(); const selectCls='w-full max-w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-[11px]'; $('assignTable').innerHTML=`<thead class="sticky top-0 bg-slate-950"><tr class="text-slate-300"><th class="p-2 text-left w-[5%]">#</th><th class="p-2 text-left w-[14%]">Bout / Gillam</th><th class="p-2 text-left w-[25%]">Category</th><th class="p-2 text-left w-[40%]">Officials</th><th class="p-2 text-left w-[16%]">Evaluate</th></tr></thead><tbody>${bouts.map((b,i)=>{ const a=assignmentFor(b.boutNo); a.gillam=a.gillam||b.gillam||''; const rowCls=i%2?'bg-slate-900/80':'bg-slate-800/40'; return `<tr class="${rowCls} hover:bg-sky-950/40 align-top"><td class="p-2 text-slate-400">${i+1}</td><td class="p-2"><div class="font-bold">#${esc(b.boutNo)}</div><div class="text-slate-400 text-[11px]">${esc(a.gillam||b.gillam||'')}</div><div class="text-slate-500 text-[11px]">Order ${boutWave(b)}</div></td><td class="p-2 text-slate-300 break-words"><div>${esc(categoriesText(b))}</div><div class="text-[11px] text-slate-500">${esc(b.stage||b.round||'')}</div></td><td class="p-2"><div class="grid md:grid-cols-3 gap-2"><label class="text-[11px] text-slate-400">Main<select data-bout="${b.boutNo}" data-role="mainRef" class="${selectCls}">${refOptions(a.mainRef,b)}</select></label><label class="text-[11px] text-slate-400">Judge 1<select data-bout="${b.boutNo}" data-role="judge1" class="${selectCls}">${refOptions(a.judge1,b)}</select></label><label class="text-[11px] text-slate-400">Judge 2<select data-bout="${b.boutNo}" data-role="judge2" class="${selectCls}">${refOptions(a.judge2,b)}</select></label></div></td><td class="p-2"><div class="flex flex-col gap-1">${evalButtonHtml(b.boutNo,'mainRef','Main',a.mainRef)}${evalButtonHtml(b.boutNo,'judge1','J1',a.judge1)}${evalButtonHtml(b.boutNo,'judge2','J2',a.judge2)}</div></td></tr>` }).join('')}${bouts.length?'':`<tr><td colspan="5" class="p-4 text-slate-400">No matches match the current filters.</td></tr>`}</tbody>`; }
+function renderPool(){ $('finalPoolBox').innerHTML=(state.refs||[]).map(r=>`<label class="rounded-xl border border-slate-800 bg-slate-950 p-2 flex items-center gap-2"><input type="checkbox" data-pool="${esc(r.id)}" ${state.finalRefereePool.map(String).includes(String(r.id))?'checked':''}><span>${esc(formatRef(r))}</span></label>`).join(''); }
+function renderStats(){ $('statsTable').innerHTML=`<thead class="sticky top-0 bg-slate-950"><tr><th class="p-2 text-left">Rank</th><th class="p-2 text-left">Referee</th><th class="p-2 text-left">Matches</th><th class="p-2 text-left">Avg</th><th class="p-2 text-left">Tier</th><th class="p-2 text-left">Ratings</th></tr></thead><tbody>${(state.stats||[]).map((s,i)=>`<tr class="${i%2?'bg-slate-900/80':'bg-slate-800/40'}"><td class="p-2">${i+1}</td><td class="p-2">${esc(s.ref?.name || s.ref?.id)}</td><td class="p-2">${s.matches||0}</td><td class="p-2 font-bold">${s.avgScore||0}</td><td class="p-2">${s.tier||''}</td><td class="p-2 text-slate-400">${esc((s.ratings||[]).join(', '))}</td></tr>`).join('')}</tbody>`; }
+function renderConflicts(){ const box=$('conflictBox'); if(!state.conflicts?.length){ box.classList.add('hidden'); box.innerHTML=''; return; } box.classList.remove('hidden'); box.innerHTML='<b>Blocking assignment conflicts:</b><ul class="list-disc ml-5 mt-1">'+state.conflicts.map(c=>`<li>${esc(c.message)}</li>`).join('')+'</ul>'; }
+function validateLocal(renderNow=true){ const conflicts=[]; for(const a of state.assignments){ const vals=[a.mainRef,a.judge1,a.judge2].filter(Boolean); if(new Set(vals).size!==vals.length) conflicts.push({blocking:true,message:`Bout ${a.boutNo}: same referee selected more than once.`}); }
+ const usage=[]; for(const a of state.assignments){ const b=boutByNo(a.boutNo)||{}; const g=String(a.gillam||b.gillam||''); const wave=boutWave(b); for(const role of ['mainRef','judge1','judge2']){ const refId=a[role]; if(refId) usage.push({refId:String(refId),boutNo:a.boutNo,gillam:g,wave,global:isGlobalRef(refId)}); } }
+ for(let i=0;i<usage.length;i++){ for(let j=i+1;j<usage.length;j++){ const A=usage[i],B=usage[j]; if(A.refId!==B.refId) continue; if(!A.gillam||!B.gillam||A.gillam===B.gillam) continue; if(!A.global&&!B.global) continue; if(Math.abs(Number(A.wave)-Number(B.wave))<=GLOBAL_CONFLICT_GAP){ conflicts.push({blocking:true,message:`${refName(A.refId)} cross-Gillam conflict: bout #${A.boutNo} (${A.gillam}, order ${A.wave}) and bout #${B.boutNo} (${B.gillam}, order ${B.wave}).`}); } } }
+ state.conflicts=conflicts; if(renderNow) renderConflicts(); return conflicts; }
+function canPlace(nextAssignments,bout,refId,role){ if(!refId) return false; const old=state.assignments; state.assignments=nextAssignments.filter(a=>String(a.boutNo)!==String(bout.boutNo)); const cur=nextAssignments.find(a=>String(a.boutNo)===String(bout.boutNo)) || {boutNo:bout.boutNo,gillam:bout.gillam||''}; state.assignments.push({...cur,[role]:refId,gillam:bout.gillam||cur.gillam||''}); const ok=validateLocal(false).length===0; state.assignments=old; validateLocal(false); return ok; }
+function autoAssignTopRated(){ const ranked=(state.stats||[]).filter(s=>state.refs.some(r=>String(r.id)===String(s.ref?.id))).sort((a,b)=>(b.avgScore||0)-(a.avgScore||0)); const scoreMap=new Map(ranked.map(s=>[String(s.ref.id),Number(s.avgScore)||0])); let next=[]; for(const b of state.bouts||[]){ const final=String(b.stage||b.round||'').toLowerCase().includes('final'); let pool=eligibleRefsForBout(b).slice(); if(final && state.finalRefereePool.length){ const fs=new Set(state.finalRefereePool.map(String)); const fpool=pool.filter(r=>fs.has(String(r.id))); if(fpool.length>=3) pool=fpool; } pool.sort((a,b)=>(scoreMap.get(String(b.id))||0)-(scoreMap.get(String(a.id))||0)||(Number(a.refNo)||0)-(Number(b.refNo)||0)); const a={boutNo:b.boutNo,gillam:b.gillam||'',manual:false}; for(const role of ['mainRef','judge1','judge2']){ const pick=pool.find(r=>canPlace([...next,a],b,r.id,role)); a[role]=pick?.id||''; } next.push(a); } state.assignments=next; validateLocal(); renderAssignments(); setStatus(state.conflicts.length?'Auto assigned but conflicts remain. Review filters/pools.':'Auto-assigned with Global gap = 1.', state.conflicts.length?'text-orange-300':'text-emerald-300'); }
+async function saveAssignments(){ const conflicts=validateLocal(); if(conflicts.length){ alert('Cannot save assignments:\n'+conflicts.map(c=>c.message).join('\n')); return; } const data=await api('/api/referee-assignments/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({assignments:state.assignments})}); state.conflicts=data.conflicts||[]; if(data.tournament){ state.assignments=data.tournament.schedule?.assignments||state.assignments; state.bouts=data.tournament.schedule?.bouts||state.bouts; state.refs=data.tournament.refs||state.refs; state.finalRefereePool=data.tournament.tournamentMeta?.finalRefereePool||state.finalRefereePool; state.lastSavedAt=data.tournament.meta?.lastSavedAt||state.lastSavedAt; } localStorage.setItem('kurash_ref_mgmt_updated_at', String(Date.now())); render(); setStatus('Assignments saved.', 'text-emerald-300'); }
+async function savePool(){ state.finalRefereePool=Array.from(document.querySelectorAll('[data-pool]:checked')).map(x=>x.dataset.pool); const data=await api('/api/final-referee-pool/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({finalRefereePool:state.finalRefereePool})}); if(data.tournament){ state.finalRefereePool=data.tournament.tournamentMeta?.finalRefereePool||state.finalRefereePool; state.lastSavedAt=data.tournament.meta?.lastSavedAt||state.lastSavedAt; } localStorage.setItem('kurash_ref_mgmt_updated_at', String(Date.now())); render(); setStatus('Final referee pool saved.', 'text-emerald-300'); }
+async function saveAll(){ try{ await savePool(); await saveAssignments(); await load(); }catch(e){ setStatus('Save failed: '+e.message, 'text-red-300'); } }
+const evalCats=[['rules','Rules Knowledge & Application',20],['positioning','Positioning & Movement',15],['timing','Decision Timing & Accuracy',20],['communication','Communication & Commands',10],['control','Match Control & Awareness',15],['penalties','Penalties Management',10],['professionalism','Professionalism & Presence',10]];
+function openEval(boutNo, role){ const a=assignmentFor(boutNo); const refId=a[role]; if(!refId){ alert('Select a referee first.'); return; } state.eval={boutNo, refId, role, scores:Object.fromEntries(evalCats.map(([k])=>[k,0])), comments:Object.fromEntries(evalCats.map(([k])=>[k,'']))}; $('evalInfo').textContent=`Bout ${boutNo} • Referee: ${refName(refId)} • Role: ${role}`; $('evalSections').innerHTML=evalCats.map(([k,label,max])=>`<div class="rounded-2xl border border-slate-800 bg-slate-900 p-3"><div class="font-bold text-sky-200">${label} (${max})</div><div class="grid md:grid-cols-[160px_1fr] gap-3 mt-2"><input type="number" min="0" max="${max}" data-ek="${k}" class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2" value="0"><textarea data-ec="${k}" class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2" placeholder="Comments"></textarea></div></div>`).join(''); $('evalModal').classList.remove('hidden'); updateEvalTotal(); }
+function updateEvalTotal(){ let total=0; document.querySelectorAll('[data-ek]').forEach(inp=>{ const cat=evalCats.find(x=>x[0]===inp.dataset.ek); const max=cat?cat[2]:100; let v=Math.max(0,Math.min(max,Number(inp.value)||0)); inp.value=v; total+=v; }); const rating=total>=90?'Excellent':total>=80?'Very Good':total>=70?'Good':'Needs Improvement'; $('evalTotal').textContent=`Total: ${total} / 100 — ${rating}`; return {total,rating}; }
+async function saveEval(){ try{ const {total,rating}=updateEvalTotal(); const scores={}, comments={}; document.querySelectorAll('[data-ek]').forEach(i=>scores[i.dataset.ek]=Number(i.value)||0); document.querySelectorAll('[data-ec]').forEach(i=>comments[i.dataset.ec]=i.value||''); const evaluation={evaluatorName:$('evalEvaluator').value, refereeLevel:$('evalLevel').value, role:state.eval.role, scores, comments, total, rating, strengths:$('evalStrengths').value, areas:$('evalAreas').value, recommendations:$('evalRecommendations').value, date:new Date().toISOString()}; const data=await api('/api/referee-evaluation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({boutNo:state.eval.boutNo, refId:state.eval.refId, evaluation})}); if(data.tournament){ state.bouts=data.tournament.schedule?.bouts||state.bouts; state.assignments=data.tournament.schedule?.assignments||state.assignments; state.refs=data.tournament.refs||state.refs; state.finalRefereePool=data.tournament.tournamentMeta?.finalRefereePool||state.finalRefereePool; state.lastSavedAt=data.tournament.meta?.lastSavedAt||state.lastSavedAt; } localStorage.setItem('kurash_ref_mgmt_updated_at', String(Date.now())); $('evalModal').classList.add('hidden'); render(); setStatus('Evaluation saved and broadcast to Main Web.', 'text-emerald-300'); }catch(e){ setStatus('Evaluation save failed: '+e.message, 'text-red-300'); } }
+document.addEventListener('input', e=>{ if(['refSearch','boutSearch'].includes(e.target.id)) render(); if(e.target.dataset.ek) updateEvalTotal(); });
+document.addEventListener('change', e=>{ if(['matFilter','stageFilter','includeGlobal','matRefsOnly'].includes(e.target.id)) renderAssignments(); if(e.target.dataset.bout){ const a=assignmentFor(e.target.dataset.bout); const old=a[e.target.dataset.role]; a[e.target.dataset.role]=e.target.value; validateLocal(); if(state.conflicts.length){ alert('Blocking conflict:\n'+state.conflicts.map(c=>c.message).join('\n')); a[e.target.dataset.role]=old; validateLocal(); } renderAssignments(); } if(e.target.dataset.pool){ state.finalRefereePool=Array.from(document.querySelectorAll('[data-pool]:checked')).map(x=>x.dataset.pool); } });
+document.addEventListener('click', e=>{ if(e.target.id==='btnConnect') load(); if(e.target.id==='btnAutoTop') autoAssignTopRated(); if(e.target.id==='btnSaveAssignments') saveAssignments().catch(err=>setStatus(err.message,'text-red-300')); if(e.target.id==='btnSavePool') savePool().catch(err=>setStatus(err.message,'text-red-300')); if(e.target.id==='btnSaveAll') saveAll(); if(e.target.id==='btnCloseEval') $('evalModal').classList.add('hidden'); if(e.target.id==='btnSaveEval') saveEval(); if(e.target.dataset.eval){ const [boutNo,role]=e.target.dataset.eval.split(':'); openEval(boutNo,role); } });
+$('serverUrl').value=localStorage.getItem('kurash_ref_mgmt_server') || '';
+render();
+setInterval(()=>{ if(baseUrl()){ load().catch(()=>{}); } }, 7000);
+</script>
+</body>
+</html>
