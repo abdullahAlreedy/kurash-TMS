@@ -3,167 +3,87 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Kurash Tournament Manager Help v35 Final Stable</title>
+  <title>Kurash Tournament Manager Help v35.6.5</title>
   <style>
-    :root{--bg:#020617;--card:#0f172a;--card2:#111827;--border:#1e293b;--text:#e5e7eb;--muted:#94a3b8;--sky:#7dd3fc;--ok:#86efac;--warn:#fcd34d;--danger:#fca5a5}
-    *{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:radial-gradient(circle at top,#0f172a,var(--bg));color:var(--text);line-height:1.6}
-    .wrap{max-width:1180px;margin:auto;padding:24px}.hero{background:linear-gradient(135deg,#0f172a,#111827);border:1px solid var(--border);border-radius:24px;padding:24px;margin-bottom:18px;box-shadow:0 24px 60px rgba(0,0,0,.35)}
-    .card{background:rgba(15,23,42,.92);border:1px solid var(--border);border-radius:18px;padding:18px;margin:14px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}.pill{display:inline-block;border:1px solid #334155;border-radius:999px;padding:4px 10px;color:#cbd5e1;background:#020617;margin:3px 4px 3px 0;font-size:13px}
-    h1,h2,h3{color:var(--sky);line-height:1.25} h1{margin:0 0 6px;font-size:32px} h2{margin:0 0 10px} h3{margin:12px 0 6px} p{margin:8px 0} code{background:#020617;border:1px solid #334155;border-radius:8px;padding:2px 6px;color:#e2e8f0}.ok{color:var(--ok)}.warn{color:var(--warn)}.danger{color:var(--danger)} li{margin:6px 0} a{color:#93c5fd}.small{font-size:13px;color:var(--muted)}
-    table{width:100%;border-collapse:collapse;margin-top:8px}th,td{border:1px solid #334155;padding:8px;text-align:left}th{background:#020617;color:#cbd5e1}td{background:#0b1220}
-    @media print{body{background:#fff;color:#000}.hero,.card{box-shadow:none;background:#fff;color:#000;border-color:#999}h1,h2,h3{color:#000}code,.pill,td,th{background:#fff;color:#000;border-color:#999}}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#020617;color:#e5e7eb;line-height:1.6}
+    .wrap{max-width:1100px;margin:auto;padding:24px}.card{background:#0f172a;border:1px solid #1e293b;border-radius:18px;padding:18px;margin:14px 0}
+    h1,h2{color:#7dd3fc}code{background:#020617;border:1px solid #334155;border-radius:8px;padding:2px 6px}.ok{color:#86efac}.warn{color:#fcd34d}
+    li{margin:6px 0}
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <section class="hero">
-      <h1>Kurash Tournament Manager Help</h1>
-      <p><strong>Version:</strong> v35 Final Stable</p>
-      <p class="small">Optional printable/manual page. The main operational help is also available inside Main Web from the Help popup.</p>
-      <span class="pill">Hybrid Offline / Server</span>
-      <span class="pill">Gillam terminology</span>
-      <span class="pill">Referee Management</span>
-      <span class="pill">Scoreboard Controls</span>
-      <span class="pill">v35 file naming</span>
-    </section>
+<section><h2>About Tab</h2><p>The About tab is the first page and gives a short introduction, core features, referee-system overview, quick start, and version information. Home remains the operational dashboard.</p></section>
+<div class="wrap">
+<h1>Kurash Tournament Manager - Help v35.6.5</h1><p class="warn"><strong>Note:</strong> Main help is now available inside the application as a popup from the top Help button. This file is kept only as an optional printable/manual page.</p>
+<div class="card"><h2>1. Recommended Tournament Flow</h2><ol><li>Open <strong>Home</strong>.</li><li>Create a <strong>Local Tournament</strong> for offline-first operation, or connect a server and use <strong>Create on Server</strong>.</li><li>Open <strong>Settings</strong> and confirm tournament type, Gillams, weights/groups, durations and referee assignment rules.</li><li>Add/import players in <strong>Players</strong>.</li><li>Add/edit referees only in <strong>Referees</strong>.</li><li>Use <strong>Referee Management</strong> for assignments, final pool, conflicts and evaluations.</li><li>Generate the draw, then operate the Scoreboard.</li></ol></div>
+<div class="card"><h2>2. Hybrid Offline/Server Mode</h2><ul><li><strong>Offline-first:</strong> the program can run without a server.</li><li><strong>Server optional:</strong> enter the URL in Home, then Connect/Test, Load Current, or Sync Now.</li><li><strong>Unsynced changes:</strong> if you work offline, export a JSON backup and sync later.</li></ul></div>
+<div class="card"><h2>3. Home vs Settings</h2><ul><li><strong>Home</strong>: server connection, tournament creation/loading, backup/restore, readiness check.</li><li><strong>Settings</strong>: rules/config only. No server settings should be managed there.</li></ul></div>
+<div class="card"><h2>4. Referees vs Referee Management</h2><ul><li><strong>Referees tab</strong> is the only place for adding, editing and deleting basic referee data.</li><li><strong>Referee Management</strong> is only for assignment, final pool, evaluation and conflict review.</li></ul></div>
+<div class="card"><h2>5. Scoreboard</h2><ul><li><code>Space</code> starts/stops the timer unless typing in an input.</li><li>Use withdrawal buttons for no-show/withdrawal scenarios.</li><li>Double withdrawal = No Contest, no winner, no points, and bracket slot becomes empty.</li></ul></div>
+<div class="card"><h2>6. Backup</h2><ul><li>Use <strong>Export JSON Backup</strong> before, during and after the tournament.</li><li>Use <strong>Restore JSON Backup</strong> to recover a tournament if a browser/server issue occurs.</li><li>Use CSV export for league standings when needed.</li></ul></div>
+<div class="card"><h2>7. Troubleshooting</h2><ul><li>Black screen: use the latest v35.5 files and check the browser console if an old cached file is still loading.</li><li>Server not connected: continue offline and export JSON backup.</li><li>Scoreboard not updating: use Sync Now and reload scoreboard from the same server URL.</li></ul></div>
 
-    <section class="card">
-      <h2>1. v35 File Names</h2>
-      <p>Use these file names consistently in the portal, GitHub, and local folder.</p>
-      <table>
-        <thead><tr><th>Screen</th><th>v35 File</th><th>Purpose</th></tr></thead>
-        <tbody>
-          <tr><td>Main Web</td><td><code>main_web_v35.html</code></td><td>Main tournament manager and operational dashboard.</td></tr>
-          <tr><td>Scoreboard</td><td><code>scoreboard_v35.html</code></td><td>Online scoreboard connected to server.</td></tr>
-          <tr><td>Offline Scoreboard</td><td><code>scoreboard_offline_v35.html</code></td><td>Standalone offline scoreboard.</td></tr>
-          <tr><td>Player Screen</td><td><code>player_screen_v35.html</code></td><td>Public player display.</td></tr>
-          <tr><td>Referee Screen</td><td><code>referee_screen_v35.html</code></td><td>Public referee-number display.</td></tr>
-          <tr><td>External Referee Management</td><td><code>referee_management_screen_v35.html</code></td><td>External page for Referee Committee Chair.</td></tr>
-          <tr><td>Help</td><td><code>help_v35.html</code></td><td>This manual.</td></tr>
-          <tr><td>Server</td><td><code>server.js</code></td><td>Backend API and sync.</td></tr>
-        </tbody>
-      </table>
-    </section>
+<div class="card"><h2>8. In-App Help Popup</h2><ul><li>Use the top <strong>Help</strong> button inside <strong>main_web_v35.html</strong>.</li><li>The popup combines the old Help tab information, the external manual, scoreboard controls, withdrawal rules, referee evaluation, league standings, and troubleshooting.</li><li>You do not need to leave the program during a tournament.</li></ul></div>
 
-    <section class="card">
-      <h2>2. Recommended Tournament Flow</h2>
-      <ol>
-        <li>Open <strong>index.html</strong> and enter the portal password.</li>
-        <li>Open <strong>Main Web</strong>.</li>
-        <li>Create a <strong>Local Tournament</strong> for offline-first operation, or connect the server and create/load the tournament.</li>
-        <li>Open <strong>Settings</strong> and confirm tournament type, Gillams, weights/groups, durations, and referee assignment rules.</li>
-        <li>Add/import players in <strong>Players</strong>.</li>
-        <li>Add/edit referee master data only in <strong>Referees</strong>.</li>
-        <li>Generate the draw.</li>
-        <li>Use <strong>Referee Management</strong> for assignments, final pool, conflicts, and evaluations.</li>
-        <li>Operate <strong>Scoreboard v35</strong> from the same server/tournament.</li>
-      </ol>
-    </section>
+<div class="card"><h2>9. v35.1 Small Operating Updates</h2><ul><li><strong>Match Duration:</strong> Settings now has separate manual duration inputs for Men and Women. Use 0 to keep category defaults.</li><li><strong>Seed Privacy:</strong> In Players, use <strong>Hide seed in public views/reports</strong> to keep seed stored internally while hiding it from public reports.</li><li><strong>Player Sorting/Search:</strong> Players can be searched by any visible information and sorted by original order, affiliation/country, weight/group, seed, age group, sex, or name.</li></ul></div>
+</div>
+<section>
+  <h2>v20 Scoreboard Controls Hotfix</h2>
+  <ul>
+    <li><strong>Spacebar:</strong> Start / Stop timer, except while typing in an input field.</li>
+    <li><strong>Single click on timer:</strong> Start / Stop timer.</li>
+    <li><strong>Double click on timer:</strong> manually edit the match time.</li>
+    <li><strong>Gillam / age group / weight:</strong> enlarged on the scoreboard for better visibility.</li>
+  </ul>
+</section>
 
-    <section class="grid">
-      <div class="card">
-        <h2>3. Home vs Settings</h2>
-        <ul>
-          <li><strong>Home:</strong> server connection, tournament creation/loading, backup/restore, readiness check.</li>
-          <li><strong>Settings:</strong> tournament rules/config only: Gillams, weights, age groups, duration, referee assignment mode.</li>
-          <li>Server connection should remain in Home, not Settings.</li>
-        </ul>
-      </div>
-      <div class="card">
-        <h2>4. Hybrid Offline / Server Mode</h2>
-        <ul>
-          <li><strong>Offline-first:</strong> the system can run without server.</li>
-          <li><strong>Server optional:</strong> enter server URL in Home, then Test/Load/Sync.</li>
-          <li><strong>Unsynced changes:</strong> export JSON backup and sync later.</li>
-          <li>Recommended server URL: <code>https://kurash-tms.onrender.com</code></li>
-        </ul>
-      </div>
-    </section>
 
-    <section class="card">
-      <h2>5. Gillam Terminology</h2>
-      <p>Kurash uses <strong>Gillam</strong>, not Mat. v35 uses Gillam in the interface and help documentation.</p>
-      <ul>
-        <li><strong>All Gillams:</strong> chairperson can manage all matches.</li>
-        <li><strong>Specific Gillam:</strong> Gillam supervisor can manage only that Gillam’s matches.</li>
-        <li><strong>Gillam refs only:</strong> shows referees assigned to that Gillam pool.</li>
-        <li><strong>Include global referees:</strong> allows global referees when needed.</li>
-      </ul>
-    </section>
+<section style="padding:16px;margin:16px;border:1px solid #334155;border-radius:14px;background:#0f172a;color:#e5e7eb">
+<h2>v24 Referee Management Update</h2>
+<p>Referee Management is now integrated inside Main Web. Use the Referee Management tab for assignments, final referee pool, evaluations, conflict review, and performance profile. The separate referee management file is legacy/optional.</p>
+</section>
+<section><h2>External Referee Management</h2><p>The main web Referee Management tab is for normal in-app use. For large tournaments, open <code>referee_management_screen_v35.html</code> and give it to the Head of Referees. It must connect to the backend server and load the current tournament before assignments appear.</p></section>
+<section class="card"><h2>V28 Referee Management Update</h2><ul><li>Integrated Main Web and the external Referee Management screen now both support evaluating Main Referee, Judge 1, and Judge 2 for every bout.</li><li>External evaluations are saved to the same server tournament and will appear in Main Web after loading or live sync.</li><li>Match Assignment layouts were condensed to reduce horizontal scrolling during presentation or committee use.</li></ul></section>
 
-    <section class="card">
-      <h2>6. Referees vs Referee Management</h2>
-      <ul>
-        <li><strong>Referees tab:</strong> add, edit, delete referee master data.</li>
-        <li><strong>Main Web Referee Management:</strong> normal in-app assignment, final pool, evaluation, performance profile, and conflict review.</li>
-        <li><strong>External Referee Management:</strong> open <code>referee_management_screen_v35.html</code> for the Referee Committee Chair in large tournaments.</li>
-        <li>The external screen must connect to the backend server and load the current tournament.</li>
-      </ul>
-    </section>
+<section class="card"><h2>v35.2 Settings & Players Update</h2><ul><li><strong>Match Duration:</strong> Men and Women durations now use small minute and second number boxes with arrow controls and typing support.</li><li><strong>Seed privacy:</strong> the Players table has a checkbox beside the Seed header. When checked, the seed values are hidden from the table while remaining saved internally.</li><li><strong>Players sorting/search:</strong> players can be searched and sorted by affiliation/country, weight/group, seed, age group, sex, or name.</li></ul></section>
 
-    <section class="card">
-      <h2>7. Referee Evaluation</h2>
-      <p>v35 supports evaluation for all three officials in each bout:</p>
-      <ul>
-        <li>Main Referee</li>
-        <li>Judge 1</li>
-        <li>Judge 2</li>
-      </ul>
-      <p>Evaluations contribute to the referee performance profile and help select officials for finals.</p>
-    </section>
+<section class="card"><h2>v35.3 Draw Randomization & Seed Rule</h2>
+<ul>
+<li><strong>Seed &gt; 0:</strong> seeded players are distributed apart according to seeding logic.</li>
+<li><strong>Seed = 0 or empty:</strong> treated as unseeded.</li>
+<li><strong>No seeded players:</strong> every Generate Draw click creates a fresh random shuffle.</li>
+<li><strong>Mixed seeded/unseeded group:</strong> seeded players keep seeded distribution, while all seed 0/empty players are shuffled randomly into the remaining slots.</li>
+<li><strong>Seed privacy:</strong> hiding Seed in the Players table does not affect saved seed values or draw logic.</li>
+</ul></section>
 
-    <section class="card">
-      <h2>8. Global Referee Conflict Rule</h2>
-      <p class="warn"><strong>Global conflict gap = 1</strong></p>
-      <ul>
-        <li>A global referee is blocked from working in different Gillams at the same bout order.</li>
-        <li>The same global referee is also blocked from different Gillams within ±1 bout order.</li>
-        <li>This is designed to prevent impossible movement between Gillams and reduce operational conflicts.</li>
-      </ul>
-    </section>
 
-    <section class="card">
-      <h2>9. Scoreboard Controls</h2>
-      <ul>
-        <li><code>Space</code>: start/stop timer unless typing in an input field.</li>
-        <li>Single click on timer: start/stop timer.</li>
-        <li>Double click on timer: edit match time manually.</li>
-        <li>Gillam / age group / weight are enlarged for visibility.</li>
-        <li>Use withdrawal buttons for no-show or withdrawal scenarios.</li>
-        <li>Double withdrawal = No Contest, no winner, no points, and bracket slot becomes empty.</li>
-      </ul>
-    </section>
 
-    <section class="card">
-      <h2>10. Backup and Recovery</h2>
-      <ul>
-        <li>Use <strong>Export JSON Backup</strong> before, during, and after the tournament.</li>
-        <li>Use <strong>Restore JSON Backup</strong> if browser/server data is lost.</li>
-        <li>Use CSV export for league standings when needed.</li>
-        <li>Keep the old files as backup until v35 is fully tested on a complete tournament.</li>
-      </ul>
-    </section>
+<section class="card"><h2>v35.6.5</h2>
+<ul>
+<li><strong>Referee Management refresh:</strong> assignments, final referee pool, and evaluations now refresh from the backend after saving when a server URL is connected.</li>
+<li><strong>External referee pages:</strong> updates from an external referee management page can notify the main web screen to refresh its referee data.</li>
+<li><strong>Draw safety:</strong> the manual group label helper was hardened to support older and newer bout shapes without reading React state outside its scope.</li>
+<li><strong>Version wording:</strong> interface labels, help wording, and package metadata were updated to v35.4 while preserving the v35 file names for deployment compatibility.</li>
+</ul></section>
 
-    <section class="card">
-      <h2>11. Troubleshooting</h2>
-      <ul>
-        <li><strong>Black screen:</strong> confirm you are using v35 files and open the browser console to read the exact error.</li>
-        <li><strong>Scoreboard not updating:</strong> reload from the same server URL and current tournament.</li>
-        <li><strong>External Referee Management shows zero bouts:</strong> connect/load from the server first.</li>
-        <li><strong>Result not visible in Main Web:</strong> use Refresh/Load Current Tournament or wait for live refresh if connected.</li>
-        <li><strong>GitHub file rename:</strong> update links in <code>index.html</code> after renaming files.</li>
-      </ul>
-    </section>
 
-    <section class="card">
-      <h2>12. v35 Final Stable Notes</h2>
-      <ul>
-        <li>Use v35 file names in the portal/dashboard links.</li>
-        <li>Server package version is <code>35.0.0</code>.</li>
-        <li>New localStorage keys use v35 naming, with legacy restore support for older keys.</li>
-        <li>Terminology standardized to Gillam.</li>
-      </ul>
-    </section>
-  </div>
-</body>
-</html>
+<section class="card"><h2>v35.6.5</h2>
+<ul>
+<li><strong>Auto rotation:</strong> Main-referee rotation can now auto-adjust from the number of referees available in the active assignment pool.</li>
+<li><strong>Gillam pools:</strong> in Gillam Pool Assignment mode, each Gillam shows its own effective rotation gap based on its available referees.</li>
+<li><strong>Manual mode preserved:</strong> a fixed main-role avoid span remains available for large or controlled referee pools.</li>
+<li><strong>Professional wording:</strong> the setting was renamed from a raw technical value to Referee Rotation Settings with a live effective rotation preview.</li>
+</ul></section>
+
+
+<section class="card"><h2>Delegation Data Review &amp; Sign-off</h2>
+<p>The Delegation Sign-off workflow allows each affiliation or country representative to review the final player list before the official draw.</p>
+<ul>
+<li>Use the <strong>Delegation Sign-off</strong> tab inside Main Web/Admin to review, monitor, and sign from the admin device.</li>
+<li>Use <strong>delegation_signoff_v35.html</strong> as a standalone tablet-friendly signing page.</li>
+<li>Each approval captures representative name, confirmation, signature, timestamp, player snapshot, approval ID, and version.</li>
+<li>The approval document can be opened and printed or saved as PDF for the tournament archive.</li>
+<li>Generate Draw displays a warning if any affiliation has not signed, but it does not hard-block the draw in this version.</li>
+</ul>
+</section>
+</body></html>

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charSet="UTF-8" />
-  <title>Kurash Scoreboard v35 Final Stable</title>
+  <title>Kurash Scoreboard v35.6.6</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -36,10 +36,20 @@
     }
 
     function durationSecondsForBout(bout, blue, green, manualSeconds) {
-      if (Number(manualSeconds) > 0) return Number(manualSeconds);
-      if (bout?.durationSec) return Number(bout.durationSec);
-      if (bout?.ageGroupNumb != null) return ageGroupDurationSeconds(bout.ageGroupNumb);
       const sex = bout?.sex || blue?.sex || green?.sex || "M";
+      // Timer source of truth:
+      // 1) explicit bout duration saved in the schedule,
+      // 2) tournament settings received from Main Web,
+      // 3) age/category fallback,
+      // 4) legacy sex fallback.
+      if (bout?.durationSec) return Number(bout.durationSec);
+      if (manualSeconds && typeof manualSeconds === "object") {
+        const override = sex === "F" ? Number(manualSeconds.women || 0) : Number(manualSeconds.men || 0);
+        if (override > 0) return override;
+      } else if (Number(manualSeconds) > 0) {
+        return Number(manualSeconds);
+      }
+      if (bout?.ageGroupNumb != null) return ageGroupDurationSeconds(bout.ageGroupNumb);
       return sex === "F" ? WOMEN_FIGHT_SECONDS : MEN_FIGHT_SECONDS;
     }
 
@@ -406,20 +416,30 @@
       const [players, setPlayers] = useState(demoPlayers);
       const [refs, setRefs] = useState([]);
 
-      // Server sync (v35 Final Stable)
+      // Server sync (v35.6.5)
       const [serverUrl, setServerUrl] = useState("");
       const [serverStatus, setServerStatus] = useState("idle");
       const [serverMsg, setServerMsg] = useState("");
       const [gillams, setGillams] = useState([]);
       const [selectedGillam, setSelectedGillam] = useState("");
-      const [manualDurationSeconds, setManualDurationSeconds] = useState(0);
+      const [manualDurationSeconds, setManualDurationSeconds] = useState(0); // legacy all-bouts override
+      const [manualDurationMenSeconds, setManualDurationMenSeconds] = useState(0);
+      const [manualDurationWomenSeconds, setManualDurationWomenSeconds] = useState(0);
       const [tournamentMeta, setTournamentMeta] = useState({ tournamentScope: "external", affiliationMode: "country", weightMode: "auto_weights" });
       const [autoSaveMsg, setAutoSaveMsg] = useState("");
+      const [scoreboardDirty, setScoreboardDirty] = useState(false);
+      const [pendingScoreBoutNo, setPendingScoreBoutNo] = useState(null);
+      const [scoreSaveNotice, setScoreSaveNotice] = useState("");
        function normalizedBaseUrl() {
         const raw = (serverUrl || "").trim();
         if (!raw) return null;
         return raw.replace(/\/+$/, "");
       }
+
+      const durationOverrides = useMemo(() => ({
+        men: manualDurationMenSeconds || Number(tournamentMeta?.manualDurationMenSeconds || 0) || manualDurationSeconds || 0,
+        women: manualDurationWomenSeconds || Number(tournamentMeta?.manualDurationWomenSeconds || 0) || manualDurationSeconds || 0
+      }), [manualDurationMenSeconds, manualDurationWomenSeconds, manualDurationSeconds, tournamentMeta]);
 
       useEffect(() => {
         try {
@@ -438,6 +458,8 @@
           if (saved?.boutMeta) setBoutMeta(saved.boutMeta);
           if (saved?.activeBoutNo != null) setActiveBoutNo(saved.activeBoutNo);
           if (saved?.manualDurationSeconds != null) setManualDurationSeconds(Number(saved.manualDurationSeconds) || 0);
+          if (saved?.manualDurationMenSeconds != null) setManualDurationMenSeconds(Number(saved.manualDurationMenSeconds) || 0);
+          if (saved?.manualDurationWomenSeconds != null) setManualDurationWomenSeconds(Number(saved.manualDurationWomenSeconds) || 0);
           if (saved?.tournamentMeta) setTournamentMeta(saved.tournamentMeta);
           setAutoSaveMsg("Offline state restored.");
         } catch (err) {
@@ -448,13 +470,13 @@
       useEffect(() => {
         try {
           localStorage.setItem(SB_STORAGE_KEY, JSON.stringify({
-            schedule, players, refs, boutMeta, activeBoutNo, manualDurationSeconds, tournamentMeta
+            schedule, players, refs, boutMeta, activeBoutNo, manualDurationSeconds, manualDurationMenSeconds, manualDurationWomenSeconds, tournamentMeta
           }));
           if (schedule?.bouts?.length) setAutoSaveMsg("Offline autosaved.");
         } catch (err) {
           console.warn("Could not autosave scoreboard state", err);
         }
-      }, [schedule, players, refs, boutMeta, activeBoutNo, manualDurationSeconds, tournamentMeta]);
+      }, [schedule, players, refs, boutMeta, activeBoutNo, manualDurationSeconds, manualDurationMenSeconds, manualDurationWomenSeconds, tournamentMeta]);
 
       async function testConnection() {
         const base = normalizedBaseUrl();
@@ -632,10 +654,7 @@
             setTournamentMeta(data.tournamentMeta || data.meta);
           }
           if (data.bout) {
-            setSchedule((prev) => {
-              if (!prev?.bouts) return prev;
-              return { ...prev, bouts: prev.bouts.map((b) => Number(b.boutNo) === Number(data.bout.boutNo) ? { ...b, ...data.bout } : b) };
-            });
+            applySavedBoutToLocalState(data.bout);
           }
           if (data.blue || data.green) {
             setPlayers((prevPlayers) => {
@@ -656,17 +675,37 @@
 
       async function sendResultToServer(boutNo, payload) {
         const base = normalizedBaseUrl();
-        if (!base) return;
+        if (!base) {
+          return { ok: true, offline: true };
+        }
         try {
-          const url = base + "/api/bout/" + boutNo + "/save";
-          await fetch(url, {
+          const url = base + "/api/bout/" + encodeURIComponent(boutNo) + "/save";
+          const res = await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
           });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || data?.ok === false) {
+            const msg = data?.error || ("HTTP " + res.status);
+            throw new Error(msg);
+          }
+          if (data?.bout) applySavedBoutToLocalState(data.bout);
+          if (data?.tournament?.schedule) {
+            setSchedule(data.tournament.schedule);
+          }
+          if (Array.isArray(data?.tournament?.players)) setPlayers(data.tournament.players);
+          if (Array.isArray(data?.tournament?.refs)) setRefs(data.tournament.refs);
+          if (data?.tournament?.meta || data?.tournament?.tournamentMeta) {
+            setTournamentMeta(data.tournament.tournamentMeta || data.tournament.meta || tournamentMeta);
+          }
+          notifyExternalPagesScoreSaved(boutNo);
           console.log("Result sent to server for bout", boutNo);
+          return { ok: true, data };
         } catch (err) {
           console.error("Failed to send result to server:", err);
+          showScoreSaveNotice("Server save failed for bout #" + boutNo + ": " + err.message);
+          return { ok: false, error: err };
         }
       }
 
@@ -785,9 +824,95 @@ useEffect(() => {
         return boutMeta[no] || null;
       }
 
+      function showScoreSaveNotice(message) {
+        setScoreSaveNotice(message);
+        window.setTimeout(() => {
+          setScoreSaveNotice((current) => current === message ? "" : current);
+        }, 2400);
+      }
+
+      function applySavedBoutToLocalState(savedBout) {
+        if (!savedBout || savedBout.boutNo == null) return;
+        setSchedule((prev) => {
+          if (!prev?.bouts) return prev;
+          return {
+            ...prev,
+            updatedAt: new Date().toISOString(),
+            bouts: prev.bouts.map((b) => Number(b.boutNo) === Number(savedBout.boutNo) ? { ...b, ...savedBout } : b)
+          };
+        });
+
+        if (Array.isArray(savedBout.meta)) {
+          const events = savedBout.meta
+            .filter((ev) => ev && ev.type && ev.side && ["H", "YO", "CH", "T", "D", "G"].includes(ev.type))
+            .map((ev) => ({
+              side: ev.side,
+              type: ev.type,
+              atMs: Number(ev.timeSec || 0) * 1000
+            }));
+          setBoutMeta((prev) => ({
+            ...prev,
+            [savedBout.boutNo]: {
+              events,
+              durationSec: savedBout.durationMs ? Math.floor(Number(savedBout.durationMs) / 1000) : (savedBout.durationSec || 0),
+              winner: savedBout.winner || null,
+              resultType: savedBout.resultType || "points",
+              noContest: !!savedBout.noContest,
+              savedAt: savedBout.savedAt || new Date().toISOString()
+            }
+          }));
+        }
+      }
+
+      function notifyExternalPagesScoreSaved(boutNo) {
+        try {
+          localStorage.setItem("kurash_scoreboard_result_saved_at", JSON.stringify({ boutNo, at: Date.now() }));
+        } catch (e) {}
+        try {
+          if (window.BroadcastChannel) {
+            const ch = new BroadcastChannel("kurash_tms_live_updates");
+            ch.postMessage({ type: "scoreboard_result_saved", boutNo, at: Date.now() });
+            ch.close();
+          }
+        } catch (e) {}
+      }
+
+      function requestSelectBoutForScore(no) {
+        if (activeBoutNo && no && Number(no) !== Number(activeBoutNo) && scoreboardDirty) {
+          setPendingScoreBoutNo(Number(no));
+          showScoreSaveNotice("Unsaved scoring changes detected. Choose Save & switch or Switch without saving.");
+          return;
+        }
+        selectBoutForScore(no);
+        if (serverUrl && no) loadBoutDetails(no);
+      }
+
+      function switchToPendingBoutWithoutSaving() {
+        const target = pendingScoreBoutNo;
+        setPendingScoreBoutNo(null);
+        setScoreboardDirty(false);
+        if (target != null) {
+          selectBoutForScore(target);
+          if (serverUrl) loadBoutDetails(target);
+        }
+      }
+
+      async function saveAndSwitchToPendingBout() {
+        const target = pendingScoreBoutNo;
+        const ok = await saveResultToBout({ silent: true });
+        if (ok === false) return;
+        setPendingScoreBoutNo(null);
+        setScoreboardDirty(false);
+        if (target != null) {
+          selectBoutForScore(target);
+          if (serverUrl) loadBoutDetails(target);
+        }
+      }
+
       function selectBoutForScore(no) {
         if (!schedule) return;
         setActiveBoutNo(no);
+        setScoreboardDirty(false);
 
         const bout = schedule.bouts.find((b) => b.boutNo === no);
         let initialMs = 0;
@@ -795,7 +920,7 @@ useEffect(() => {
         if (bout) {
           const A = playersIndex.get(bout.blueId);
           const G = playersIndex.get(bout.greenId);
-          const baseSec = durationSecondsForBout(bout, A, G, manualDurationSeconds);
+          const baseSec = durationSecondsForBout(bout, A, G, durationOverrides);
           initialMs = baseSec * 1000;
         }
 
@@ -857,17 +982,19 @@ useEffect(() => {
         const base = normalizedBaseUrl();
         if (!base || !activeBoutNo) return;
         const id = setInterval(() => {
-          if (!timerRunning) loadBoutDetails(activeBoutNo);
+          if (!timerRunning && !scoreboardDirty) loadBoutDetails(activeBoutNo);
         }, 2500);
         return () => clearInterval(id);
-      }, [serverUrl, activeBoutNo, timerRunning]);
+      }, [serverUrl, activeBoutNo, timerRunning, scoreboardDirty]);
 
       function addEvent(side, type) {
         if (!activeBoutNo || !schedule) return;
+        setScoreboardDirty(true);
         setSbEvents((prev) => [...prev, { side, type, atMs: timerMs }]);
       }
 
       function removeLastEvent(side, type) {
+        setScoreboardDirty(true);
         setSbEvents((prev) => {
           const next = prev.slice();
           for (let i = next.length - 1; i >= 0; i--) {
@@ -891,8 +1018,9 @@ useEffect(() => {
         }
       }
 
-      function saveResultToBout(options) {
-        if (!activeBoutNo || !schedule) return;
+      async function saveResultToBout(options) {
+        options = options || {};
+        if (!activeBoutNo || !schedule) return false;
         const scores = computeScores(sbEvents);
         const isTimeUp = timerMs === 0;
         const winnerSide = decideWinner(
@@ -900,10 +1028,8 @@ useEffect(() => {
           isTimeUp || !!scores.halalWinner
         );
         if (!winnerSide) {
-          if (!options?.silent) {
-            alert("No clear winner yet according to current scores and penalties.");
-          }
-          return;
+          showScoreSaveNotice("No clear winner yet. Complete scoring or wait for time-up before saving.");
+          return false;
         }
         const durationMs = timerMs;
 
@@ -951,13 +1077,25 @@ useEffect(() => {
           durationMs
         };
 
-        sendResultToServer(activeBoutNo, payload);
+        setSchedule((prev) => {
+          if (!prev?.bouts) return prev;
+          return {
+            ...prev,
+            updatedAt: new Date().toISOString(),
+            bouts: prev.bouts.map((b) => Number(b.boutNo) === Number(activeBoutNo) ? { ...b, ...payload, finished: true, savedAt: new Date().toISOString() } : b)
+          };
+        });
 
-        if (!options?.silent) alert("Result stored for bout #" + activeBoutNo);
+        const result = await sendResultToServer(activeBoutNo, payload);
+        if (result.ok === false) return false;
+
+        setScoreboardDirty(false);
+        showScoreSaveNotice((result.offline ? "Result saved locally" : "Result saved to server") + " for bout #" + activeBoutNo);
+        return true;
       }
 
 
-      function saveWithdrawalResult(kind) {
+      async function saveWithdrawalResult(kind) {
         if (!activeBoutNo || !schedule) return;
         let winnerSide = null;
         let withdrawnSide = null;
@@ -985,8 +1123,10 @@ useEffect(() => {
           if (!prev?.bouts) return prev;
           return { ...prev, bouts: prev.bouts.map((b) => b.boutNo === activeBoutNo ? { ...b, ...payload, finished: true, savedAt: new Date().toISOString() } : b) };
         });
-        sendResultToServer(activeBoutNo, payload);
+        const result = await sendResultToServer(activeBoutNo, payload);
+        setScoreboardDirty(false);
         setWithdrawalMsg(resultType === "double_withdrawal" ? "Double withdrawal saved: no winner / no contest." : "Withdrawal saved.");
+        showScoreSaveNotice((result.ok === false ? "Withdrawal saved locally but server sync failed." : "Withdrawal saved to server."));
       }
 
       const bouts = schedule?.bouts || [];
@@ -996,10 +1136,7 @@ useEffect(() => {
         if (!bouts.length) return;
         const target = currentIdx <= 0 ? bouts[0] : bouts[currentIdx - 1];
         if (!target) return;
-        selectBoutForScore(target.boutNo);
-        if (serverUrl) {
-          loadBoutDetails(target.boutNo);
-        }
+        requestSelectBoutForScore(target.boutNo);
       }
 
       function goNext() {
@@ -1009,10 +1146,7 @@ useEffect(() => {
             ? bouts[bouts.length - 1]
             : bouts[currentIdx + 1];
         if (!target) return;
-        selectBoutForScore(target.boutNo);
-        if (serverUrl) {
-          loadBoutDetails(target.boutNo);
-        }
+        requestSelectBoutForScore(target.boutNo);
       }
 
       function setTimerManuallyFromPrompt() {
@@ -1021,6 +1155,7 @@ useEffect(() => {
         const nextMs = parseManualTimeInput(raw, timerMs);
         if (nextMs == null) return;
         setTimerRunning(false);
+        setScoreboardDirty(true);
         setTimerMs(nextMs);
         initialFightMsRef.current = nextMs;
         halfPingDoneRef.current = false;
@@ -1030,7 +1165,13 @@ useEffect(() => {
         // Keep double-click available for manual time editing.
         // The first click of a double-click must not toggle the timer.
         if (e.detail > 1) return;
+        setScoreboardDirty(true);
         setTimerRunning((running) => !running);
+      }
+
+      function adjustScoreboardTimer(deltaSeconds) {
+        setScoreboardDirty(true);
+        adjustTimer(setTimerMs, deltaSeconds);
       }
 
       function fullResetCurrentBout() {
@@ -1038,8 +1179,9 @@ useEffect(() => {
         const bout = schedule.bouts.find((b) => b.boutNo === activeBoutNo);
         const A = bout ? playersIndex.get(bout.blueId) : null;
         const G = bout ? playersIndex.get(bout.greenId) : null;
-        const sec = durationSecondsForBout(bout, A, G, manualDurationSeconds);
+        const sec = durationSecondsForBout(bout, A, G, durationOverrides);
         setTimerRunning(false);
+        setScoreboardDirty(true);
         setSbEvents([]);
         setTimerMs(sec * 1000);
         initialFightMsRef.current = sec * 1000;
@@ -1052,16 +1194,20 @@ useEffect(() => {
         });
       }
 
-      function endAndNextBout() {
-        saveResultToBout({ silent: true });
+      async function endAndNextBout() {
+        const ok = await saveResultToBout({ silent: true });
+        if (ok === false) return;
         const next = currentIdx === -1 || currentIdx >= bouts.length - 1 ? null : bouts[currentIdx + 1];
-        if (!next) return;
+        if (!next) {
+          showScoreSaveNotice("Result saved. No next bout is available.");
+          return;
+        }
         selectBoutForScore(next.boutNo);
         if (serverUrl) loadBoutDetails(next.boutNo);
       }
 
       function exportOfflineJson() {
-        const blob = new Blob([JSON.stringify({ schedule, players, refs, boutMeta, activeBoutNo, manualDurationSeconds, tournamentMeta }, null, 2)], { type: "application/json" });
+        const blob = new Blob([JSON.stringify({ schedule, players, refs, boutMeta, activeBoutNo, manualDurationSeconds, manualDurationMenSeconds, manualDurationWomenSeconds, tournamentMeta }, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -1081,6 +1227,8 @@ useEffect(() => {
         if (data.boutMeta) setBoutMeta(data.boutMeta);
         if (data.activeBoutNo != null) setActiveBoutNo(data.activeBoutNo);
         if (data.manualDurationSeconds != null) setManualDurationSeconds(Number(data.manualDurationSeconds) || 0);
+        if (data.manualDurationMenSeconds != null) setManualDurationMenSeconds(Number(data.manualDurationMenSeconds) || 0);
+        if (data.manualDurationWomenSeconds != null) setManualDurationWomenSeconds(Number(data.manualDurationWomenSeconds) || 0);
         if (data.tournamentMeta || data.meta) setTournamentMeta(data.tournamentMeta || data.meta);
         setAutoSaveMsg("Offline JSON imported.");
       }
@@ -1128,7 +1276,7 @@ useEffect(() => {
 
       const sexFromBout = bout.sex || (A?.sex || G?.sex || "M");
       const sexForLabel = sexFromBout === "F" ? "Women" : "Men";
-      const baseSeconds = durationSecondsForBout(bout, A, G, manualDurationSeconds);
+      const baseSeconds = durationSecondsForBout(bout, A, G, durationOverrides);
 
       const blueCode = affiliationCode(A);
       const greenCode = affiliationCode(G);
@@ -1184,7 +1332,7 @@ useEffect(() => {
             <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
               <div>
                 <h1 className="text-xl font-semibold tracking-wide">
-                  Kurash Scoreboard – v35 Final Stable
+                  Kurash Scoreboard – v35.6.6
                 </h1>
                 <p className="text-xs text-slate-400">
                   Blue top / Green bottom • H / YO / CH • T / D / G • Dynamic timer
@@ -1212,8 +1360,28 @@ useEffect(() => {
           </header>
 
           <main className="max-w-5xl mx-auto px-4 py-4 space-y-4 flex-1 w-full">
+            {scoreSaveNotice && (
+              <div className="fixed bottom-4 right-4 z-[90] w-[min(26rem,calc(100vw-2rem))] rounded-2xl border border-emerald-500/60 bg-emerald-950/95 px-4 py-3 shadow-2xl text-sm text-emerald-100">
+                <div className="h-1 rounded-full bg-emerald-400 mb-2 animate-pulse" />
+                {scoreSaveNotice}
+              </div>
+            )}
+            {pendingScoreBoutNo && (
+              <div className="fixed inset-x-0 top-4 z-[95] flex justify-center px-4">
+                <div className="max-w-2xl rounded-2xl border border-amber-400/70 bg-slate-950/98 p-4 shadow-2xl text-sm">
+                  <div className="font-semibold text-amber-300 mb-1">Unsaved scoring changes</div>
+                  <div className="text-slate-300 mb-3">Bout #{activeBoutNo} has unsaved scoring or timer changes. Save before switching to bout #{pendingScoreBoutNo}?</div>
+                  <div className="flex flex-wrap gap-2 justify-end">
+                    <button onClick={saveAndSwitchToPendingBout} className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-600">Save & switch</button>
+                    <button onClick={switchToPendingBoutWithoutSaving} className="px-3 py-1.5 rounded-xl bg-amber-700 hover:bg-amber-600">Switch without saving</button>
+                    <button onClick={() => setPendingScoreBoutNo(null)} className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700">Stay</button>
+                  </div>
+                </div>
+              </div>
+            )}
             {/* Server URL + Test */}
-            <div className="flex flex-wrap items-center gap-3 text-xs md:text-sm mb-2">
+            <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3 mb-2 space-y-3 text-xs md:text-sm">
+              <div className="flex flex-wrap items-center gap-2">
               <label className="text-slate-200">Server URL (optional):</label>
               <input
                 type="text"
@@ -1259,15 +1427,6 @@ useEffect(() => {
                   <span className="text-slate-400">{serverMsg}</span>
                 )}
               </span>
-              <input
-                type="number"
-                min="0"
-                step="30"
-                className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1 w-[220px]"
-                placeholder="Manual duration seconds, 0 = auto"
-                value={manualDurationSeconds || ""}
-                onChange={(e) => setManualDurationSeconds(Number(e.target.value || 0))}
-              />
               <button
                 onClick={exportOfflineJson}
                 className="px-3 py-1 rounded-xl bg-slate-800 border border-slate-700 hover:bg-slate-700"
@@ -1279,10 +1438,12 @@ useEffect(() => {
                 <input type="file" accept=".json" className="hidden" onChange={(e) => importOfflineJson(e.target.files?.[0])} />
               </label>
               {autoSaveMsg && <span className="text-slate-500">{autoSaveMsg}</span>}
+              </div>
+              <div className="text-[11px] text-slate-500">Timer duration is taken from Main Web settings and the bout/category default. Double-click the timer to manually adjust the current bout start time.</div>
             </div>
 
             {/* Gillam + Bout selector */}
-            <div className="flex flex-wrap items-center gap-3 text-xs md:text-sm">
+            <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3 flex flex-wrap items-center gap-2 text-xs md:text-sm">
               <label className="text-slate-200">Gillam:</label>
               <select
                 className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 min-w-[160px]"
@@ -1310,13 +1471,10 @@ useEffect(() => {
                 onChange={(e) => {
                   const v = e.target.value ? Number(e.target.value) : null;
                   if (!v) {
-                    selectBoutForScore(null);
+                    requestSelectBoutForScore(null);
                     return;
                   }
-                  selectBoutForScore(v);
-                  if (serverUrl) {
-                    loadBoutDetails(v);
-                  }
+                  requestSelectBoutForScore(v);
                 }}
               >
                 <option value="">-- choose --</option>
@@ -1396,7 +1554,7 @@ useEffect(() => {
                       </div>
                       <div className="flex gap-2">
                         <button
-                          onClick={() => setTimerRunning(true)}
+                          onClick={() => { setScoreboardDirty(true); setTimerRunning(true); }}
                           className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs md:text-sm"
                         >
                           Start
@@ -1414,6 +1572,12 @@ useEffect(() => {
                           FULL RESET
                         </button>
                         <button
+                          onClick={endAndNextBout}
+                          className="px-3 py-1 rounded-xl bg-violet-700 hover:bg-violet-600 text-xs md:text-sm"
+                        >
+                          End & Next
+                        </button>
+                        <button
                           onClick={() => {
                             if (document.fullscreenElement) {
                               exitFullscreen();
@@ -1429,7 +1593,7 @@ useEffect(() => {
                     </div>
                     <div className="flex-1 flex items-center justify-center gap-4">
                       <button
-                        onClick={() => adjustTimer(setTimerMs, 1)}
+                        onClick={() => adjustScoreboardTimer(1)}
                         className="px-3 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-2xl md:text-4xl leading-none"
                         title="Add 1 second"
                       >
@@ -1448,7 +1612,7 @@ useEffect(() => {
                         {formatTime(timerMs)}
                       </div>
                       <button
-                        onClick={() => adjustTimer(setTimerMs, -1)}
+                        onClick={() => adjustScoreboardTimer(-1)}
                         className="px-3 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-2xl md:text-4xl leading-none"
                         title="Subtract 1 second"
                       >
@@ -1468,7 +1632,7 @@ useEffect(() => {
                     </div>
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => adjustTimer(setTimerMs, 1)}
+                        onClick={() => adjustScoreboardTimer(1)}
                         className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-lg leading-none"
                         title="Add 1 second"
                       >
@@ -1487,7 +1651,7 @@ useEffect(() => {
                         {formatTime(timerMs)}
                       </div>
                       <button
-                        onClick={() => adjustTimer(setTimerMs, -1)}
+                        onClick={() => adjustScoreboardTimer(-1)}
                         className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-lg leading-none"
                         title="Subtract 1 second"
                       >
@@ -1496,7 +1660,7 @@ useEffect(() => {
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <button
-                        onClick={() => setTimerRunning(true)}
+                        onClick={() => { setScoreboardDirty(true); setTimerRunning(true); }}
                         className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-sm"
                       >
                         Start
@@ -1512,6 +1676,12 @@ useEffect(() => {
                         className="px-3 py-1 rounded-xl bg-red-700 hover:bg-red-600 text-sm"
                       >
                         FULL RESET
+                      </button>
+                      <button
+                        onClick={endAndNextBout}
+                        className="px-3 py-1 rounded-xl bg-violet-700 hover:bg-violet-600 text-sm"
+                      >
+                        End & Next
                       </button>
                       <button
                         onClick={() => {
@@ -1907,7 +2077,7 @@ useEffect(() => {
                 )}
               </div>
               <div className="text-slate-500">
-                Standalone scoreboard v35 Final Stable – open this file directly in your browser.
+                Standalone scoreboard v35.6.5 – open this file directly in your browser.
               </div>
             </div>
           </footer>

@@ -2,18 +2,38 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Kurash TMS v35 Final Stable</title>
+  <title>Kurash TMS v35.6.6</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    /* Global table header alignment: keep labels aligned with their data columns. */
+    table thead th { text-align: left; vertical-align: middle; }
+    table thead th.text-center, table thead th[class*="text-center"] { text-align: center; }
+    table thead th.text-right { text-align: left !important; }
+    .kurash-draw-chip { animation: kurashDrawFloat 1.25s ease-in-out both; }
+    .kurash-draw-lock { animation: kurashDrawLock 0.9s ease-out both; }
+    @keyframes kurashDrawFloat {
+      0% { opacity: 0; transform: translate3d(var(--dx, 0px), var(--dy, 0px), 0) rotate(var(--rot, 0deg)) scale(0.88); }
+      30% { opacity: 1; }
+      100% { opacity: 1; transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+    }
+    @keyframes kurashDrawLock {
+      0% { box-shadow: 0 0 0 rgba(56,189,248,0); transform: scale(1); }
+      55% { box-shadow: 0 0 30px rgba(56,189,248,0.38); transform: scale(1.04); }
+      100% { box-shadow: 0 0 0 rgba(56,189,248,0); transform: scale(1); }
+    }
+  </style>
 </head>
 <body class="bg-slate-950 text-slate-100">
   <div id="root"></div>
 
   <!-- APP SCRIPT START -->
   <script type="text/babel">
+
     const { useState, useMemo, useEffect, useRef } = React;
 
 // Country-specific sport/official code overrides (IOC/ISO where applicable).
@@ -353,6 +373,12 @@ function CountryFlag({ code }) {
       { value: "manual_groups", label: "Manual Groups / No Weights" }
     ];
 
+    const FIRST_ROUND_BYE_ALLOCATION_MODES = [
+      { value: "top_seeds_first", label: "Top seeds receive byes first" },
+      { value: "weighted_random_by_seed", label: "Weighted random by seed" },
+      { value: "equal_random_chance", label: "Equal random chance" }
+    ];
+
     const AFFILIATION_MODES = [
       { value: "none", label: "No Affiliation" },
       { value: "club", label: "Club" },
@@ -554,25 +580,48 @@ function CountryFlag({ code }) {
       const parsed = parseGroupKey(bout?.groupKey);
       const raw = String(
         bout?.manualGroup ||
+        bout?.manualGroupName ||
+        bout?.groupName ||
         bout?.weight ||
         parsed.slot ||
         parsed.weight ||
         ""
       ).trim();
       if (!raw) return "";
+
+      // IMPORTANT: this helper is defined outside App(), so it must not read
+      // React state variables such as weightMode. Reading weightMode here caused
+      // the Draw tab to crash with: "weightMode is not defined".
       const mode = bout?.weightMode || bout?.mode || "";
-      const groupKeyLooksManual = String(parsed.slot || "").trim() && !/^[-+]?\d/.test(String(parsed.slot || "").trim());
-      if (isManualGroupsMode(mode) || groupKeyLooksManual || /^group\s+/i.test(raw)) return /^group\s+/i.test(raw) ? raw : `Group ${raw}`;
+      const looksManualGroup =
+        isManualGroupsMode(mode) ||
+        !!bout?.manualGroup ||
+        !!bout?.manualGroupName ||
+        !!bout?.groupName ||
+        /^group\b/i.test(raw);
+
+      if (looksManualGroup) return /^group\b/i.test(raw) ? raw : `Group ${raw}`;
       return raw;
     }
     function matchDurationSecondsForBout(bout, playersIndex, scope, manualOverrideSeconds) {
-      if (Number(manualOverrideSeconds) > 0) return Number(manualOverrideSeconds);
-      const p = parseGroupKey(bout?.groupKey);
-      const g = ageGroupByNumb(p.ageGroupNumb, scope || "internal_local");
-      if (g?.defaultSeconds) return g.defaultSeconds;
       const A = playersIndex?.get?.(bout?.blueId);
       const G = playersIndex?.get?.(bout?.greenId);
       const sex = bout?.sex || A?.sex || G?.sex || "M";
+
+      // v35.1: support separate manual duration overrides for men and women.
+      // Backward-compatible: a plain number still overrides all bouts.
+      if (manualOverrideSeconds && typeof manualOverrideSeconds === "object") {
+        const override = sex === "F"
+          ? Number(manualOverrideSeconds.women || 0)
+          : Number(manualOverrideSeconds.men || 0);
+        if (override > 0) return override;
+      } else if (Number(manualOverrideSeconds) > 0) {
+        return Number(manualOverrideSeconds);
+      }
+
+      const p = parseGroupKey(bout?.groupKey);
+      const g = ageGroupByNumb(p.ageGroupNumb, scope || "internal_local");
+      if (g?.defaultSeconds) return g.defaultSeconds;
       return sex === "F" ? 3 * 60 : 4 * 60;
     }
 
@@ -611,11 +660,75 @@ function CountryFlag({ code }) {
       return names;
     }
 
+    function normalizedSeedValue(player) {
+      const n = Number(player?.seed);
+      return Number.isFinite(n) && n > 0 ? n : 0;
+    }
+
     function bySeedThenName(a, b) {
-      const sa = a.seed ?? Number.POSITIVE_INFINITY;
-      const sb = b.seed ?? Number.POSITIVE_INFINITY;
+      const sa = normalizedSeedValue(a) || Number.POSITIVE_INFINITY;
+      const sb = normalizedSeedValue(b) || Number.POSITIVE_INFINITY;
       if (sa !== sb) return sa - sb;
       return String(a.name || "").localeCompare(String(b.name || ""));
+    }
+
+    function randomShufflePlayers(arr) {
+      const a = (arr || []).slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function nextPowerOfTwo(n) {
+      let p = 1;
+      while (p < n) p *= 2;
+      return p;
+    }
+
+    function bracketSeedOrder(size) {
+      let order = [1];
+      while (order.length < size) {
+        const nextSize = order.length * 2;
+        order = order.flatMap((seed) => [seed, nextSize + 1 - seed]);
+      }
+      return order;
+    }
+
+    function seededRandomizedPlayerOrder(plist) {
+      const list = (plist || []).slice();
+      const seeded = list
+        .filter((p) => normalizedSeedValue(p) > 0)
+        .sort((a, b) => normalizedSeedValue(a) - normalizedSeedValue(b) || String(a.name || "").localeCompare(String(b.name || "")));
+      const unseeded = randomShufflePlayers(list.filter((p) => normalizedSeedValue(p) === 0));
+
+      // If there are no seeded players, every Generate Draw click must create a new random draw.
+      if (!seeded.length) return unseeded;
+
+      const n = list.length;
+      const bracketSize = nextPowerOfTwo(Math.max(1, n));
+      const order = bracketSeedOrder(bracketSize);
+      const seedSlots = order
+        .map((seedNo, pos) => ({ seedNo, pos }))
+        .filter((x) => x.pos < n)
+        .sort((a, b) => a.seedNo - b.seedNo)
+        .map((x) => x.pos);
+
+      const out = new Array(n).fill(null);
+      seeded.forEach((player, idx) => {
+        const slot = seedSlots[idx];
+        if (slot != null && slot < n && !out[slot]) out[slot] = player;
+      });
+
+      const remaining = randomShufflePlayers([
+        ...seeded.filter((p) => !out.includes(p)),
+        ...unseeded
+      ]);
+      for (let i = 0; i < n; i++) {
+        if (!out[i]) out[i] = remaining.shift();
+      }
+      return out.filter(Boolean);
     }
 
     function withByeIfOdd(ids) {
@@ -623,7 +736,9 @@ function CountryFlag({ code }) {
     }
 
     function buildRoundRobinForWeight(plist) {
-      const seeded = plist.slice().sort(bySeedThenName).map((p) => p.id);
+      // plist is already prepared by seededRandomizedPlayerOrder().
+      // Seeded players stay distributed; seed=0/empty players are shuffled every draw.
+      const seeded = plist.slice().map((p) => p.id);
       const arr = withByeIfOdd(seeded);
       const n = arr.length;
       const half = n / 2;
@@ -644,20 +759,145 @@ function CountryFlag({ code }) {
       return rounds;
     }
 
-    // NEW: build Single Elimination nodes (local bracket for a weight)
-    function buildSingleEliminationNodes(plist) {
-      // plist: array of players (objects)
-      const participants = plist.map((p) => ({ type: "player", playerId: p.id }));
+    // Build Single Elimination nodes using a full power-of-two bracket.
+    // A first-round bye advances a player by exactly one round only; it must never
+    // move a player directly to a semi-final/final just because the group size is not a power of two.
+    function chooseByeRecipients(players, byeCount, mode) {
+      const list = (players || []).slice();
+      if (!byeCount || byeCount <= 0 || !list.length) return new Set();
+      const count = Math.min(byeCount, list.length);
+      const selected = [];
+
+      function idOf(p) { return String(p?.id || ""); }
+      function seedOf(p) { return normalizedSeedValue(p); }
+      function pickWeighted(pool) {
+        const seededValues = pool.map(seedOf).filter((n) => n > 0);
+        const maxSeed = seededValues.length ? Math.max(...seededValues) : 0;
+        const weights = pool.map((p) => {
+          const seed = seedOf(p);
+          if (seed > 0 && maxSeed > 0) return Math.max(1, maxSeed + 2 - seed);
+          return 1;
+        });
+        const total = weights.reduce((a, b) => a + b, 0);
+        let r = Math.random() * total;
+        for (let i = 0; i < pool.length; i++) {
+          r -= weights[i];
+          if (r <= 0) return i;
+        }
+        return pool.length - 1;
+      }
+
+      if (mode === "equal_random_chance") {
+        randomShufflePlayers(list).slice(0, count).forEach((p) => selected.push(p));
+      } else if (mode === "weighted_random_by_seed") {
+        const pool = list.slice();
+        while (selected.length < count && pool.length) {
+          const idx = pickWeighted(pool);
+          selected.push(pool.splice(idx, 1)[0]);
+        }
+      } else {
+        const seeded = list
+          .filter((p) => seedOf(p) > 0)
+          .sort((a, b) => seedOf(a) - seedOf(b) || String(a.name || "").localeCompare(String(b.name || "")));
+        const unseeded = randomShufflePlayers(list.filter((p) => seedOf(p) === 0));
+        [...seeded, ...unseeded].slice(0, count).forEach((p) => selected.push(p));
+      }
+
+      return new Set(selected.map(idOf).filter(Boolean));
+    }
+
+    function preferredBracketPositionForPlayer(player, bracketSize) {
+      const seed = normalizedSeedValue(player);
+      if (seed <= 0) return null;
+      const order = bracketSeedOrder(bracketSize);
+      const pos = order.findIndex((seedNo) => Number(seedNo) === Number(seed));
+      return pos >= 0 ? pos : null;
+    }
+
+    function firstEmptyPlayerSlot(slots, preferredStart) {
+      const n = slots.length;
+      for (let offset = 0; offset < n; offset++) {
+        const i = (Number(preferredStart || 0) + offset) % n;
+        if (!slots[i]) return i;
+      }
+      return -1;
+    }
+
+    function placePlayerForBye(slots, player) {
+      const n = slots.length;
+      const preferred = preferredBracketPositionForPlayer(player, n);
+      const candidates = [];
+      if (preferred != null) candidates.push(preferred);
+      for (let i = 0; i < n; i++) candidates.push(i);
+
+      for (const pos of candidates) {
+        if (pos == null || pos < 0 || pos >= n) continue;
+        const opp = pos ^ 1;
+        if (!slots[pos] && !slots[opp]) {
+          slots[pos] = { type: "player", playerId: player.id };
+          slots[opp] = { type: "bye" };
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function placePlayerInBracket(slots, player) {
+      const n = slots.length;
+      const preferred = preferredBracketPositionForPlayer(player, n);
+      if (preferred != null && !slots[preferred]) {
+        slots[preferred] = { type: "player", playerId: player.id };
+        return true;
+      }
+      const pos = firstEmptyPlayerSlot(slots, preferred || 0);
+      if (pos >= 0) {
+        slots[pos] = { type: "player", playerId: player.id };
+        return true;
+      }
+      return false;
+    }
+
+    function buildSingleEliminationNodes(plist, byeAllocationMode) {
+      const players = (plist || []).slice();
+      const n = players.length;
+      if (n <= 1) return [];
+
+      const bracketSize = nextPowerOfTwo(n);
+      const byeCount = Math.max(0, bracketSize - n);
+      const mode = byeAllocationMode || "top_seeds_first";
+      const byeRecipients = chooseByeRecipients(players, byeCount, mode);
+      const slots = new Array(bracketSize).fill(null);
+
+      const byId = new Map(players.map((p) => [String(p.id), p]));
+      const byePlayers = Array.from(byeRecipients).map((id) => byId.get(String(id))).filter(Boolean);
+      byePlayers.forEach((p) => placePlayerForBye(slots, p));
+
+      const remainingSeeded = players
+        .filter((p) => !byeRecipients.has(String(p.id)) && normalizedSeedValue(p) > 0)
+        .sort((a, b) => normalizedSeedValue(a) - normalizedSeedValue(b) || String(a.name || "").localeCompare(String(b.name || "")));
+      const remainingUnseeded = randomShufflePlayers(players.filter((p) => !byeRecipients.has(String(p.id)) && normalizedSeedValue(p) === 0));
+      [...remainingSeeded, ...remainingUnseeded].forEach((p) => placePlayerInBracket(slots, p));
+
+      for (let i = 0; i < slots.length; i++) {
+        if (!slots[i]) slots[i] = { type: "bye" };
+      }
+
       const bouts = [];
       let round = 1;
-      let current = participants;
+      let current = slots;
       while (current.length > 1) {
         const next = [];
         for (let i = 0; i < current.length; i += 2) {
           const a = current[i];
           const b = current[i + 1];
-          if (!b) {
-            // bye
+          const aBye = !a || a.type === "bye";
+          const bBye = !b || b.type === "bye";
+
+          if (aBye && bBye) {
+            next.push({ type: "bye" });
+          } else if (aBye) {
+            next.push(b);
+          } else if (bBye) {
             next.push(a);
           } else {
             const localId = bouts.length + 1;
@@ -805,7 +1045,15 @@ function mixBoutsAcrossWeights(input, weightsOrder) {
       const recentJudgeByGillam = new Map();
       const recentMainGlobal = [];
       const recentJudgeGlobal = [];
-      avoidSpan = avoidSpan ?? 6;
+      const configuredMainAvoidSpan = Math.max(1, Number(avoidSpan) || 6);
+      const mainAvoidSpanMode = settings.mainAvoidSpanMode || "auto";
+
+      function computeEffectiveMainAvoidSpan(pool) {
+        if (mainAvoidSpanMode !== "auto") return configuredMainAvoidSpan;
+        const available = Array.isArray(pool) ? pool.length : 0;
+        if (available <= 1) return 1;
+        return Math.max(1, Math.min(configuredMainAvoidSpan, available - 1));
+      }
 
       function getRecentArrays(gillam) {
         if (assignmentMode !== "gillam_pool") {
@@ -878,17 +1126,20 @@ function mixBoutsAcrossWeights(input, weightsOrder) {
         const manualJudge2 = b.manualJudge2 || null;
         const hasManual = !!(manualMain || manualJudge1 || manualJudge2);
 
-        const main = manualMain || takeCandidate(pool, avoid, recent.main);
-        const j1 = manualJudge1 || takeCandidate(pool, avoid, recent.judge, new Set([main]));
-        const j2 = manualJudge2 || takeCandidate(pool, avoid, recent.judge, new Set([main, j1]));
+        const effectiveMainAvoidSpan = computeEffectiveMainAvoidSpan(pool);
+        const effectiveJudgeAvoidSpan = Math.max(1, effectiveMainAvoidSpan * 2);
+
+        const main = manualMain || takeCandidate(pool, avoid, recent.main.slice(0, effectiveMainAvoidSpan));
+        const j1 = manualJudge1 || takeCandidate(pool, avoid, recent.judge.slice(0, effectiveJudgeAvoidSpan), new Set([main]));
+        const j2 = manualJudge2 || takeCandidate(pool, avoid, recent.judge.slice(0, effectiveJudgeAvoidSpan), new Set([main, j1]));
 
         if (main) {
           recent.main.unshift(main);
-          if (recent.main.length > avoidSpan) recent.main.pop();
+          if (recent.main.length > effectiveMainAvoidSpan) recent.main.splice(effectiveMainAvoidSpan);
         }
         if (j1) recent.judge.unshift(j1);
         if (j2) recent.judge.unshift(j2);
-        if (recent.judge.length > avoidSpan * 2) recent.judge.splice(avoidSpan * 2);
+        if (recent.judge.length > effectiveJudgeAvoidSpan) recent.judge.splice(effectiveJudgeAvoidSpan);
 
         out.push({
           boutNo: b.boutNo,
@@ -1097,24 +1348,35 @@ function groupKeyComparator(a, b) {
       const [players, setPlayers] = useState([]);
       const [refs, setRefs] = useState([]);
       const [reportTab, setReportTab] = useState("playerResults");
+      const [reportSearch, setReportSearch] = useState("");
       const [reportBracketGroup, setReportBracketGroup] = useState(null);
       const [refAvoidSpan, setRefAvoidSpan] = useState(6);
+      const [refAvoidSpanMode, setRefAvoidSpanMode] = useState("auto");
       const [refAssignmentMode, setRefAssignmentMode] = useState("global");
       const isGillamPoolMode = refAssignmentMode === "gillam_pool";
       const [numGillams, setNumGillams] = useState(1);
       const [roundRobinMax, setRoundRobinMax] = useState(5);
+      const [byeAllocationMode, setByeAllocationMode] = useState("top_seeds_first");
       const [tournamentScope, setTournamentScope] = useState("international");
       const [affiliationMode, setAffiliationMode] = useState("none");
       const [weightMode, setWeightMode] = useState("auto_weights");
       const [manualGroupsByAge, setManualGroupsByAge] = useState(() => defaultManualGroupsForScope("international"));
-      const [manualDurationSeconds, setManualDurationSeconds] = useState(0);
+      const [manualDurationSeconds, setManualDurationSeconds] = useState(0); // legacy all-bouts override
+      const [manualDurationMenSeconds, setManualDurationMenSeconds] = useState(0);
+      const [manualDurationWomenSeconds, setManualDurationWomenSeconds] = useState(0);
+      const [hideSeedPublic, setHideSeedPublic] = useState(true);
+      const [playerSortMode, setPlayerSortMode] = useState("entry");
       const [schedule, setSchedule] = useState(null);
       const [boutMeta, setBoutMeta] = useState({});
       const [activeBoutNo, setActiveBoutNo] = useState(null);
       const [sbEvents, setSbEvents] = useState([]);
       const [timerMs, setTimerMs] = useState(0);
       const [timerRunning, setTimerRunning] = useState(false);
+      const [scoreboardDirty, setScoreboardDirty] = useState(false);
+      const [pendingScoreBoutNo, setPendingScoreBoutNo] = useState(null);
+      const [scoreSaveNotice, setScoreSaveNotice] = useState("");
       const [showMeta, setShowMeta] = useState(false);
+      const [drawAnimation, setDrawAnimation] = useState({ active: false, phase: "idle", names: [] });
       const [serverUrl, setServerUrl] = useState("");
       const [serverStatus, setServerStatus] = useState("idle");
       const [serverStatusMsg, setServerStatusMsg] = useState("");
@@ -1127,11 +1389,14 @@ function groupKeyComparator(a, b) {
       const [drawValidation, setDrawValidation] = useState({ errors: [], warnings: [] });
       const [playerSearch, setPlayerSearch] = useState("");
       const [refSearch, setRefSearch] = useState("");
+      const [drawGroupSearch, setDrawGroupSearch] = useState("");
+      const [drawBoutSearch, setDrawBoutSearch] = useState("");
       const [refMgmtSearch, setRefMgmtSearch] = useState("");
       const [refMgmtBoutSearch, setRefMgmtBoutSearch] = useState("");
       const [refMgmtStageFilter, setRefMgmtStageFilter] = useState("all");
       const [syncMode, setSyncMode] = useState("offline");
       const [unsyncedChanges, setUnsyncedChanges] = useState(false);
+      const unsyncedChangesRef = useRef(false);
       const [lastServerSnapshotAt, setLastServerSnapshotAt] = useState(null);
       const [leagueStandingsData, setLeagueStandingsData] = useState([]);
       const [finalRefCandidates, setFinalRefCandidates] = useState([]);
@@ -1140,6 +1405,13 @@ function groupKeyComparator(a, b) {
       const [refMgmtStatusMsg, setRefMgmtStatusMsg] = useState("");
       const [refMgmtOnlyFinals, setRefMgmtOnlyFinals] = useState(false);
       const [helpOpen, setHelpOpen] = useState(false);
+      const [delegationApprovals, setDelegationApprovals] = useState({});
+      const [delegationAffiliation, setDelegationAffiliation] = useState("");
+      const [delegationRepresentativeName, setDelegationRepresentativeName] = useState("");
+      const [delegationConfirm, setDelegationConfirm] = useState(false);
+      const [delegationStatusMsg, setDelegationStatusMsg] = useState("");
+      const delegationSignatureRef = useRef(null);
+      const delegationDrawingRef = useRef(false);
 
       const sbContainerRef = useRef(null);
       const [isFullscreen, setIsFullscreen] = useState(false);
@@ -1150,10 +1422,19 @@ function groupKeyComparator(a, b) {
       const halfPingDoneRef = useRef(false);
       const sbComputedRef = useRef(null);
 
+      const gillamNames = useMemo(
+        () => makeGillamNames(Math.max(1, Number(numGillams) || 1)),
+        [numGillams]
+      );
+
+
+      useEffect(() => {
+        unsyncedChangesRef.current = !!unsyncedChanges;
+      }, [unsyncedChanges]);
 
       useEffect(() => {
         saveLocalSnapshot("state_change");
-      }, [players, refs, schedule, boutMeta, tournamentScope, affiliationMode, weightMode, manualGroupsByAge, manualDurationSeconds, currentTournamentMeta, finalRefPool]);
+      }, [players, refs, schedule, boutMeta, tournamentScope, affiliationMode, weightMode, manualGroupsByAge, manualDurationSeconds, manualDurationMenSeconds, manualDurationWomenSeconds, hideSeedPublic, byeAllocationMode, refAvoidSpan, refAvoidSpanMode, refAssignmentMode, currentTournamentMeta, finalRefPool, delegationApprovals]);
 
       function normalizedServerBase() {
         const raw = String(serverUrl || "").trim();
@@ -1161,14 +1442,58 @@ function groupKeyComparator(a, b) {
         return raw.replace(/\/+$/, "");
       }
 
+      const durationOverrides = useMemo(() => ({
+        men: manualDurationMenSeconds || manualDurationSeconds || 0,
+        women: manualDurationWomenSeconds || manualDurationSeconds || 0
+      }), [manualDurationMenSeconds, manualDurationWomenSeconds, manualDurationSeconds]);
 
-      const LOCAL_APP_STATE_KEY = "kurash-main-web-v35-final-stable-state";
-      const LEGACY_LOCAL_APP_STATE_KEYS = ["kurash-main-web-hybrid-v12-state"];
+      const effectiveRefAvoidMax = Math.max(1, Math.min(20, Number(refAvoidSpan) || 6));
+
+      function effectiveMainAvoidSpanForCount(count) {
+        const available = Math.max(0, Number(count) || 0);
+        if (refAvoidSpanMode !== "auto") return effectiveRefAvoidMax;
+        if (available <= 1) return 1;
+        return Math.max(1, Math.min(effectiveRefAvoidMax, available - 1));
+      }
+
+      function refsAvailableForGillam(gillamName) {
+        if (refAssignmentMode !== "gillam_pool") return refs || [];
+        const local = (refs || []).filter((r) => {
+          if (!r) return false;
+          const scope = r.assignScope || "global";
+          if (scope === "global") return true;
+          if (scope === "pool") return String(r.poolGillam || "") === String(gillamName || "");
+          return true;
+        });
+        return local.length ? local : (refs || []);
+      }
+
+      const refRotationPreview = useMemo(() => {
+        if (refAssignmentMode !== "gillam_pool") {
+          const count = (refs || []).length;
+          return [{ label: "Global pool", count, span: effectiveMainAvoidSpanForCount(count), warning: count > 0 && count < 3 }];
+        }
+        const names = Array.isArray(gillamNames) && gillamNames.length ? gillamNames : makeGillamNames(Math.max(1, Number(numGillams) || 1));
+        return names.map((g) => {
+          const count = refsAvailableForGillam(g).length;
+          return { label: g, count, span: effectiveMainAvoidSpanForCount(count), warning: count > 0 && count < 3 };
+        });
+      }, [refs, refAssignmentMode, refAvoidSpanMode, effectiveRefAvoidMax, gillamNames, numGillams]);
+
+
+      const LOCAL_APP_STATE_KEY = "kurash-main-web-v35-5-referee-rotation-state";
+      const LEGACY_LOCAL_APP_STATE_KEYS = ["kurash-main-web-v35-4-referee-sync-state", "kurash-main-web-v35-final-stable-state", "kurash-main-web-hybrid-v12-state"];
 
       function markUnsynced() {
+        unsyncedChangesRef.current = true;
         setUnsyncedChanges(true);
         if (!normalizedServerBase()) setSyncMode("offline");
         else setSyncMode("unsynced");
+      }
+
+      function markSynced() {
+        unsyncedChangesRef.current = false;
+        setUnsyncedChanges(false);
       }
 
       function saveLocalSnapshot(reason) {
@@ -1185,8 +1510,16 @@ function groupKeyComparator(a, b) {
             weightMode,
             manualGroupsByAge,
             manualDurationSeconds,
+            manualDurationMenSeconds,
+            manualDurationWomenSeconds,
+            hideSeedPublic,
+            byeAllocationMode,
+            refAvoidSpan,
+            refAvoidSpanMode,
+            refAssignmentMode,
             currentTournamentMeta,
-            finalRefPool
+            finalRefPool,
+            delegationApprovals
           };
           localStorage.setItem(LOCAL_APP_STATE_KEY, JSON.stringify(snapshot));
         } catch (err) {
@@ -1214,8 +1547,16 @@ function groupKeyComparator(a, b) {
           if (s.weightMode) setWeightMode(s.weightMode);
           if (s.manualGroupsByAge) setManualGroupsByAge(s.manualGroupsByAge);
           if (s.manualDurationSeconds != null) setManualDurationSeconds(Number(s.manualDurationSeconds) || 0);
+          if (s.manualDurationMenSeconds != null) setManualDurationMenSeconds(Number(s.manualDurationMenSeconds) || 0);
+          if (s.manualDurationWomenSeconds != null) setManualDurationWomenSeconds(Number(s.manualDurationWomenSeconds) || 0);
+          if (s.hideSeedPublic != null) setHideSeedPublic(!!s.hideSeedPublic);
+          if (s.byeAllocationMode) setByeAllocationMode(FIRST_ROUND_BYE_ALLOCATION_MODES.some((x) => x.value === s.byeAllocationMode) ? s.byeAllocationMode : "top_seeds_first");
+          if (s.refAvoidSpan != null) setRefAvoidSpan(Math.max(1, Math.min(20, Number(s.refAvoidSpan) || 6)));
+          if (s.refAvoidSpanMode) setRefAvoidSpanMode(s.refAvoidSpanMode === "manual" ? "manual" : "auto");
+          if (s.refAssignmentMode) setRefAssignmentMode(s.refAssignmentMode === "gillam_pool" ? "gillam_pool" : "global");
           setCurrentTournamentMeta(s.currentTournamentMeta || null);
           setFinalRefPool(Array.isArray(s.finalRefPool) ? s.finalRefPool : []);
+          setDelegationApprovals(s.delegationApprovals || s.currentTournamentMeta?.delegationApprovals || {});
           setTournamentActionMsg("Local offline snapshot restored from " + (s.savedAt || "previous session") + ".");
           setSyncMode("offline");
           return true;
@@ -1229,7 +1570,7 @@ function groupKeyComparator(a, b) {
       function currentSnapshotPayload(reason) {
         return {
           app: "Kurash Tournament Manager",
-          version: "v35-final-stable",
+          version: "v35.6.6",
           exportedAt: new Date().toISOString(),
           reason: reason || "manual_export",
           players,
@@ -1241,8 +1582,16 @@ function groupKeyComparator(a, b) {
           weightMode,
           manualGroupsByAge,
           manualDurationSeconds,
+          manualDurationMenSeconds,
+          manualDurationWomenSeconds,
+          hideSeedPublic,
+          byeAllocationMode,
+          refAvoidSpan,
+          refAvoidSpanMode,
+          refAssignmentMode,
           currentTournamentMeta,
           finalRefPool,
+          delegationApprovals,
           leagueStandings: localLeagueStandings,
           finalRefCandidates
         };
@@ -1261,7 +1610,7 @@ function groupKeyComparator(a, b) {
 
       function exportTournamentJSON() {
         const name = (currentTournamentMeta?.name || "kurash_tournament").replace(/[^a-z0-9_\-]+/gi, "_");
-        downloadJSON(`${name}_backup_v35_final_stable.json`, currentSnapshotPayload("manual_json_export"));
+        downloadJSON(`${name}_backup_v35_5_referee_rotation.json`, currentSnapshotPayload("manual_json_export"));
         saveLocalSnapshot("manual_json_export");
         setTournamentActionMsg("Tournament JSON backup exported and local snapshot refreshed.");
       }
@@ -1285,6 +1634,9 @@ function groupKeyComparator(a, b) {
             if (s.weightMode) setWeightMode(s.weightMode);
             if (s.manualGroupsByAge) setManualGroupsByAge(s.manualGroupsByAge);
             if (s.manualDurationSeconds != null) setManualDurationSeconds(Number(s.manualDurationSeconds) || 0);
+            if (s.manualDurationMenSeconds != null) setManualDurationMenSeconds(Number(s.manualDurationMenSeconds) || 0);
+            if (s.manualDurationWomenSeconds != null) setManualDurationWomenSeconds(Number(s.manualDurationWomenSeconds) || 0);
+            if (s.hideSeedPublic != null) setHideSeedPublic(!!s.hideSeedPublic);
             setCurrentTournamentMeta(s.currentTournamentMeta || null);
             setFinalRefPool(Array.isArray(s.finalRefPool) ? s.finalRefPool : []);
             markUnsynced();
@@ -1352,12 +1704,17 @@ function groupKeyComparator(a, b) {
           affiliationMode,
           weightMode,
           manualGroupsByAge,
-          manualDurationSeconds
+          manualDurationSeconds,
+          manualDurationMenSeconds,
+          manualDurationWomenSeconds,
+          hideSeedPublic,
+          byeAllocationMode
         };
         clearTournamentWorkspace();
         setCurrentTournamentMeta(localMeta);
         setIsTournamentReadOnly(false);
         setSyncMode(serverUrl && serverUrl.trim() ? "unsynced" : "offline");
+        unsyncedChangesRef.current = true;
         setUnsyncedChanges(true);
         setTournamentActionMsg("Local tournament created. It will run offline first; use Sync Now after connecting a server.");
         try {
@@ -1373,8 +1730,13 @@ function groupKeyComparator(a, b) {
             weightMode,
             manualGroupsByAge,
             manualDurationSeconds,
+            manualDurationMenSeconds,
+            manualDurationWomenSeconds,
+            hideSeedPublic,
+            byeAllocationMode,
             currentTournamentMeta: localMeta,
-            finalRefPool: []
+            finalRefPool: [],
+            delegationApprovals: {}
           };
           localStorage.setItem(LOCAL_APP_STATE_KEY, JSON.stringify(snapshot));
         } catch (err) {
@@ -1423,11 +1785,16 @@ function groupKeyComparator(a, b) {
         initialFightMsRef.current = 0;
         halfPingDoneRef.current = false;
         setCurrentTournamentMeta(tournament?.meta || null);
+        setDelegationApprovals(tournament?.tournamentMeta?.delegationApprovals || tournament?.meta?.delegationApprovals || {});
         if (tournament?.meta?.tournamentScope) setTournamentScope(tournament.meta.tournamentScope);
         if (tournament?.meta?.affiliationMode) setAffiliationMode(tournament.meta.affiliationMode);
         if (tournament?.meta?.weightMode) setWeightMode(tournament.meta.weightMode);
         if (tournament?.meta?.manualGroupsByAge) setManualGroupsByAge(tournament.meta.manualGroupsByAge);
         if (tournament?.meta?.manualDurationSeconds != null) setManualDurationSeconds(Number(tournament.meta.manualDurationSeconds) || 0);
+        if (tournament?.meta?.manualDurationMenSeconds != null) setManualDurationMenSeconds(Number(tournament.meta.manualDurationMenSeconds) || 0);
+        if (tournament?.meta?.manualDurationWomenSeconds != null) setManualDurationWomenSeconds(Number(tournament.meta.manualDurationWomenSeconds) || 0);
+        if (tournament?.meta?.hideSeedPublic != null) setHideSeedPublic(!!tournament.meta.hideSeedPublic);
+        if (tournament?.meta?.byeAllocationMode) setByeAllocationMode(FIRST_ROUND_BYE_ALLOCATION_MODES.some((x) => x.value === tournament.meta.byeAllocationMode) ? tournament.meta.byeAllocationMode : "top_seeds_first");
         setIsTournamentReadOnly(!!opts.readOnly || tournament?.meta?.status === "archived");
       }
 
@@ -1538,7 +1905,10 @@ function groupKeyComparator(a, b) {
             affiliationMode,
             weightMode,
             manualGroupsByAge,
-            manualDurationSeconds
+            manualDurationSeconds,
+            manualDurationMenSeconds,
+            manualDurationWomenSeconds,
+            hideSeedPublic
           };
           clearTournamentWorkspace();
           setCurrentTournamentMeta(localMeta);
@@ -1699,48 +2069,61 @@ function groupKeyComparator(a, b) {
         }, 500);
       }
 
-      // NEW: send schedule + players + refs to backend server
+      // Send the full local tournament snapshot to the backend server.
+      // Direction rule: Sync Now pushes local data to the server; automatic refresh never overwrites unsynced local edits.
       async function syncScheduleToServer(newSchedule) {
-        if (!serverUrl || !newSchedule) return; // solo mode if empty
+        const base = normalizedServerBase();
+        if (!base) return;
 
         try {
           setServerStatus("idle");
-          setServerStatusMsg("Syncing schedule...");
+          setServerStatusMsg("Pushing local tournament data to server...");
 
+          const metaBase = currentTournamentMeta || {};
           const payload = {
             players,
             refs,
-            schedule: newSchedule,
-            tournamentMeta: currentTournamentMeta
-              ? {
-                  name: currentTournamentMeta.name,
-                  date: currentTournamentMeta.date,
-                  tournamentScope,
-                  affiliationMode,
-                  weightMode,
-                  manualGroupsByAge,
-                  manualDurationSeconds
-                }
-              : { tournamentScope, affiliationMode, weightMode, manualGroupsByAge, manualDurationSeconds }
+            schedule: newSchedule || schedule || null,
+            tournamentMeta: {
+              ...metaBase,
+              name: metaBase.name || newTournamentName || "Tournament",
+              date: metaBase.date || newTournamentDate || new Date().toISOString().slice(0, 10),
+              tournamentScope,
+              affiliationMode,
+              weightMode,
+              manualGroupsByAge,
+              manualDurationSeconds,
+              manualDurationMenSeconds,
+              manualDurationWomenSeconds,
+              hideSeedPublic,
+              byeAllocationMode,
+              finalRefereePool: finalRefPool || [],
+              delegationApprovals: delegationApprovals || {}
+            }
           };
 
-          const base = serverUrl.replace(/\/+$/, "");
-          const res = await fetch(base + "/api/schedule", {
+          const endpoint = payload.schedule ? "/api/schedule" : "/api/tournament/full-save";
+          const res = await fetch(base + endpoint, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
           });
 
+          const data = await res.json().catch(() => ({}));
           if (!res.ok) {
-            const txt = await res.text();
             setServerStatus("error");
-            setServerStatusMsg("Sync failed: " + res.status);
-            console.error("Sync failed:", txt);
+            setServerStatusMsg("Sync failed: " + (data?.error || res.status));
+            console.error("Sync failed:", data);
             return;
           }
 
+          if (data?.tournament?.meta) setCurrentTournamentMeta(data.tournament.meta);
+          if (data?.tournament?.tournamentMeta?.delegationApprovals) setDelegationApprovals(data.tournament.tournamentMeta.delegationApprovals);
+          const stamp = data?.tournament?.schedule?.updatedAt || data?.tournament?.meta?.lastSavedAt || new Date().toISOString();
+          setLastServerSnapshotAt(stamp);
+          markSynced();
           setServerStatus("ok");
-          setServerStatusMsg("Schedule synced successfully.");
+          setServerStatusMsg("Local data pushed to server successfully.");
         } catch (err) {
           console.error("Sync error:", err);
           setServerStatus("error");
@@ -1778,6 +2161,11 @@ function groupKeyComparator(a, b) {
 
       async function refreshLiveServerSnapshot(options) {
         const opts = options || {};
+        if (!opts.force && unsyncedChangesRef.current) {
+          setSyncMode("unsynced");
+          setTournamentActionMsg("Local changes are not synced. Use Sync Now to push them to the server before loading server updates.");
+          return;
+        }
         const base = normalizedServerBase();
         if (!base) return;
         try {
@@ -1789,12 +2177,84 @@ function groupKeyComparator(a, b) {
           if (!opts.force && incomingStamp && lastServerSnapshotAt && incomingStamp === lastServerSnapshotAt) return;
           loadTournamentIntoApp(data, { readOnly: data?.meta?.status === "archived" });
           setLastServerSnapshotAt(incomingStamp || new Date().toISOString());
-          setUnsyncedChanges(false);
-          setSyncMode("online");
+          markSynced();
           setTournamentActionMsg("Live server snapshot refreshed.");
         } catch (err) {
           console.error("Live snapshot refresh error:", err);
-          if (!unsyncedChanges) setSyncMode("server_error");
+          if (!unsyncedChangesRef.current) setSyncMode("server_error");
+        }
+      }
+
+
+      function mergeRefereeManagementPayload(data, reason) {
+        if (!data) return;
+        const serverRefs = Array.isArray(data.refs) ? data.refs : null;
+        const serverBouts = Array.isArray(data.bouts) ? data.bouts : [];
+        const serverAssignments = Array.isArray(data.assignments) ? data.assignments : null;
+        const serverFinalPool = Array.isArray(data.finalRefereePool) ? data.finalRefereePool.map(String) : null;
+        const serverStamp = data.lastSavedAt || data.scheduleVersion || data.meta?.updatedAt || new Date().toISOString();
+
+        if (serverRefs) setRefs(serverRefs);
+        if (serverFinalPool) setFinalRefPool(serverFinalPool);
+
+        setSchedule((prev) => {
+          if (!prev || !Array.isArray(prev.bouts) || !prev.bouts.length) {
+            return {
+              ...(prev || {}),
+              bouts: serverBouts,
+              assignments: serverAssignments || data.assignments || [],
+              bracketLinks: prev?.bracketLinks || data.bracketLinks || {},
+              updatedAt: serverStamp
+            };
+          }
+
+          const serverBoutByNo = new Map(serverBouts.map((b) => [String(b.boutNo), b]));
+          const mergedBouts = prev.bouts.map((localBout) => {
+            const serverBout = serverBoutByNo.get(String(localBout.boutNo));
+            if (!serverBout) return localBout;
+            return {
+              ...localBout,
+              refEvaluations: Array.isArray(serverBout.refEvaluations) ? serverBout.refEvaluations : (localBout.refEvaluations || []),
+              mainRef: serverBout.mainRef ?? localBout.mainRef,
+              judge1: serverBout.judge1 ?? localBout.judge1,
+              judge2: serverBout.judge2 ?? localBout.judge2
+            };
+          });
+
+          return {
+            ...prev,
+            bouts: mergedBouts,
+            assignments: serverAssignments || prev.assignments || [],
+            updatedAt: serverStamp
+          };
+        });
+
+        setLastServerSnapshotAt(serverStamp);
+        setSyncMode("online");
+        setUnsyncedChanges(false);
+        setRefMgmtStatusMsg("Referee management data refreshed from server" + (reason ? ` (${reason})` : "") + ".");
+      }
+
+      async function refreshRefereeManagementFromServer(reason) {
+        const base = normalizedServerBase();
+        if (!base) {
+          setRefMgmtStatusMsg("Enter server URL first, or continue using local data.");
+          return;
+        }
+        const reasonText = String(reason || "").toLowerCase();
+        if (unsyncedChangesRef.current && (reasonText.includes("auto") || reasonText.includes("external"))) {
+          setRefMgmtStatusMsg("Local changes are not synced. Use Sync Now before loading referee data from the server.");
+          return;
+        }
+        try {
+          const res = await fetch(base + "/api/referee-management?ts=" + Date.now());
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const data = await res.json();
+          mergeRefereeManagementPayload(data, reason || "manual refresh");
+        } catch (err) {
+          console.error("Referee management refresh error:", err);
+          setSyncMode("server_error");
+          setRefMgmtStatusMsg("Could not refresh referee management data from server: " + err.message);
         }
       }
 
@@ -1828,12 +2288,50 @@ function groupKeyComparator(a, b) {
         const base = normalizedServerBase();
         if (!base) return;
         const id = setInterval(() => {
-          if (!unsyncedChanges && !isTournamentReadOnly) refreshLiveServerSnapshot();
+          if (!unsyncedChangesRef.current && !isTournamentReadOnly) refreshLiveServerSnapshot();
           refreshLeagueStandingsFromServer();
           refreshFinalRefCandidatesFromServer();
+          if (!unsyncedChangesRef.current && tab === "refMgmt") refreshRefereeManagementFromServer("auto sync");
         }, 3000);
         return () => clearInterval(id);
-      }, [serverUrl, unsyncedChanges, isTournamentReadOnly, lastServerSnapshotAt]);
+      }, [serverUrl, unsyncedChanges, isTournamentReadOnly, lastServerSnapshotAt, tab]);
+
+      useEffect(() => {
+        function handleRefMgmtStorage(e) {
+          if (e.key === "kurash_ref_mgmt_updated_at" && normalizedServerBase() && !unsyncedChangesRef.current) {
+            refreshRefereeManagementFromServer("external page update");
+          }
+        }
+        window.addEventListener("storage", handleRefMgmtStorage);
+        return () => window.removeEventListener("storage", handleRefMgmtStorage);
+      }, [serverUrl]);
+
+      useEffect(() => {
+        function refreshFromScoreboardSignal() {
+          if (normalizedServerBase() && !unsyncedChangesRef.current) {
+            refreshLiveServerSnapshot({ reason: "scoreboard result saved" });
+          }
+        }
+        function handleScoreboardStorage(e) {
+          if (e.key === "kurash_scoreboard_result_saved_at") refreshFromScoreboardSignal();
+        }
+        let channel = null;
+        try {
+          if (window.BroadcastChannel) {
+            channel = new BroadcastChannel("kurash_tms_live_updates");
+            channel.onmessage = (ev) => {
+              if (ev?.data?.type === "scoreboard_result_saved") refreshFromScoreboardSignal();
+            };
+          }
+        } catch (err) {
+          console.warn("BroadcastChannel unavailable", err);
+        }
+        window.addEventListener("storage", handleScoreboardStorage);
+        return () => {
+          window.removeEventListener("storage", handleScoreboardStorage);
+          if (channel) channel.close();
+        };
+      }, [serverUrl]);
 
       function ensureAudioContext() {
         const AC = window.AudioContext || window.webkitAudioContext;
@@ -1898,8 +2396,41 @@ function groupKeyComparator(a, b) {
       }
 
       const filteredPlayers = useMemo(() => {
-        return (players || []).map((p, idx) => ({ p, idx })).filter(({ p, idx }) => rowMatchesSearch({ ...p, rowNo: idx + 1 }, playerSearch));
-      }, [players, playerSearch]);
+        const rows = (players || [])
+          .map((p, idx) => ({ p, idx }))
+          .filter(({ p, idx }) => rowMatchesSearch({ ...p, rowNo: idx + 1, affiliation: p.countryFull, code: p.country, bucket: p.weight }, playerSearch));
+
+        const text = (v) => String(v ?? "").toLowerCase();
+        const weightValue = (p) => {
+          const raw = String(isManualGroupsMode(weightMode) ? (p.manualGroup || p.weight || "") : (p.weight || "")).replace(/^Group\s+/i, "").trim();
+          const n = Number(raw.replace("+", "").replace("-", ""));
+          return Number.isFinite(n) ? n : 9999;
+        };
+
+        rows.sort((a, b) => {
+          if (playerSortMode === "country") {
+            return text(a.p.countryFull || a.p.country).localeCompare(text(b.p.countryFull || b.p.country)) || text(a.p.name).localeCompare(text(b.p.name));
+          }
+          if (playerSortMode === "weight") {
+            return weightValue(a.p) - weightValue(b.p) || text(a.p.countryFull || a.p.country).localeCompare(text(b.p.countryFull || b.p.country)) || text(a.p.name).localeCompare(text(b.p.name));
+          }
+          if (playerSortMode === "seed") {
+            return (a.p.seed ?? 999999) - (b.p.seed ?? 999999) || text(a.p.name).localeCompare(text(b.p.name));
+          }
+          if (playerSortMode === "ageGroup") {
+            return Number(a.p.ageGroupNumb || 0) - Number(b.p.ageGroupNumb || 0) || weightValue(a.p) - weightValue(b.p) || text(a.p.name).localeCompare(text(b.p.name));
+          }
+          if (playerSortMode === "sex") {
+            return text(a.p.sex).localeCompare(text(b.p.sex)) || weightValue(a.p) - weightValue(b.p) || text(a.p.name).localeCompare(text(b.p.name));
+          }
+          if (playerSortMode === "name") {
+            return text(a.p.name).localeCompare(text(b.p.name));
+          }
+          return a.idx - b.idx;
+        });
+
+        return rows;
+      }, [players, playerSearch, playerSortMode, weightMode]);
 
       const filteredRefs = useMemo(() => {
         return (refs || []).map((r, idx) => ({ r, idx })).filter(({ r, idx }) => rowMatchesSearch({ ...r, rowNo: idx + 1 }, refSearch));
@@ -2059,7 +2590,9 @@ function groupKeyComparator(a, b) {
         markUnsynced();
         saveLocalSnapshot("referee_management_assignments_save");
         await syncScheduleToServer(schedule);
-        setRefMgmtStatusMsg(serverUrl?.trim() ? "Assignments saved locally and sync attempted." : "Assignments saved locally. Offline mode.");
+        try { localStorage.setItem("kurash_ref_mgmt_updated_at", String(Date.now())); } catch (e) {}
+        if (normalizedServerBase()) await refreshRefereeManagementFromServer("assignment save");
+        setRefMgmtStatusMsg(serverUrl?.trim() ? "Assignments saved and refreshed from server." : "Assignments saved locally. Offline mode.");
       }
 
       async function saveRefereesToServer() {
@@ -2077,8 +2610,7 @@ function groupKeyComparator(a, b) {
             body: JSON.stringify({ refs })
           });
           if (!res.ok) throw new Error("HTTP " + res.status);
-          setUnsyncedChanges(false);
-          setSyncMode("online");
+          markSynced();
           setRefMgmtStatusMsg("Referees saved to server.");
         } catch (err) {
           console.warn("Referee server save failed", err);
@@ -2104,9 +2636,11 @@ function groupKeyComparator(a, b) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ finalRefereePool: cleaned })
           });
-          if (!res.ok) throw new Error("HTTP " + res.status);
-          setUnsyncedChanges(false);
-          setSyncMode("online");
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data?.error || ("HTTP " + res.status));
+          try { localStorage.setItem("kurash_ref_mgmt_updated_at", String(Date.now())); } catch (e) {}
+          markSynced();
+          await refreshRefereeManagementFromServer("final pool save");
           setRefMgmtStatusMsg("Final referee pool saved to server.");
         } catch (err) {
           console.warn("Final pool server save failed", err);
@@ -2210,18 +2744,34 @@ function groupKeyComparator(a, b) {
           };
         });
 
+        unsyncedChangesRef.current = true;
         setUnsyncedChanges(true);
         saveLocalSnapshot("referee_evaluation_save");
 
         const base = normalizedServerBase();
         if (base) {
           try {
-            await fetch(base + "/api/referee-evaluation", {
+            const res = await fetch(base + "/api/referee-evaluation", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ boutNo: saved.boutNo, refId: saved.refId, evaluation: saved })
             });
-            setServerStatusMsg("Referee evaluation saved locally and sent to server.");
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data?.error || ("HTTP " + res.status));
+            if (data?.tournament?.schedule) {
+              mergeRefereeManagementPayload({
+                refs: data.tournament.refs || refs,
+                bouts: data.tournament.schedule.bouts || [],
+                assignments: data.tournament.schedule.assignments || [],
+                finalRefereePool: data.tournament.tournamentMeta?.finalRefereePool || finalRefPool,
+                lastSavedAt: data.tournament.meta?.lastSavedAt || new Date().toISOString(),
+                meta: data.tournament.meta
+              }, "evaluation save");
+            } else {
+              await refreshRefereeManagementFromServer("evaluation save");
+            }
+            try { localStorage.setItem("kurash_ref_mgmt_updated_at", String(Date.now())); } catch (e) {}
+            setServerStatusMsg("Referee evaluation saved locally and synced with server.");
             setRefMgmtStatusMsg("Evaluation saved and synced.");
           } catch (err) {
             console.warn("Evaluation server save failed; kept locally", err);
@@ -2250,10 +2800,6 @@ function groupKeyComparator(a, b) {
       }, [players, tournamentScope, weightMode, manualGroupsByAge]);
 
       const [weightConfig, setWeightConfig] = useState({});
-      const gillamNames = useMemo(
-        () => makeGillamNames(Math.max(1, numGillams)),
-        [numGillams]
-      );
 
       useEffect(() => {
         setWeightConfig((prev) => {
@@ -2439,6 +2985,7 @@ function groupKeyComparator(a, b) {
         setSchedule(null);
         setBoutMeta({});
         setDrawValidation({ errors: [], warnings: [] });
+        markUnsynced();
       }
 
       function updateManualGroupsForAge(ageGroupNumb, text) {
@@ -2460,6 +3007,7 @@ function groupKeyComparator(a, b) {
         );
         setSchedule(null);
         setBoutMeta({});
+        markUnsynced();
       }
 
       function addPlayer() {
@@ -2479,6 +3027,7 @@ function groupKeyComparator(a, b) {
           age: ""
         };
         setPlayers((s) => [...s, p]);
+        markUnsynced();
       }
 
       function recalcPlayer(idx, patch) {
@@ -2518,6 +3067,7 @@ function groupKeyComparator(a, b) {
           next[idx] = p;
           return next;
         });
+        markUnsynced();
       }
 
       function handleImportPlayersTXT(text) {
@@ -2560,6 +3110,7 @@ function groupKeyComparator(a, b) {
           }
         }
         setPlayers((prev) => [...prev, ...acc]);
+        markUnsynced();
       }
 
       function addRef() {
@@ -2577,6 +3128,7 @@ function groupKeyComparator(a, b) {
           poolGillam: ""
         };
         setRefs((s) => [...s, r]);
+        markUnsynced();
       }
 
       function recalcRef(idx, patch) {
@@ -2602,6 +3154,44 @@ function groupKeyComparator(a, b) {
           }));
           return next;
         });
+        markUnsynced();
+      }
+
+      function setAllRefereeScopes(scope) {
+        if (!ensureWritable("Changing referee scopes")) return;
+        const nextScope = scope === "pool" ? "pool" : "global";
+        setRefs((prev) => (prev || []).map((ref, i) => ({
+          ...ref,
+          id: `REF-${String(i + 1).padStart(3, "0")}`,
+          refNo: i + 1,
+          rank: Math.max(1, Math.min(3, Number(ref.rank) || 1)),
+          assignScope: nextScope,
+          poolGillam: nextScope === "pool" ? (ref.poolGillam || gillamNames[i % Math.max(1, gillamNames.length)] || "") : ""
+        })));
+        markUnsynced();
+      }
+
+      function randomizeRefereeGillamPools() {
+        if (!ensureWritable("Balancing referee Gillam pools")) return;
+        const names = Array.isArray(gillamNames) && gillamNames.length ? gillamNames : makeGillamNames(Math.max(1, numGillams));
+        if (!names.length) return;
+        setRefs((prev) => {
+          const rows = (prev || []).map((ref, i) => ({ ref, originalIndex: i }));
+          const shuffled = shuffle(rows);
+          const poolByIndex = new Map();
+          shuffled.forEach((row, order) => {
+            poolByIndex.set(row.originalIndex, names[order % names.length]);
+          });
+          return rows.map(({ ref, originalIndex }, i) => ({
+            ...ref,
+            id: `REF-${String(i + 1).padStart(3, "0")}`,
+            refNo: i + 1,
+            rank: Math.max(1, Math.min(3, Number(ref.rank) || 1)),
+            assignScope: "pool",
+            poolGillam: poolByIndex.get(originalIndex) || names[i % names.length]
+          }));
+        });
+        markUnsynced();
       }
 
       function handleImportRefsTXT(text) {
@@ -2651,6 +3241,7 @@ function groupKeyComparator(a, b) {
           localIdx++;
         }
         setRefs((prev) => [...prev, ...acc]);
+        markUnsynced();
       }
 
       function getEligibleRefereesForGillam(gillam, refsInput) {
@@ -2837,7 +3428,7 @@ function groupKeyComparator(a, b) {
           pIndex,
           refsInput || refs,
           refAvoidSpan,
-          { assignmentMode: refAssignmentMode, fallbackToGlobal: true }
+          { assignmentMode: refAssignmentMode, fallbackToGlobal: true, mainAvoidSpanMode: refAvoidSpanMode }
         );
         return { ...scheduleInput, assignments };
       }
@@ -2879,7 +3470,7 @@ function groupKeyComparator(a, b) {
             pIndex,
             refs,
             refAvoidSpan,
-            { assignmentMode: refAssignmentMode, fallbackToGlobal: true }
+            { assignmentMode: refAssignmentMode, fallbackToGlobal: true, mainAvoidSpanMode: refAvoidSpanMode }
           )[0];
           const nextSchedule = { ...prev, assignments: [...remaining, auto].sort((a, b) => a.boutNo - b.boutNo) };
           setDrawValidation(buildRefereeValidationPayload(nextSchedule));
@@ -2887,8 +3478,46 @@ function groupKeyComparator(a, b) {
         });
       }
 
+      function startDrawPresentation() {
+        const names = shuffle((players || [])
+          .map((p) => String(p?.name || "").trim())
+          .filter(Boolean))
+          .slice(0, 28);
+        if (!names.length) return;
+        setDrawAnimation({ active: true, phase: "shuffling", names });
+        setTimeout(() => {
+          setDrawAnimation((prev) => prev.active ? { ...prev, phase: "locking" } : prev);
+        }, 1300);
+        setTimeout(() => {
+          setDrawAnimation({ active: false, phase: "idle", names: [] });
+        }, 3000);
+      }
+
+      function randomizeDrawGillamsEqually() {
+        if (!ensureWritable("Balancing Gillams")) return;
+        const names = Array.isArray(gillamNames) && gillamNames.length ? gillamNames : makeGillamNames(Math.max(1, Number(numGillams) || 1));
+        if (!names.length) return;
+        const activeGroups = shuffle((weightsWithPlayers || []).slice());
+        setWeightConfig((prev) => {
+          const next = { ...(prev || {}) };
+          activeGroups.forEach((gk, idx) => {
+            const old = next[gk] || { include: true, gillamIndex: 0 };
+            next[gk] = { ...old, include: old.include !== false, gillamIndex: idx % names.length };
+          });
+          return next;
+        });
+        markUnsynced();
+      }
+
       function generateSchedule() {
         if (!ensureWritable("Generating the schedule")) return;
+        const signoffSummary = delegationSignoffSummary();
+        if (signoffSummary.pending > 0) {
+          const pendingNames = signoffSummary.affiliations.filter((a) => !a.signed).map((a) => a.name).join(", ");
+          const proceed = window.confirm(`Delegation sign-off warning:\n${signoffSummary.pending} affiliation(s) have not signed their final team list.\n\nPending: ${pendingNames || "-"}\n\nContinue generating the draw anyway?`);
+          if (!proceed) return;
+        }
+        startDrawPresentation();
         const byGroup = new Map(); // key: ageGroup|sex|weight-or-manual-group
         for (const p of players) {
           const slot = groupSlotOfPlayer(p, weightMode);
@@ -2903,8 +3532,11 @@ function groupKeyComparator(a, b) {
         const perGroupLinksLocal = {};
 
          for (const [gk, plistRaw] of byGroup.entries()) {
-          // sort by seed then name for both RR & SE
-          const plist = plistRaw.slice().sort(bySeedThenName);
+          // Draw rule v35.3:
+          // - seed > 0: distribute seeded players apart in bracket positions.
+          // - seed = 0 or empty: treated as unseeded and shuffled randomly on every Generate Draw click.
+          // - mixed groups: seeded players keep seeding, all zero/empty seed players are shuffled into the remaining slots.
+          const plist = seededRandomizedPlayerOrder(plistRaw);
           const groupSize = plist.length;
 
           if (groupSize <= roundRobinMax) {      // use setting
@@ -2925,8 +3557,8 @@ function groupKeyComparator(a, b) {
             // Move bouts involving Seed 1 and Seed 2 toward the end of the queue.
             const seedRank = new Map();
             plist.forEach((pl, idx) => {
-              // The plist array is already sorted by bySeedThenName.
-              seedRank.set(pl.id, idx + 1);
+              const seed = normalizedSeedValue(pl);
+              if (seed > 0) seedRank.set(pl.id, seed);
             });
 
             rrBouts.sort((b1, b2) => {
@@ -2954,7 +3586,7 @@ function groupKeyComparator(a, b) {
             perGroupLinksLocal[gk] = {};
           } else {
             // Single Elimination
-            const nodes = buildSingleEliminationNodes(plist);
+            const nodes = buildSingleEliminationNodes(plistRaw, byeAllocationMode);
             const groupBouts = nodes.map((node) => {
               const la = node.sourceA;
               const lb = node.sourceB;
@@ -3153,7 +3785,7 @@ function groupKeyComparator(a, b) {
           pIndex,
           refs,
           refAvoidSpan,
-          { assignmentMode: refAssignmentMode, fallbackToGlobal: true }
+          { assignmentMode: refAssignmentMode, fallbackToGlobal: true, mainAvoidSpanMode: refAvoidSpanMode }
         );
 
         // Build the final schedule payload once.
@@ -3176,9 +3808,261 @@ function groupKeyComparator(a, b) {
         setShowMeta(false);
         initialFightMsRef.current = 0;
         halfPingDoneRef.current = false;
+        markUnsynced();
 
         // NEW: push schedule to backend if serverUrl is set
         syncScheduleToServer(schedulePayload);
+      }
+
+      function delegationAffiliationName(p) {
+        return String(
+          p?.countryFull ||
+          p?.affiliation ||
+          p?.club ||
+          p?.country ||
+          "No Affiliation"
+        ).trim() || "No Affiliation";
+      }
+
+      const delegationAffiliations = useMemo(() => {
+        const map = new Map();
+        (players || []).forEach((p) => {
+          const name = delegationAffiliationName(p);
+          if (!map.has(name)) map.set(name, { name, count: 0 });
+          map.get(name).count += 1;
+        });
+        return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+      }, [players]);
+
+      const selectedDelegationPlayers = useMemo(() => {
+        const selected = delegationAffiliation || delegationAffiliations[0]?.name || "";
+        return (players || []).filter((p) => delegationAffiliationName(p) === selected);
+      }, [players, delegationAffiliation, delegationAffiliations]);
+
+      useEffect(() => {
+        if (!delegationAffiliation && delegationAffiliations.length) {
+          setDelegationAffiliation(delegationAffiliations[0].name);
+        }
+      }, [delegationAffiliation, delegationAffiliations]);
+
+      function delegationSignoffSummary() {
+        const list = delegationAffiliations.map((a) => ({
+          ...a,
+          approval: delegationApprovals?.[a.name] || null,
+          signed: !!delegationApprovals?.[a.name]?.signedAt
+        }));
+        const unsigned = list.filter((x) => !x.signed);
+        return {
+          affiliations: list,
+          signed: list.filter((x) => x.signed),
+          unsigned,
+          pending: unsigned.length
+        };
+      }
+
+      function signatureCanvasPoint(e) {
+        const canvas = delegationSignatureRef.current;
+        if (!canvas) return null;
+        const rect = canvas.getBoundingClientRect();
+        const p = e.touches && e.touches[0] ? e.touches[0] : e;
+        return { x: p.clientX - rect.left, y: p.clientY - rect.top };
+      }
+
+      function beginDelegationSignature(e) {
+        e.preventDefault?.();
+        const canvas = delegationSignatureRef.current;
+        const pt = signatureCanvasPoint(e);
+        if (!canvas || !pt) return;
+        delegationDrawingRef.current = true;
+        const ctx = canvas.getContext("2d");
+        ctx.lineWidth = 4;
+        ctx.lineCap = "round";
+        ctx.strokeStyle = "#0057c2";
+        ctx.beginPath();
+        ctx.moveTo(pt.x, pt.y);
+      }
+
+      function moveDelegationSignature(e) {
+        if (!delegationDrawingRef.current) return;
+        e.preventDefault?.();
+        const canvas = delegationSignatureRef.current;
+        const pt = signatureCanvasPoint(e);
+        if (!canvas || !pt) return;
+        const ctx = canvas.getContext("2d");
+        ctx.lineTo(pt.x, pt.y);
+        ctx.stroke();
+      }
+
+      function endDelegationSignature(e) {
+        e?.preventDefault?.();
+        delegationDrawingRef.current = false;
+      }
+
+      function clearDelegationSignature() {
+        const canvas = delegationSignatureRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+
+      function delegationSignatureDataUrl() {
+        const canvas = delegationSignatureRef.current;
+        if (!canvas) return "";
+        return canvas.toDataURL("image/png");
+      }
+
+      function hasDelegationSignature() {
+        const canvas = delegationSignatureRef.current;
+        if (!canvas) return false;
+        const ctx = canvas.getContext("2d");
+        const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        for (let i = 3; i < data.length; i += 4) {
+          if (data[i] !== 0) return true;
+        }
+        return false;
+      }
+
+      async function refreshDelegationApprovalsFromServer() {
+        const base = normalizedServerBase();
+        if (!base) {
+          setDelegationStatusMsg("Enter server URL first, or continue with local approval status.");
+          return;
+        }
+        try {
+          const res = await fetch(base + "/api/delegation-signoff");
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const data = await res.json();
+          setDelegationApprovals(data.approvals || {});
+          setDelegationStatusMsg("Delegation approvals refreshed from server.");
+        } catch (err) {
+          console.error("Delegation approval refresh failed", err);
+          setDelegationStatusMsg("Could not refresh delegation approvals from server.");
+        }
+      }
+
+      function drawDelegationSignatureFromDataUrl(dataUrl) {
+        const canvas = delegationSignatureRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (!dataUrl) return;
+        const img = new Image();
+        img.onload = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          const scale = Math.min(canvas.width / img.width, canvas.height / img.height, 1);
+          const w = img.width * scale;
+          const h = img.height * scale;
+          const x = (canvas.width - w) / 2;
+          const y = (canvas.height - h) / 2;
+          ctx.drawImage(img, x, y, w, h);
+        };
+        img.src = dataUrl;
+      }
+
+      useEffect(() => {
+        const approval = delegationApprovals?.[delegationAffiliation];
+        if (approval?.signedAt) {
+          setDelegationRepresentativeName(approval.representativeName || "");
+          setDelegationConfirm(true);
+          setTimeout(() => drawDelegationSignatureFromDataUrl(approval.signatureDataUrl || ""), 0);
+        } else {
+          setDelegationRepresentativeName("");
+          setDelegationConfirm(false);
+          setTimeout(clearDelegationSignature, 0);
+        }
+      }, [delegationAffiliation, delegationApprovals]);
+
+      async function submitDelegationApproval() {
+        const affiliation = delegationAffiliation || delegationAffiliations[0]?.name || "";
+        const representativeName = String(delegationRepresentativeName || "").trim();
+        if (!affiliation) {
+          alert("Select an affiliation first.");
+          return;
+        }
+        if (!selectedDelegationPlayers.length) {
+          alert("No players found for this affiliation.");
+          return;
+        }
+        if (!representativeName) {
+          alert("Enter representative name first.");
+          return;
+        }
+        if (!delegationConfirm) {
+          alert("Please confirm that the displayed data is correct.");
+          return;
+        }
+        if (!hasDelegationSignature()) {
+          alert("Please draw the representative signature first.");
+          return;
+        }
+        const approval = {
+          affiliation,
+          representativeName,
+          confirmationText: "I confirm that the above data is correct.",
+          signatureDataUrl: delegationSignatureDataUrl(),
+          playerSnapshot: selectedDelegationPlayers.map((p) => ({
+            id: p.id,
+            name: p.name,
+            country: p.country,
+            countryFull: p.countryFull,
+            sex: p.sex,
+            dob: p.dob,
+            age: p.age,
+            actualKg: p.actualKg,
+            weight: p.weight,
+            manualGroup: p.manualGroup,
+            ageGroupNumb: p.ageGroupNumb,
+            ageGroupLabel: ageGroupLabel(p.ageGroupNumb, tournamentScope)
+          })),
+          signedAt: new Date().toISOString()
+        };
+        const base = normalizedServerBase();
+        if (!base) {
+          setDelegationApprovals((prev) => ({ ...prev, [affiliation]: { ...approval, localOnly: true } }));
+          setDelegationStatusMsg("Delegation approval saved locally. Connect the server to save official archive.");
+          return;
+        }
+        try {
+          const res = await fetch(base + "/api/delegation-signoff", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(approval)
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data?.error || ("HTTP " + res.status));
+          setDelegationApprovals(data.approvals || { ...delegationApprovals, [affiliation]: data.approval });
+          setDelegationRepresentativeName("");
+          setDelegationConfirm(false);
+          clearDelegationSignature();
+          setDelegationStatusMsg("Approval submitted and archived for " + affiliation + ".");
+          try { localStorage.setItem("kurash_delegation_signoff_updated_at", String(Date.now())); } catch (e) {}
+        } catch (err) {
+          console.error("Delegation approval submit failed", err);
+          setDelegationStatusMsg("Could not submit approval: " + err.message);
+        }
+      }
+
+      function formatApprovalTimeOnly(value) {
+        if (!value) return "";
+        const raw = String(value);
+        const m = raw.match(/T(\d{2}:\d{2})/);
+        if (m) return m[1];
+        const d = new Date(value);
+        if (!Number.isNaN(d.getTime())) return d.toISOString().slice(11, 16);
+        return raw.slice(0, 5);
+      }
+
+      function openDelegationDocument(approval) {
+        if (!approval) return;
+        const base = normalizedServerBase();
+        if (base && approval.approvalId) {
+          window.open(base + "/api/delegation-signoff/document/" + encodeURIComponent(approval.approvalId), "_blank");
+          return;
+        }
+        const rows = (approval.playerSnapshot || []).map((p, idx) => `<tr><td>${idx + 1}</td><td>${String(p.name || "")}</td><td>${String(p.sex || "")}</td><td>${String(p.age || "")}</td><td>${String(p.actualKg || "")}</td><td>${String(p.weight || "")}</td></tr>`).join("");
+        const html = `<!doctype html><html><head><meta charset="utf-8"><title>Delegation Approval</title><style>body{font-family:Arial;padding:24px;color:#111}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:6px;text-align:left}th{background:#f0f0f0}.sig{max-width:420px;max-height:170px;border:0;margin-top:6px}.meta{border:0;padding:0;margin:12px 0}.signature-title{color:#0057c2;font-weight:800}</style></head><body><h1>Delegation Team List Approval</h1><div class="meta"><p><b>Tournament:</b> ${currentTournamentMeta?.name || ""}</p><p><b>Affiliation:</b> ${approval.affiliation}</p><p><b>Representative:</b> ${approval.representativeName}</p><p><b>Signed at:</b> ${formatApprovalTimeOnly(approval.signedAt)}</p></div><p>I confirm that the above data is correct.</p><table><thead><tr><th>#</th><th>Name</th><th>Sex</th><th>Age</th><th>Actual Weight</th><th>Class/Group</th></tr></thead><tbody>${rows}</tbody></table><h3 class="signature-title">Signature</h3><img class="sig" src="${approval.signatureDataUrl || ""}"></body></html>`;
+        const w = window.open("", "_blank");
+        if (w) { w.document.write(html); w.document.close(); }
       }
 
       function exportCSV() {
@@ -3222,8 +4106,51 @@ function groupKeyComparator(a, b) {
         setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 500);
       }
 
+      function showScoreSaveNotice(message) {
+        setScoreSaveNotice(message);
+        window.setTimeout(() => {
+          setScoreSaveNotice((current) => current === message ? "" : current);
+        }, 2400);
+      }
+
+      function requestSelectBoutForScore(no) {
+        if (activeBoutNo && no && Number(no) !== Number(activeBoutNo) && scoreboardDirty) {
+          setPendingScoreBoutNo(Number(no));
+          showScoreSaveNotice("Unsaved scoring changes detected. Choose Save & switch or Switch without saving.");
+          return;
+        }
+        selectBoutForScore(no);
+      }
+
+      function switchToPendingBoutWithoutSaving() {
+        const target = pendingScoreBoutNo;
+        setPendingScoreBoutNo(null);
+        setScoreboardDirty(false);
+        if (target != null) selectBoutForScore(target);
+      }
+
+      function saveAndSwitchToPendingBout() {
+        const target = pendingScoreBoutNo;
+        const ok = saveResultToBout({ silent: true });
+        if (ok === false) return;
+        setPendingScoreBoutNo(null);
+        setScoreboardDirty(false);
+        if (target != null) selectBoutForScore(target);
+      }
+
+      function saveAndGoToNextBout() {
+        if (!schedule?.bouts?.length || !activeBoutNo) return;
+        const idx = schedule.bouts.findIndex((b) => String(b.boutNo) === String(activeBoutNo));
+        const next = idx >= 0 && idx < schedule.bouts.length - 1 ? schedule.bouts[idx + 1] : null;
+        const ok = saveResultToBout({ silent: true });
+        if (ok === false) return;
+        if (next) selectBoutForScore(next.boutNo);
+        else showScoreSaveNotice("Result saved. No next bout is available.");
+      }
+
       function selectBoutForScore(no) {
         setActiveBoutNo(no);
+        setScoreboardDirty(false);
         const meta = boutMeta[no];
         let initialMs = 0;
 
@@ -3231,7 +4158,7 @@ function groupKeyComparator(a, b) {
           const bout = schedule.bouts.find((b) => b.boutNo === no);
           if (bout) {
             const pIndex = new Map(players.map((p) => [p.id, p]));
-            const baseSec = matchDurationSecondsForBout(bout, pIndex, tournamentScope, manualDurationSeconds);
+            const baseSec = matchDurationSecondsForBout(bout, pIndex, tournamentScope, durationOverrides);
             initialMs = baseSec * 1000;
           }
         }
@@ -3257,11 +4184,13 @@ function groupKeyComparator(a, b) {
 
       function addEvent(side, type) {
         if (!ensureWritable("Scoring") || !activeBoutNo || !schedule) return;
+        setScoreboardDirty(true);
         setSbEvents((prev) => [...prev, { side, type, atMs: timerMs }]);
       }
 
       function removeLastEvent(side, type) {
         if (!ensureWritable("Editing score events")) return;
+        setScoreboardDirty(true);
         setSbEvents((prev) => {
           const next = prev.slice();
           for (let i = next.length - 1; i >= 0; i--) {
@@ -3277,6 +4206,7 @@ function groupKeyComparator(a, b) {
 
       function adjustTimerBySeconds(deltaSeconds) {
         if (!ensureWritable("Adjusting timer")) return;
+        setScoreboardDirty(true);
         setTimerMs((prev) => Math.max(0, prev + deltaSeconds * 1000));
       }
 
@@ -3310,6 +4240,7 @@ function groupKeyComparator(a, b) {
         const nextMs = parseManualTimeInput(raw, timerMs);
         if (nextMs == null) return;
         setTimerRunning(false);
+        setScoreboardDirty(true);
         setTimerMs(nextMs);
         initialFightMsRef.current = nextMs;
         halfPingDoneRef.current = false;
@@ -3319,6 +4250,7 @@ function groupKeyComparator(a, b) {
         // Keep double-click reserved for manual time editing.
         if (e?.detail > 1) return;
         if (!ensureWritable("Starting/stopping timer")) return;
+        setScoreboardDirty(true);
         setTimerRunning((running) => !running);
       }
 
@@ -3337,8 +4269,9 @@ function groupKeyComparator(a, b) {
         if (!ensureWritable("Full reset") || !activeBoutNo || !schedule) return;
         const bout = schedule.bouts.find((b) => b.boutNo === activeBoutNo);
         const pIndex = new Map(players.map((p) => [p.id, p]));
-        const sec = matchDurationSecondsForBout(bout, pIndex, tournamentScope, manualDurationSeconds);
+        const sec = matchDurationSecondsForBout(bout, pIndex, tournamentScope, durationOverrides);
         setTimerRunning(false);
+        setScoreboardDirty(true);
         setSbEvents([]);
         setTimerMs(sec * 1000);
         initialFightMsRef.current = sec * 1000;
@@ -3462,17 +4395,20 @@ function groupKeyComparator(a, b) {
         applyResultToLocalSchedule(activeBoutNo, payload);
         markUnsynced();
         sendIntegratedResultToServer(activeBoutNo, payload);
-        alert(both ? "Double withdrawal saved. No winner will advance." : "Withdrawal result saved.");
+        setScoreboardDirty(false);
+        showScoreSaveNotice(both ? "Double withdrawal saved. No winner will advance." : "Withdrawal result saved.");
+        return true;
       }
 
-      function saveResultToBout() {
-        if (!ensureWritable("Saving results") || !activeBoutNo || !schedule) return;
+      function saveResultToBout(options) {
+        options = options || {};
+        if (!ensureWritable("Saving results") || !activeBoutNo || !schedule) return false;
         const scores = computeScores(sbEvents);
         const isTimeUp = timerMs === 0;
         const winnerSide = decideWinner(scores, isTimeUp || !!scores.halalWinner);
         if (!winnerSide) {
           alert("No clear winner yet according to current scores and penalties.");
-          return;
+          return false;
         }
         const durationMs = timerMs;
         const durationSec = Math.floor(durationMs / 1000);
@@ -3545,7 +4481,9 @@ function groupKeyComparator(a, b) {
           });
         }
 
-        alert("Result stored for bout #" + activeBoutNo);
+        setScoreboardDirty(false);
+        showScoreSaveNotice("Result saved for bout #" + activeBoutNo);
+        return true;
       }
 
       function metaForBout(no) { return boutMeta[no] || null; }
@@ -3573,6 +4511,37 @@ function groupKeyComparator(a, b) {
         return { byGroup, bySex, byCountry };
       }, [players, weightMode, manualGroupsByAge]);
 
+      const filteredDrawGroups = useMemo(() => {
+        const q = String(drawGroupSearch || "").trim().toLowerCase();
+        return (weightsWithPlayers || []).filter((gk) => {
+          if (!q) return true;
+          const parsed = parseGroupKey(gk);
+          const pCount = groupedPlayers.byGroup.get(gk)?.length || 0;
+          const rowText = [
+            ageGroupLabel(parsed.ageGroupNumb, tournamentScope),
+            parsed.sex === "F" ? "Women" : "Men",
+            parsed.weight,
+            parsed.slot,
+            pCount <= roundRobinMax ? "Round Robin" : "Single Elimination",
+            pCount
+          ].join(" ").toLowerCase();
+          return rowText.includes(q);
+        });
+      }, [weightsWithPlayers, groupedPlayers, drawGroupSearch, tournamentScope, roundRobinMax]);
+
+      const filteredDrawBouts = useMemo(() => {
+        const q = String(drawBoutSearch || "").trim().toLowerCase();
+        const pIndex = new Map((players || []).map((p) => [p.id, p]));
+        return (schedule?.bouts || []).filter((b) => {
+          if (!q) return true;
+          const A = pIndex.get(b.blueId);
+          const G = pIndex.get(b.greenId);
+          const meta = metaForBout(b.boutNo);
+          const winnerText = meta?.winner ? (meta.winner === "blue" ? A?.name || "Blue" : G?.name || "Green") : "";
+          const rowText = [b.boutNo, b.gillam, b.sex === "F" ? "Women" : "Men", b.weight, b.stage, A?.name, A?.country, A?.countryFull, G?.name, G?.country, G?.countryFull, winnerText].join(" ").toLowerCase();
+          return rowText.includes(q);
+        });
+      }, [schedule, players, drawBoutSearch, boutMeta]);
 
       const localLeagueStandings = useMemo(() => {
         if (!schedule?.bouts?.length) return [];
@@ -3935,9 +4904,9 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
 <header className="sticky top-0 z-20 bg-slate-950/70 backdrop-blur border-b border-slate-800">
   <div className="max-w-[98vw] mx-auto px-4 py-3 flex items-center justify-between">
     <div>
-      <h1 className="text-xl font-semibold tracking-wide">Kurash TMS v35 Final Stable</h1>
+      <h1 className="text-xl font-semibold tracking-wide">Kurash TMS v35.6.6</h1>
       <p className="text-sm text-slate-400">
-        Hybrid draw engine • Round Robin ≤5 / Single Elimination &gt;5 • Kurash scoreboard
+        Hybrid tournament engine • Round Robin ≤5 / Single Elimination &gt;5 • Referee sync • Kurash scoreboard
       </p>
       {/* Developer name (shown on all tabs in the header) */}
       <p className="text-xs text-slate-500 mt-1">
@@ -3962,7 +4931,7 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
     </div>
   </div>
             <nav className="max-w-[98vw] mx-auto px-2 pb-2">
-              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-9 gap-2 text-xs md:text-sm">
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-10 gap-2 text-xs md:text-sm">
                 {[
                   { k: "about", label: "About" },
                   { k: "home", label: "Home" },
@@ -3970,6 +4939,7 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                   { k: "players", label: "Players" },
                   { k: "refs", label: "Referees" },
                   { k: "refMgmt", label: "Referee Management" },
+                  { k: "delegation", label: "Delegation Sign-off" },
                   { k: "draw", label: "Draw" },
                   { k: "scoreboard", label: "Scoreboard" },
                   { k: "reports", label: "Reports" }
@@ -3990,6 +4960,42 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
               </div>
             </nav>
           </header>
+
+          {drawAnimation.active && (
+            <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center pointer-events-none">
+              <div className="w-[min(920px,94vw)] rounded-3xl border border-sky-700/70 bg-slate-950/95 shadow-2xl p-6">
+                <div className="text-center mb-5">
+                  <div className="text-xs uppercase tracking-[0.35em] text-sky-300 mb-2">Draw Generation</div>
+                  <div className="text-2xl md:text-3xl font-black text-white">Randomizing players and building the draw</div>
+                  <div className="text-sm text-slate-400 mt-2">Visual presentation only — official draw logic is generated by the system rules.</div>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {drawAnimation.names.map((name, idx) => {
+                    const dx = ((idx % 7) - 3) * 28;
+                    const dy = ((idx % 5) - 2) * 22;
+                    const rot = ((idx % 9) - 4) * 4;
+                    return (
+                      <div
+                        key={name + idx}
+                        className={("rounded-2xl border px-3 py-2 text-sm font-semibold text-center truncate " +
+                          (drawAnimation.phase === "locking"
+                            ? "kurash-draw-lock bg-emerald-950/50 border-emerald-500 text-emerald-100"
+                            : "kurash-draw-chip bg-sky-950/50 border-sky-500/70 text-sky-100"))}
+                        style={{
+                          "--dx": dx + "px",
+                          "--dy": dy + "px",
+                          "--rot": rot + "deg",
+                          animationDelay: (idx * 35) + "ms"
+                        }}
+                      >
+                        {name}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
 
           <main className="max-w-[98vw] mx-auto px-4 py-6 space-y-6">
 {tab === "about" && (
@@ -4017,7 +5023,7 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
           <div className="space-y-3 text-sm text-slate-300">
             <div className="flex justify-between gap-4 border-b border-slate-800 pb-2">
               <span className="text-slate-500">Version</span>
-              <span className="font-semibold text-white">v35 Final Stable</span>
+              <span className="font-semibold text-white">v35.6.6</span>
             </div>
             <div className="flex justify-between gap-4 border-b border-slate-800 pb-2">
               <span className="text-slate-500">Status</span>
@@ -4087,8 +5093,8 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
         </div>
         <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
           <div className="text-xs uppercase tracking-wide text-slate-500">Mode</div>
-          <div className={"text-lg font-bold mt-2 " + (serverStatus === "ok" ? "text-emerald-300" : unsyncedChanges ? "text-amber-300" : "text-slate-300")}>
-            {serverStatus === "ok" ? "Online Synced" : unsyncedChanges ? "Offline / Unsynced" : "Offline Ready"}
+          <div className={"text-lg font-bold mt-2 " + (unsyncedChanges ? "text-amber-300" : serverStatus === "ok" ? "text-emerald-300" : "text-slate-300")}>
+            {unsyncedChanges ? "Local Changes Pending Sync" : serverStatus === "ok" ? "Online Synced" : "Offline Ready"}
           </div>
         </div>
       </div>
@@ -4107,15 +5113,15 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
           <div className="flex flex-col gap-2">
             <input
               type="text"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2"
-              placeholder="https://kurash-tms.onrender.com or http://localhost:3000"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5"
+              placeholder="http://159.69.80.210:4010"
               value={serverUrl}
               onChange={(e) => setServerUrl(e.target.value)}
             />
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={testServerConnection} className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-900 hover:border-sky-500">Connect / Test</button>
               <button type="button" onClick={loadCurrentTournamentFromServer} disabled={!serverUrl.trim()} className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-900 hover:border-emerald-500 disabled:opacity-40">Load Current</button>
-              <button type="button" onClick={() => syncScheduleToServer(schedule)} disabled={!serverUrl.trim() || !schedule} className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-900 hover:border-purple-500 disabled:opacity-40">Sync Now</button>
+              <button type="button" onClick={() => syncScheduleToServer(schedule)} disabled={!serverUrl.trim()} className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-900 hover:border-purple-500 disabled:opacity-40">Sync Now</button>
             </div>
             <div className="text-xs text-slate-400">
               {serverStatusMsg || (serverUrl.trim() ? "Server URL entered. Press Connect / Test." : "No server URL. You can run the full tournament offline.")}
@@ -4212,74 +5218,179 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
 {tab === "settings" && (
   <SectionCard title="Settings">
     <div className="space-y-5 text-sm">
-      <div className="grid xl:grid-cols-3 md:grid-cols-2 gap-4">
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-3">
+      <div className="grid 2xl:grid-cols-4 xl:grid-cols-4 lg:grid-cols-3 md:grid-cols-2 gap-3">
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3 space-y-2">
           <div className="text-sm font-semibold text-sky-300">Tournament Type</div>
-          <select className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2" value={tournamentScope} onChange={(e) => handleTournamentScopeChange(e.target.value)}>
+          <select className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5" value={tournamentScope} onChange={(e) => handleTournamentScopeChange(e.target.value)}>
             {TOURNAMENT_SCOPES.map((x) => (<option key={x.value} value={x.value}>{x.label}</option>))}
           </select>
           <p className="text-xs text-slate-500">Default is International. Existing old data using External is treated as International.</p>
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-3">
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3 space-y-2">
           <div className="text-sm font-semibold text-sky-300">Affiliation Mode</div>
           {isInternalScope(tournamentScope) ? (
-            <select className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2" value={normalizedAffiliationMode(tournamentScope, affiliationMode)} onChange={(e) => setAffiliationModeAndRecalc(e.target.value)}>
+            <select className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5" value={normalizedAffiliationMode(tournamentScope, affiliationMode)} onChange={(e) => setAffiliationModeAndRecalc(e.target.value)}>
               <option value="none">No Affiliation</option>
               <option value="club">Club</option>
             </select>
           ) : (
-            <div className="px-3 py-2 rounded-xl border border-slate-800 bg-slate-900 text-slate-300">Country</div>
+            <div className="px-3 py-1.5 rounded-xl border border-slate-800 bg-slate-900 text-slate-300">Country</div>
           )}
           <p className="text-xs text-slate-500">International tournaments always use country mode.</p>
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-3">
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3 space-y-2">
           <div className="text-sm font-semibold text-sky-300">Weight / Group Mode</div>
-          <select className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2" value={weightMode} onChange={(e) => setWeightModeAndRecalc(e.target.value)}>
+          <select className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5" value={weightMode} onChange={(e) => setWeightModeAndRecalc(e.target.value)}>
             {WEIGHT_MODES.map((x) => (<option key={x.value} value={x.value}>{x.label}</option>))}
           </select>
           <p className="text-xs text-slate-500">Auto weights classify by age/sex/weight. Manual groups are for custom divisions.</p>
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-3">
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3 space-y-2">
           <div className="text-sm font-semibold text-sky-300">Gillams</div>
-          <input type="number" min={1} max={8} className="w-28 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2" value={numGillams} onChange={(e) => setNumGillams(Math.max(1, Number(e.target.value || 1)))} />
+          <input type="number" min={1} max={8} className="w-24 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5" value={numGillams} onChange={(e) => setNumGillams(Math.max(1, Number(e.target.value || 1)))} />
           <p className="text-xs text-slate-500">Current: {gillamNames.join(", ")}</p>
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-3">
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3 space-y-2">
           <div className="text-sm font-semibold text-sky-300">Round Robin Threshold</div>
           <div className="flex items-center gap-2">
             <span className="text-slate-400">Use Round Robin when players ≤</span>
-            <input type="number" min={3} max={10} className="w-24 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2" value={roundRobinMax} onChange={(e) => { const v = Number(e.target.value || 0); setRoundRobinMax(Math.min(10, Math.max(3, v))); }} />
+            <input type="number" min={3} max={10} className="w-20 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5" value={roundRobinMax} onChange={(e) => { const v = Number(e.target.value || 0); setRoundRobinMax(Math.min(10, Math.max(3, v))); }} />
           </div>
           <p className="text-xs text-slate-500">Groups above this number use Single Elimination.</p>
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-3">
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3 space-y-2">
+          <div className="text-sm font-semibold text-sky-300">First-Round Bye Allocation</div>
+          <select
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5"
+            value={byeAllocationMode}
+            onChange={(e) => { setByeAllocationMode(e.target.value); markUnsynced(); }}
+          >
+            {FIRST_ROUND_BYE_ALLOCATION_MODES.map((x) => (
+              <option key={x.value} value={x.value}>{x.label}</option>
+            ))}
+          </select>
+          <p className="text-xs text-slate-500">This controls how first-round byes are assigned in non-power-of-two brackets. A bye advances a player by one round only and never sends a player directly to the final.</p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3 space-y-2">
           <div className="text-sm font-semibold text-sky-300">Match Duration</div>
-          <input type="number" min="0" step="30" className="w-36 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2" value={manualDurationSeconds || ""} onChange={(e) => setManualDurationSeconds(Number(e.target.value || 0))} placeholder="0" />
-          <p className="text-xs text-slate-500">0 = use category default. Any value overrides all bouts in seconds.</p>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="text-xs text-slate-400">
+              <div className="mb-1">Men duration</div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  max="30"
+                  step="1"
+                  className="w-16 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-center"
+                  value={Math.floor((manualDurationMenSeconds || 0) / 60)}
+                  onChange={(e) => {
+                    const min = Math.max(0, Number(e.target.value || 0));
+                    const sec = (manualDurationMenSeconds || 0) % 60;
+                    setManualDurationMenSeconds((min * 60) + sec);
+                  }}
+                />
+                <span className="text-slate-500">min</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="59"
+                  step="1"
+                  className="w-16 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-center"
+                  value={(manualDurationMenSeconds || 0) % 60}
+                  onChange={(e) => {
+                    const min = Math.floor((manualDurationMenSeconds || 0) / 60);
+                    const sec = Math.max(0, Math.min(59, Number(e.target.value || 0)));
+                    setManualDurationMenSeconds((min * 60) + sec);
+                  }}
+                />
+                <span className="text-slate-500">sec</span>
+              </div>
+            </div>
+            <div className="text-xs text-slate-400">
+              <div className="mb-1">Women duration</div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  max="30"
+                  step="1"
+                  className="w-16 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-center"
+                  value={Math.floor((manualDurationWomenSeconds || 0) / 60)}
+                  onChange={(e) => {
+                    const min = Math.max(0, Number(e.target.value || 0));
+                    const sec = (manualDurationWomenSeconds || 0) % 60;
+                    setManualDurationWomenSeconds((min * 60) + sec);
+                  }}
+                />
+                <span className="text-slate-500">min</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="59"
+                  step="1"
+                  className="w-16 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-center"
+                  value={(manualDurationWomenSeconds || 0) % 60}
+                  onChange={(e) => {
+                    const min = Math.floor((manualDurationWomenSeconds || 0) / 60);
+                    const sec = Math.max(0, Math.min(59, Number(e.target.value || 0)));
+                    setManualDurationWomenSeconds((min * 60) + sec);
+                  }}
+                />
+                <span className="text-slate-500">sec</span>
+              </div>
+            </div>
+          </div>
+          <p className="text-xs text-slate-500">0:00 = use category default. Use arrows or type minutes/seconds directly. Separate overrides are applied by bout sex.</p>
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4">
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-3">
-          <div className="text-sm font-semibold text-sky-300">Referee Assignment Settings</div>
-          <select className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2" value={refAssignmentMode} onChange={(e) => setRefAssignmentMode(e.target.value)}>
+      <div className="grid lg:grid-cols-1 gap-3">
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3 space-y-2">
+          <div className="text-sm font-semibold text-sky-300">Referee Rotation Settings</div>
+          <select className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5" value={refAssignmentMode} onChange={(e) => setRefAssignmentMode(e.target.value)}>
             <option value="global">Global Rotation Across All Gillams</option>
             <option value="gillam_pool">Gillam Pool Assignment</option>
           </select>
+          <select className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5" value={refAvoidSpanMode} onChange={(e) => setRefAvoidSpanMode(e.target.value)}>
+            <option value="auto">Auto-adjust main-referee rotation by available referees</option>
+            <option value="manual">Manual fixed main-referee rotation gap</option>
+          </select>
           <div className="flex flex-wrap items-center gap-3">
-            <label className="text-slate-300">Main-role avoid span:</label>
-            <input type="number" min={1} max={20} className="w-24 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2" value={refAvoidSpan} onChange={(e) => setRefAvoidSpan(Number(e.target.value || 1))} />
+            <label className="text-slate-300">{refAvoidSpanMode === "auto" ? "Maximum main-role avoid span:" : "Fixed main-role avoid span:"}</label>
+            <input
+              type="number"
+              min={1}
+              max={20}
+              className="w-20 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5"
+              value={refAvoidSpan}
+              onChange={(e) => setRefAvoidSpan(Math.max(1, Math.min(20, Number(e.target.value || 1))))}
+            />
           </div>
-          <p className="text-xs text-slate-500">This controls how many bouts should pass before the same referee is used as main referee again.</p>
+          <p className="text-xs text-slate-500">
+            {refAvoidSpanMode === "auto"
+              ? "Auto mode calculates the effective main-referee rotation gap from the number of referees available in the selected pool. Smaller Gillam pools are relaxed automatically."
+              : "Manual mode uses the same fixed main-referee rotation gap for all pools. Use this only when the referee pool is large enough."}
+          </p>
+          <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-xs text-slate-400 space-y-1">
+            <div className="font-semibold text-slate-300">Effective rotation preview</div>
+            {refRotationPreview.map((row) => (
+              <div key={row.label} className={row.warning ? "text-amber-300" : "text-slate-400"}>
+                {row.label}: {row.count} referee{row.count === 1 ? "" : "s"} → main-role gap {row.span}
+                {row.warning ? " • limited pool; rules may be relaxed" : ""}
+              </div>
+            ))}
+          </div>
         </div>
 
         {isManualGroupsMode(weightMode) && (
-          <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-3">
+          <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3 space-y-2">
             <div className="text-sm font-semibold text-sky-300">Manual Groups</div>
             <p className="text-xs text-slate-500">Manual group names are edited in the player classification workflow. This card confirms manual grouping is active.</p>
             <div className="text-xs text-slate-400">Active age groups: {competitiveAgeGroups(tournamentScope).map((g) => g.label).join(", ")}</div>
@@ -4325,30 +5436,53 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                   />
                 </div>
 
-                <div className="mb-3 flex flex-wrap items-center gap-3"><input className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 min-w-[280px]" placeholder="Search players..." value={playerSearch} onChange={(e)=>setPlayerSearch(e.target.value)} /><span className="text-sm text-slate-400">Showing {filteredPlayers.length} / {players.length}</span></div>
+                <div className="mb-3 flex flex-wrap items-center gap-3">
+                  <input className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 min-w-[280px]" placeholder="Search name, affiliation, code, sex, age group, weight, seed..." value={playerSearch} onChange={(e)=>setPlayerSearch(e.target.value)} />
+                  <select className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2" value={playerSortMode} onChange={(e)=>setPlayerSortMode(e.target.value)}>
+                    <option value="entry">Original order</option>
+                    <option value="country">Sort by affiliation/country</option>
+                    <option value="weight">Sort by weight/group</option>
+                    <option value="seed">Sort by seed</option>
+                    <option value="ageGroup">Sort by age group</option>
+                    <option value="sex">Sort by sex</option>
+                    <option value="name">Sort by name</option>
+                  </select>
+                  <span className="text-sm text-slate-400">Showing {filteredPlayers.length} / {players.length}</span>
+                </div>
                 <div className="overflow-x-auto rounded-xl border border-slate-800 w-full">
-                  <table className="w-max min-w-full table-auto text-sm whitespace-nowrap">
+                  <table className="w-max min-w-full table-auto text-sm whitespace-nowrap align-middle">
                     <thead className="bg-slate-900/60 text-slate-300">
                       <tr>
-                        <th className="p-2 text-right whitespace-nowrap">#</th>
-                        <th className="p-2 text-right whitespace-nowrap">Name</th>
-                        <th className="p-2 text-right whitespace-nowrap">{affiliationLabel(tournamentScope, affiliationMode)}</th>
-                        <th className="p-2 text-right whitespace-nowrap">Code</th>
-                        <th className="p-2 text-right whitespace-nowrap">Sex</th>
-                        <th className="p-2 text-right whitespace-nowrap">Age Group</th>
-                        <th className="p-2 text-right whitespace-nowrap">Actual (kg)</th>
-                        <th className="p-2 text-right whitespace-nowrap">Bucket</th>
-                        {isManualGroupsMode(weightMode) && <th className="p-2 text-right whitespace-nowrap">Manual Group</th>}
-                        <th className="p-2 text-right whitespace-nowrap">DOB</th>
-                        <th className="p-2 text-right whitespace-nowrap">Age</th>
-                        <th className="p-2 text-right whitespace-nowrap">Seed</th>
-                        <th className="p-2 text-right whitespace-nowrap">Action</th>
+                        <th className="p-2 text-center whitespace-nowrap">#</th>
+                        <th className="p-2 text-left whitespace-nowrap">Name</th>
+                        <th className="p-2 text-left whitespace-nowrap">{affiliationLabel(tournamentScope, affiliationMode)}</th>
+                        <th className="p-2 text-left whitespace-nowrap">Code</th>
+                        <th className="p-2 text-center whitespace-nowrap">Sex</th>
+                        <th className="p-2 text-left whitespace-nowrap">Age Group</th>
+                        <th className="p-2 text-center whitespace-nowrap">Actual (kg)</th>
+                        <th className="p-2 text-center whitespace-nowrap">Bucket</th>
+                        {isManualGroupsMode(weightMode) && <th className="p-2 text-left whitespace-nowrap">Manual Group</th>}
+                        <th className="p-2 text-center whitespace-nowrap">DOB</th>
+                        <th className="p-2 text-center whitespace-nowrap">Age</th>
+                        <th className={hideSeedPublic ? "p-2 text-center whitespace-nowrap w-12" : "p-2 text-center whitespace-nowrap"}>
+                          <label className="inline-flex items-center gap-1 justify-center">
+                            <span>Seed</span>
+                            <input
+                              type="checkbox"
+                              className="w-3 h-3"
+                              title="Hide Seed column"
+                              checked={hideSeedPublic}
+                              onChange={(e) => setHideSeedPublic(e.target.checked)}
+                            />
+                          </label>
+                        </th>
+                        <th className="p-2 text-center whitespace-nowrap">Action</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredPlayers.map(({ p, idx }) => (
+                      {filteredPlayers.map(({ p, idx }, displayIdx) => (
                         <tr key={idx} className="border-t border-slate-800 odd:bg-slate-950/40 even:bg-slate-900/30 hover:bg-sky-950/30">
-                          <td className="p-2 text-slate-400 font-mono text-center">{idx + 1}</td>
+                          <td className="p-2 text-slate-400 font-mono text-center">{displayIdx + 1}</td>
                           <td className="p-2">
                             <input
                               className="w-[clamp(14rem,22vw,24rem)] bg-slate-950 border border-slate-800 rounded-xl px-3 py-1"
@@ -4433,19 +5567,23 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                           <td className="p-2 text-center">
                             {p.age !== "" ? p.age : "-"}
                           </td>
-                          <td className="p-2">
-                            <input
-                              type="number"
-                              min={1}
-                              step={1}
-                              className="w-24 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1"
-                              value={p.seed ?? ""}
-                              onChange={(e) =>
-                                recalcPlayer(idx, {
-                                  seed: e.target.value ? Number(e.target.value) : undefined
-                                })
-                              }
-                            />
+                          <td className={hideSeedPublic ? "p-2 text-center text-slate-600 w-12" : "p-2"}>
+                            {hideSeedPublic ? (
+                              <span title="Seed is hidden but still saved">•</span>
+                            ) : (
+                              <input
+                                type="number"
+                                min={1}
+                                step={1}
+                                className="w-24 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1"
+                                value={p.seed ?? ""}
+                                onChange={(e) =>
+                                  recalcPlayer(idx, {
+                                    seed: e.target.value ? Number(e.target.value) : undefined
+                                  })
+                                }
+                              />
+                            )}
                           </td>
                           <td className="p-2">
                             <button
@@ -4515,6 +5653,26 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                       <option value="global">Global Rotation Across All Gillams</option>
                       <option value="gillam_pool">Gillam Pool Assignment</option>
                     </select>
+                    {isGillamPoolMode && (
+                      <div className="flex flex-wrap items-center gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setAllRefereeScopes((refs || []).every((r) => (r.assignScope || "global") === "pool") ? "global" : "pool")}
+                          className="px-3 py-1 rounded-lg border border-sky-700 bg-sky-950/40 text-sky-200 hover:bg-sky-900/60 text-xs"
+                          title="Switch all referees between Global and Gillam Pool scope."
+                        >
+                          {(refs || []).every((r) => (r.assignScope || "global") === "pool") ? "Set All Global" : "Set All Pool"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={randomizeRefereeGillamPools}
+                          className="px-3 py-1 rounded-lg border border-emerald-700 bg-emerald-950/40 text-emerald-200 hover:bg-emerald-900/60 text-xs"
+                          title="Randomly balance referees across Gillam pools."
+                        >
+                          Balance Pools
+                        </button>
+                      </div>
+                    )}
                     <div className="text-xs text-slate-500 mt-2">
                       Global = all referees rotate from one shared pool across all Gillams. Gillam Pool = referees can be limited by Gillam, with optional global floating referees.
                     </div>
@@ -4541,19 +5699,47 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                 </div>
 
                 <div className="mb-3 flex flex-wrap items-center gap-3"><input className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 min-w-[280px]" placeholder="Search referees..." value={refSearch} onChange={(e)=>setRefSearch(e.target.value)} /><span className="text-sm text-slate-400">Showing {filteredRefs.length} / {refs.length}</span></div>
-                <div className="overflow-x-auto rounded-xl border border-slate-800">
-                  <table className="w-full text-sm">
+                <div className="overflow-x-auto rounded-xl border border-slate-800 w-full">
+                  <table className="w-max min-w-full table-auto text-sm whitespace-nowrap align-middle">
                     <thead className="bg-slate-900/60 text-slate-300">
                       <tr>
-                        <th className="p-2 text-right">#</th>
-                        <th className="p-2 text-right">Ref No</th>
-                        <th className="p-2 text-right">Name</th>
-                        <th className="p-2 text-right">{affiliationLabel(tournamentScope, affiliationMode)}</th>
-                        <th className="p-2 text-right">Code</th>
-                        <th className="p-2 text-right">Rank</th>
-                        {isGillamPoolMode && <th className="p-2 text-right">Scope</th>}
-                        {isGillamPoolMode && <th className="p-2 text-right">Gillam Pool</th>}
-                        <th className="p-2 text-right">Action</th>
+                        <th className="p-2 text-center whitespace-nowrap">#</th>
+                        <th className="p-2 text-center whitespace-nowrap">Ref No</th>
+                        <th className="p-2 text-left whitespace-nowrap">Name</th>
+                        <th className="p-2 text-left whitespace-nowrap">{affiliationLabel(tournamentScope, affiliationMode)}</th>
+                        <th className="p-2 text-left whitespace-nowrap">Code</th>
+                        <th className="p-2 text-center whitespace-nowrap">Rank</th>
+                        {isGillamPoolMode && (
+                          <th className="p-2 text-left whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <span>Scope</span>
+                              <button
+                                type="button"
+                                onClick={() => setAllRefereeScopes((refs || []).every((r) => (r.assignScope || "global") === "pool") ? "global" : "pool")}
+                                className="px-2 py-0.5 rounded-md border border-sky-700 bg-sky-950/40 text-sky-200 hover:bg-sky-900/60 text-[11px]"
+                                title="Apply scope to all referees."
+                              >
+                                {(refs || []).every((r) => (r.assignScope || "global") === "pool") ? "All Global" : "All Pool"}
+                              </button>
+                            </div>
+                          </th>
+                        )}
+                        {isGillamPoolMode && (
+                          <th className="p-2 text-left whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <span>Gillam Pool</span>
+                              <button
+                                type="button"
+                                onClick={randomizeRefereeGillamPools}
+                                className="px-2 py-0.5 rounded-md border border-emerald-700 bg-emerald-950/40 text-emerald-200 hover:bg-emerald-900/60 text-[11px]"
+                                title="Randomly distribute referees evenly across Gillams."
+                              >
+                                Balance
+                              </button>
+                            </div>
+                          </th>
+                        )}
+                        <th className="p-2 text-center whitespace-nowrap">Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -4570,7 +5756,7 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                           </td>
                           <td className="p-2">
                             <input
-                              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1"
+                              className="w-[clamp(14rem,22vw,24rem)] bg-slate-950 border border-slate-800 rounded-xl px-3 py-1"
                               value={r.name}
                               onChange={(e) => recalcRef(idx, { name: e.target.value })}
                             />
@@ -4583,7 +5769,7 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
                               />
                             ) : normalizedAffiliationMode(tournamentScope, affiliationMode) === "club" ? (
                               <input
-                                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1"
+                                className="w-[clamp(12rem,18vw,22rem)] bg-slate-950 border border-slate-800 rounded-xl px-3 py-1"
                                 placeholder="Club name"
                                 value={r.countryFull === "No Affiliation" ? "" : (r.countryFull || "")}
                                 onChange={(e) => recalcRef(idx, { countryFull: e.target.value })}
@@ -4822,6 +6008,132 @@ groupedPlayers.byGroup.forEach((plist, gk) => {
               </SectionCard>
             )}
 
+            {tab === "delegation" && (
+              <SectionCard title="Delegation Data Review & Sign-off">
+                <div className="space-y-5">
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sky-200 font-bold text-lg">Team list approval before the draw</div>
+                        <p className="text-slate-400 text-sm mt-1">
+                          Review each affiliation list, allow the representative to sign from this admin device, or use the standalone tablet page. The draw will warn if any affiliation has not signed.
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button onClick={refreshDelegationApprovalsFromServer} className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm">Refresh approvals</button>
+                        <button onClick={() => window.open("delegation_signoff_v35.html", "_blank")} className="px-3 py-2 rounded-xl bg-sky-700 hover:bg-sky-600 text-sm">Open tablet page</button>
+                      </div>
+                    </div>
+                    {delegationStatusMsg && <div className="mt-3 text-sm text-amber-200">{delegationStatusMsg}</div>}
+                  </div>
+
+                  <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                    <div className="xl:col-span-1 rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                      <h3 className="text-sky-300 font-semibold mb-3">Affiliations</h3>
+                      <select
+                        className="w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2"
+                        value={delegationAffiliation}
+                        onChange={(e) => {
+                          setDelegationAffiliation(e.target.value);
+                        }}
+                      >
+                        {delegationAffiliations.map((a) => {
+                          const signed = !!delegationApprovals?.[a.name]?.signedAt;
+                          return <option key={a.name} value={a.name}>{signed ? "✓ " : "○ "}{a.name} ({a.count})</option>;
+                        })}
+                      </select>
+                      <div className="mt-4 space-y-2 max-h-80 overflow-auto pr-1">
+                        {delegationSignoffSummary().affiliations.map((a) => (
+                          <button
+                            key={a.name}
+                            onClick={() => setDelegationAffiliation(a.name)}
+                            className={("w-full text-left px-3 py-2 rounded-xl border " + (a.name === delegationAffiliation ? "border-sky-500 bg-sky-950/40 " : "border-slate-800 bg-slate-900/60 ") + (a.signed ? "opacity-60" : ""))}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-semibold">{a.name}</span>
+                              <span className={a.signed ? "text-emerald-300 text-xs" : "text-amber-300 text-xs"}>{a.signed ? "Signed" : "Pending"}</span>
+                            </div>
+                            <div className="text-xs text-slate-400">{a.count} players</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="xl:col-span-2 rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                        <div>
+                          <h3 className="text-sky-300 font-semibold">{delegationAffiliation || "Select affiliation"}</h3>
+                          <p className="text-xs text-slate-400">Representative reviews this list before signature.</p>
+                        </div>
+                        {delegationApprovals?.[delegationAffiliation]?.signedAt && (
+                          <button onClick={() => openDelegationDocument(delegationApprovals?.[delegationAffiliation])} className="px-3 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-sm">Open approval document</button>
+                        )}
+                      </div>
+
+                      <div className="overflow-auto rounded-xl border border-slate-800 mb-4">
+                        <table className="min-w-full text-sm">
+                          <thead className="bg-slate-900 text-slate-300">
+                            <tr>
+                              <th className="px-3 py-2 text-center">#</th>
+                              <th className="px-3 py-2 text-left">Player</th>
+                              <th className="px-3 py-2 text-center">Sex</th>
+                              <th className="px-3 py-2 text-center">DOB</th>
+                              <th className="px-3 py-2 text-center">Age</th>
+                              <th className="px-3 py-2 text-center">Actual Kg</th>
+                              <th className="px-3 py-2 text-center">Class / Group</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {selectedDelegationPlayers.map((p, idx) => (
+                              <tr key={p.id || idx} className="border-t border-slate-800 odd:bg-slate-950/30">
+                                <td className="px-3 py-2 text-center">{idx + 1}</td>
+                                <td className="px-3 py-2">{p.name}</td>
+                                <td className="px-3 py-2 text-center">{p.sex}</td>
+                                <td className="px-3 py-2 text-center">{p.dob || "-"}</td>
+                                <td className="px-3 py-2 text-center">{p.age || "-"}</td>
+                                <td className="px-3 py-2 text-center">{p.actualKg || "-"}</td>
+                                <td className="px-3 py-2 text-center">{isManualGroupsMode(weightMode) ? (p.manualGroup || "-") : (p.weight || "-")}</td>
+                              </tr>
+                            ))}
+                            {!selectedDelegationPlayers.length && <tr><td colSpan="7" className="px-3 py-6 text-center text-slate-500">No players found for this affiliation.</td></tr>}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div className="space-y-3">
+                          <label className="block text-sm text-slate-300">Representative name</label>
+                          <input className="w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2" value={delegationRepresentativeName} onChange={(e) => setDelegationRepresentativeName(e.target.value)} placeholder="Name of coach / team official" />
+                          <label className="flex items-start gap-2 text-sm text-slate-300">
+                            <input type="checkbox" className="mt-1" checked={delegationConfirm} onChange={(e) => setDelegationConfirm(e.target.checked)} />
+                            <span>I confirm that the above data is correct.</span>
+                          </label>
+                          <button onClick={submitDelegationApproval} className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 font-semibold">Submit approval</button>
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="text-sm text-slate-300">Signature</label>
+                            <button onClick={clearDelegationSignature} className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs">Clear</button>
+                          </div>
+                          <canvas
+                            ref={delegationSignatureRef}
+                            width="520"
+                            height="180"
+                            className="w-full h-44 rounded-xl bg-slate-950 border border-slate-700 touch-none"
+                            onPointerDown={beginDelegationSignature}
+                            onPointerMove={moveDelegationSignature}
+                            onPointerUp={endDelegationSignature}
+                            onPointerLeave={endDelegationSignature}
+                          />
+                          <p className="mt-2 text-xs text-slate-500">Use finger, stylus, or mouse. The approval document can be opened and printed/saved as PDF.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </SectionCard>
+            )}
+
             {tab === "draw" && (
               <SectionCard title="Draw & Gillams">
                 <div className="mb-4 text-sm text-slate-300">
@@ -4840,6 +6152,14 @@ Hybrid logic per weight:
                   <br />
                   The table lists only active groups that currently have players.
                   Order: Men first, then Women, and inside each: heavier categories first.
+                  <br />
+                  <span className="text-xs text-slate-500">Bye allocation: {FIRST_ROUND_BYE_ALLOCATION_MODES.find((x) => x.value === byeAllocationMode)?.label || "Top seeds receive byes first"}</span>
+                </div>
+
+                <div className="mb-3 flex flex-wrap items-center gap-3">
+                  <input className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 min-w-[260px]" placeholder="Search draw groups..." value={drawGroupSearch} onChange={(e)=>setDrawGroupSearch(e.target.value)} />
+                  <button type="button" onClick={randomizeDrawGillamsEqually} className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm">Balance Gillams</button>
+                  <span className="text-xs text-slate-500">Randomly distributes active groups across Gillams as evenly as possible.</span>
                 </div>
 
                 <div className="overflow-x-auto rounded-xl border border-slate-800 mb-4">
@@ -4850,11 +6170,11 @@ Hybrid logic per weight:
                         <th className="p-2 text-right">Sex</th>
                         <th className="p-2 text-right">Weight / Group</th>
                         <th className="p-2 text-right">Format</th>
-                        <th className="p-2 text-right">Gillam</th>
+                        <th className="p-2 text-right">Gillam <button type="button" onClick={randomizeDrawGillamsEqually} className="ml-2 px-2 py-1 rounded-lg bg-sky-800 hover:bg-sky-700 text-[11px]">Random</button></th>
                       </tr>
                     </thead>
                     <tbody>
-                      {weightsWithPlayers.map((gk) => {
+                      {filteredDrawGroups.map((gk) => {
                         const cfg = weightConfig[gk] || { include: true, gillamIndex: 0 };
                         const { sex, weight: weightLabel } = parseGroupKey(gk);
                         const sexLabel = sex === "F" ? "Women" : "Men";
@@ -4869,12 +6189,13 @@ Hybrid logic per weight:
                               <input
                                 type="checkbox"
                                 checked={cfg.include}
-                                onChange={(e) =>
+                                onChange={(e) => {
                                   setWeightConfig((prev) => ({
                                     ...prev,
                                     [gk]: { ...cfg, include: e.target.checked }
-                                  }))
-                                }
+                                  }));
+                                  markUnsynced();
+                                }}
                               />
                             </td>
                             <td className="p-2">
@@ -4896,12 +6217,13 @@ Hybrid logic per weight:
                               <select
                                 className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1"
                                 value={cfg.gillamIndex}
-                                onChange={(e) =>
+                                onChange={(e) => {
                                   setWeightConfig((prev) => ({
                                     ...prev,
                                     [gk]: { ...cfg, gillamIndex: Number(e.target.value || 0) }
-                                  }))
-                                }
+                                  }));
+                                  markUnsynced();
+                                }}
                               >
                                 {gillamNames.map((name, gi) => (
                                   <option key={gi} value={gi}>
@@ -4913,9 +6235,9 @@ Hybrid logic per weight:
                           </tr>
                         );
                       })}
-                      {weightsWithPlayers.length === 0 && (
+                      {filteredDrawGroups.length === 0 && (
                         <tr>
-                          <td className="p-3 text-slate-400" colSpan={6}>
+                          <td className="p-3 text-slate-400" colSpan={5}>
                             No weights yet — add players first.
                           </td>
                         </tr>
@@ -4996,6 +6318,11 @@ Hybrid logic per weight:
                     Generate to preview the mixed bouts with Gillam and referee assignments.
                   </div>
                 ) : (
+                  <>
+                  <div className="mb-3 flex flex-wrap items-center gap-3">
+                    <input className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 min-w-[280px]" placeholder="Search generated bouts..." value={drawBoutSearch} onChange={(e)=>setDrawBoutSearch(e.target.value)} />
+                    <span className="text-sm text-slate-400">Showing {filteredDrawBouts.length} / {schedule.bouts.length}</span>
+                  </div>
                   <div className="overflow-x-auto rounded-xl border border-slate-800">
                     <table className="w-full text-sm">
                       <thead className="bg-slate-900/60 text-slate-300">
@@ -5013,7 +6340,7 @@ Hybrid logic per weight:
                         </tr>
                       </thead>
                       <tbody>
-                        {schedule.bouts.map((b) => {
+                        {filteredDrawBouts.map((b) => {
                           const A = players.find((p) => p.id === b.blueId);
                           const G = players.find((p) => p.id === b.greenId);
                           const meta = metaForBout(b.boutNo);
@@ -5047,6 +6374,7 @@ Hybrid logic per weight:
                       </tbody>
                     </table>
                   </div>
+                  </>
                 )}
 
                 {schedule && (
@@ -5066,6 +6394,7 @@ Hybrid logic per weight:
                             if (next) {
                               setSchedule(next);
                               setDrawValidation(buildRefereeValidationPayload(next));
+                              markUnsynced();
                             }
                           }}
                           className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-900 hover:border-sky-500"
@@ -5089,7 +6418,7 @@ Hybrid logic per weight:
                             </tr>
                           </thead>
                           <tbody>
-                            {schedule.bouts
+                            {filteredDrawBouts
                               .filter((b) => ["Semi-final", "Final"].includes(b.stage))
                               .map((b) => {
                                 const asg = (schedule.assignments || []).find((x) => x.boutNo === b.boutNo) || {};
@@ -5199,13 +6528,32 @@ Hybrid logic per weight:
                         : "space-y-4"
                     }
                   >
+                    {scoreSaveNotice && (
+                      <div className="fixed bottom-4 right-4 z-[90] w-[min(26rem,calc(100vw-2rem))] rounded-2xl border border-emerald-500/60 bg-emerald-950/95 px-4 py-3 shadow-2xl text-sm text-emerald-100">
+                        <div className="h-1 rounded-full bg-emerald-400 mb-2 animate-pulse" />
+                        {scoreSaveNotice}
+                      </div>
+                    )}
+                    {pendingScoreBoutNo && (
+                      <div className="fixed inset-x-0 top-4 z-[95] flex justify-center px-4">
+                        <div className="max-w-2xl rounded-2xl border border-amber-400/70 bg-slate-950/98 p-4 shadow-2xl text-sm">
+                          <div className="font-semibold text-amber-300 mb-1">Unsaved scoring changes</div>
+                          <div className="text-slate-300 mb-3">Bout #{activeBoutNo} has unsaved scoring or timer changes. Save before switching to bout #{pendingScoreBoutNo}?</div>
+                          <div className="flex flex-wrap gap-2 justify-end">
+                            <button onClick={saveAndSwitchToPendingBout} className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-600">Save & switch</button>
+                            <button onClick={switchToPendingBoutWithoutSaving} className="px-3 py-1.5 rounded-xl bg-amber-700 hover:bg-amber-600">Switch without saving</button>
+                            <button onClick={() => setPendingScoreBoutNo(null)} className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700">Stay</button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     <div className="flex flex-wrap items-center gap-3 mb-4">
                       <label className="text-sm text-slate-200">Select Bout:</label>
                       <select
                         className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 min-w-[200px]"
                         value={activeBoutNo || ""}
                         onChange={(e) =>
-                          selectBoutForScore(e.target.value ? Number(e.target.value) : null)
+                          requestSelectBoutForScore(e.target.value ? Number(e.target.value) : null)
                         }
                       >
                         <option value="">-- choose --</option>
@@ -5242,7 +6590,7 @@ Hybrid logic per weight:
                       const sexFromBout = bout.sex || (A?.sex || G?.sex || "M");
                       const sexForLabel = sexFromBout === "F" ? "Women" : "Men";
                       const pIndexForDuration = new Map(players.map((p) => [p.id, p]));
-                      const baseSeconds = matchDurationSecondsForBout(bout, pIndexForDuration, tournamentScope, manualDurationSeconds);
+                      const baseSeconds = matchDurationSecondsForBout(bout, pIndexForDuration, tournamentScope, durationOverrides);
 
                       const asg = schedule.assignments.find(
                         (x) => x.boutNo === activeBoutNo
@@ -5421,6 +6769,7 @@ Hybrid logic per weight:
                                 <div className="flex flex-wrap gap-2">
                                   <button
                                     onClick={() => {
+                                      setScoreboardDirty(true);
                                       setTimerRunning(true);
                                     }}
                                     className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-sm"
@@ -5749,10 +7098,16 @@ Hybrid logic per weight:
                               </div>
                             </div>
                             <button
-                              onClick={saveResultToBout}
+                              onClick={() => saveResultToBout()}
                               className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-sm"
                             >
                               Save result to bout
+                            </button>
+                            <button
+                              onClick={saveAndGoToNextBout}
+                              className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-sm"
+                            >
+                              End & Next
                             </button>
                             <button
                               onClick={fullResetCurrentBout}
@@ -5953,6 +7308,7 @@ groupedKeys.forEach((gk) => {
               const countryMedals = new Map(); // code => {code, full, gold, silver, bronze}
               weightResults.forEach((entries) => {
                 entries.forEach((e, idx) => {
+                  if (Number(e.fights || 0) <= 0) return;
                   const p = e.player;
                   const code = p.country || "";
                   const full = p.countryFull || code;
@@ -6086,7 +7442,7 @@ groupedKeys.forEach((gk) => {
                     sex: p.sex === "F" ? "F" : "M",
                     age: p.age !== "" && p.age != null ? p.age : "",
                     actualKg: p.actualKg || "",
-                    seed: p.seed != null ? p.seed : ""
+                    seed: hideSeedPublic ? "" : (p.seed != null ? p.seed : "")
                   });
                 });
               });
@@ -6189,7 +7545,7 @@ groupedKeys.forEach((gk) => {
                   "Bronze",
                   "Total"
                 ];
-                csvRows = countryMedalRows.map((r, idx) => ({
+                csvRows = countryMedalRows.filter(reportRowMatches).map((r, idx) => ({
                   Rank: idx + 1,
                   CountryCode: r.code,
                   CountryName: r.full,
@@ -6212,7 +7568,7 @@ groupedKeys.forEach((gk) => {
                   "WinnerCountry",
                   "Duration"
                 ];
-                csvRows = matchRows.map((m) => ({
+                csvRows = matchRows.filter(reportRowMatches).map((m) => ({
                   BoutNo: m.boutNo,
                   Gillam: m.gillam,
                   Sex: m.sex,
@@ -6238,7 +7594,7 @@ groupedKeys.forEach((gk) => {
                   "ImbalanceVsAverage",
                   "Gillams"
                 ];
-                csvRows = refSummaryRows.map((r) => ({
+                csvRows = refSummaryRows.filter(reportRowMatches).map((r) => ({
                   Referee: r.label,
                   Affiliation: r.country,
                   Scope: r.scope,
@@ -6337,6 +7693,20 @@ groupedKeys.forEach((gk) => {
                 }
                 downloadCSVFile(`kurash_${reportTab}.csv`, csvHeader, csvRows);
               };
+
+function reportRowMatches(row, extraText = "") {
+  const q = String(reportSearch || "").trim().toLowerCase();
+  if (!q) return true;
+  const safe = (v) => {
+    if (v == null) return "";
+    if (typeof v === "object") {
+      try { return JSON.stringify(v); } catch (e) { return String(v); }
+    }
+    return String(v);
+  };
+  const haystack = [safe(row), safe(extraText)].join(" ").toLowerCase();
+  return haystack.includes(q);
+}
 
 const subTabs = [
   { key: "brackets", label: "Brackets / Tables" },
@@ -6694,7 +8064,7 @@ const renderTable = () => {
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {entries.map((e, idx) => (
+                                  {entries.filter((e) => reportRowMatches(e, `${label} ${e?.player?.name || ""} ${e?.player?.country || ""}`)).map((e, idx) => (
                                     <tr key={idx} className="border-t border-slate-800">
                                       <td className="p-2">{e.rankLabel || "-"}</td>
                                       <td className="p-2">{e.player.name || "-"}</td>
@@ -6736,7 +8106,7 @@ const renderTable = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {countryMedalRows.map((r, idx) => (
+                          {countryMedalRows.filter(reportRowMatches).map((r, idx) => (
                             <tr key={r.code} className="border-t border-slate-800">
                               <td className="p-2">{idx + 1}</td>
                               <td className="p-2">
@@ -6782,7 +8152,7 @@ const renderTable = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {matchRows.map((m) => (
+                          {matchRows.filter(reportRowMatches).map((m) => (
                             <tr key={m.boutNo} className="border-t border-slate-800">
                               <td className="p-2">{m.boutNo}</td>
                               <td className="p-2">{m.gillam}</td>
@@ -6851,7 +8221,7 @@ const renderTable = () => {
                             </tr>
                           </thead>
                           <tbody>
-                            {refSummaryRows.map((r) => (
+                            {refSummaryRows.filter(reportRowMatches).map((r) => (
                               <tr key={r.id} className="border-t border-slate-800">
                                 <td className="p-2">{r.label}</td>
                                 <td className="p-2">{r.scope}</td>
@@ -6884,7 +8254,7 @@ const renderTable = () => {
                             </tr>
                           </thead>
                           <tbody>
-                            {refRows.map((r) => (
+                            {refRows.filter(reportRowMatches).map((r) => (
                               <tr key={r.boutNo} className="border-t border-slate-800">
                                 <td className="p-2">{r.boutNo}</td>
                                 <td className="p-2">{r.gillam}</td>
@@ -6933,7 +8303,7 @@ const renderTable = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {penaltyRows.map((r, idx) => (
+                          {penaltyRows.filter(reportRowMatches).map((r, idx) => (
                             <tr key={idx} className="border-t border-slate-800">
                               <td className="p-2">{r.boutNo}</td>
                               <td className="p-2">{r.gillam}</td>
@@ -6975,7 +8345,7 @@ const renderTable = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {playersByWeightRows.map((r, idx) => (
+                          {playersByWeightRows.filter(reportRowMatches).map((r, idx) => (
                             <tr key={idx} className="border-t border-slate-800">
                               <td className="p-2">{r.group}</td>
                               <td className="p-2">{r.name}</td>
@@ -6983,7 +8353,7 @@ const renderTable = () => {
                               <td className="p-2 text-center">{r.sex}</td>
                               <td className="p-2 text-center">{r.age}</td>
                               <td className="p-2 text-center">{r.actualKg}</td>
-                              <td className="p-2 text-center">{r.seed}</td>
+                              <td className="p-2 text-center">{hideSeedPublic ? "Hidden" : r.seed}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -7015,7 +8385,7 @@ const renderTable = () => {
                               </tr>
                             </thead>
                             <tbody>
-                              {countByWeight.map((r, idx) => (
+                              {countByWeight.filter(reportRowMatches).map((r, idx) => (
                                 <tr key={idx} className="border-t border-slate-800">
                                   <td className="p-2">{r.group}</td>
                                   <td className="p-2 text-center">{r.count}</td>
@@ -7070,7 +8440,7 @@ const renderTable = () => {
                               </tr>
                             </thead>
                             <tbody>
-                              {countryCountRows.map((r, idx) => (
+                              {countryCountRows.filter(reportRowMatches).map((r, idx) => (
                                 <tr key={idx} className="border-t border-slate-800">
                                   <td className="p-2">
                                     {r.full || r.code} ({r.code})
@@ -7110,6 +8480,23 @@ const renderTable = () => {
                         </button>
                       ))}
                     </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <input
+                      className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 min-w-[280px] text-sm"
+                      placeholder="Search this report..."
+                      value={reportSearch}
+                      onChange={(e) => setReportSearch(e.target.value)}
+                    />
+                    {reportSearch && (
+                      <button
+                        type="button"
+                        className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs border border-slate-700"
+                        onClick={() => setReportSearch("")}
+                      >
+                        Clear
+                      </button>
+                    )}
                   </div>
 
                   <div className="flex items-center justify-between mb-3 text-xs md:text-sm">
@@ -7221,7 +8608,7 @@ const renderTable = () => {
 
 
                   <div className="rounded-2xl border border-emerald-900/60 bg-emerald-950/20 p-4">
-                    <h4 className="font-semibold mb-2 text-emerald-300">v35 Final Stable Workflow Safety</h4>
+                    <h4 className="font-semibold mb-2 text-emerald-300">v35.5 Workflow Safety</h4>
                     <ul className="list-disc pl-5 space-y-1">
                       <li><strong>Offline first:</strong> every important edit can be preserved locally even when there is no server.</li>
                       <li><strong>Export JSON Backup:</strong> creates a complete tournament file with players, referees, schedule, results, evaluations, and final referee pool.</li>
@@ -7471,7 +8858,8 @@ const renderTable = () => {
 
     const root = ReactDOM.createRoot(document.getElementById("root"));
     root.render(<AppErrorBoundary><App /></AppErrorBoundary>);
-  </script>
+  
+    </script>
   <!-- APP SCRIPT END -->
 </body>
 </html>

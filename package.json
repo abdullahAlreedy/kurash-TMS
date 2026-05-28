@@ -1,8 +1,8 @@
 {
   "name": "kurash-tms",
-  "version": "35.0.0",
+  "version": "35.6.5",
   "private": true,
-  "description": "Kurash Tournament Management System v35 Final Stable",
+  "description": "Kurash Tournament Management System",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
