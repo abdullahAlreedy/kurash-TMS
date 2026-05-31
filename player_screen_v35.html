@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kurash Player Screen v35.6.5</title>
+  <title>Kurash Player Screen v35.6.7 Patch 4</title>
   <style>
     :root {
       --bg: #020617;
@@ -487,7 +487,7 @@
           <button id="btnFullscreen">Fullscreen</button>
         </div>
         <div class="controls fs-hide">
-          <input id="serverUrl" type="text" placeholder="http://localhost:3000" />
+          <input id="serverUrl" type="text" placeholder="https://tms.kurash-tms.com" value="https://tms.kurash-tms.com" />
           <button id="btnTest">Test</button>
           <select id="gillamSelect">
             <option value="">-- Load Gillams --</option>
@@ -606,7 +606,7 @@
 
     function baseUrl() {
       const raw = String(el.serverUrl.value || '').trim();
-      return raw ? raw.replace(/\/+$/, '') : '';
+      return raw ? raw.replace(/\/+$/, '') : 'https://tms.kurash-tms.com';
     }
 
     function setStatus(msg, kind) {
@@ -1004,4 +1004,4 @@
 </body>
 </html>
 
-<!-- Enhancement notes: zebra row contrast and referee/player management search handled in main_web_v35.6.5. -->
+<!-- Enhancement notes: zebra row contrast and referee/player management search handled in main_web_v35.6.7. -->

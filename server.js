@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 
 const app = express();
-const APP_VERSION = "v35.6.5";
+const APP_VERSION = "v35.6.7-patch5-referee-advanced";
 app.use(cors());
 app.use(express.json({ limit: "5mb" }));
 
@@ -30,6 +30,7 @@ function emptyStore() {
     schedule: null,
     tournamentMeta: null,
     lastSavedAt: null,
+    revision: 0,
     unsynced: false
   };
 }
@@ -66,6 +67,7 @@ function backupStore(reason = "autosave", src = store) {
 
 function touchStore(reason = "save") {
   store.lastSavedAt = new Date().toISOString();
+  store.revision = Number(store.revision || 0) + 1;
   store.unsynced = false;
   saveTournament(store);
   saveCurrent();
@@ -113,22 +115,76 @@ function applyAutoAdvanceFromEmptySlots(schedule) {
       const target = byNo.get(String(targetNo));
       if (!target) continue;
       const side = link.targetSlot || link.slot || link.side;
-      if (side === "blue" || side === "A") target.blueId = "BYE_EMPTY";
-      if (side === "green" || side === "B") target.greenId = "BYE_EMPTY";
+      const blocked = `BLOCKED_FROM_BOUT_${bout.boutNo}`;
+      if (side === "blue" || side === "A") target.blueId = blocked;
+      if (side === "green" || side === "B") target.greenId = blocked;
+      target.positionBlocked = true;
     }
   }
-  for (const bout of schedule.bouts) {
-    if (bout.finished) continue;
-    const blueEmpty = !bout.blueId || bout.blueId === "BYE" || bout.blueId === "BYE_EMPTY";
-    const greenEmpty = !bout.greenId || bout.greenId === "BYE" || bout.greenId === "BYE_EMPTY";
-    if (blueEmpty ^ greenEmpty) {
-      bout.finished = true;
-      bout.resultType = "walkover";
-      bout.winner = blueEmpty ? "green" : "blue";
-      bout.autoAdvanced = true;
-      bout.savedAt = new Date().toISOString();
+  // Never auto-finish an official scheduled bout because one side is null or blocked.
+  // BYE/auto-advance is created only as a bracket-only artifact, not as a competition result here.
+  return schedule;
+}
+
+function propagateSavedBoutResult(schedule, sourceBout, payload) {
+  if (!schedule?.bouts || !schedule?.bracketLinks || !sourceBout) return schedule;
+  const links = schedule.bracketLinks[sourceBout.boutNo] || schedule.bracketLinks[String(sourceBout.boutNo)] || [];
+  const arr = Array.isArray(links) ? links : [links];
+  if (!arr.length) return schedule;
+  const winnerPlayerId = payload?.winner === "blue" ? sourceBout.blueId : payload?.winner === "green" ? sourceBout.greenId : null;
+  for (const link of arr) {
+    const targetNo = link.toBoutNo || link.targetBoutNo || link.boutNo;
+    const target = schedule.bouts.find((b) => String(b.boutNo) === String(targetNo));
+    if (!target) continue;
+    const side = String(link.side || link.targetSlot || link.slot || "").toLowerCase();
+    if (payload?.resultType === "double_withdrawal" || payload?.noContest === true) {
+      const blocked = `BLOCKED_FROM_BOUT_${sourceBout.boutNo}`;
+      if (side.startsWith("blue") || side === "a") target.blueId = blocked;
+      if (side.startsWith("green") || side === "b") target.greenId = blocked;
+      target.positionBlocked = true;
+      continue;
+    }
+    if (winnerPlayerId) {
+      if (side.startsWith("blue") || side === "a") target.blueId = winnerPlayerId;
+      if (side.startsWith("green") || side === "b") target.greenId = winnerPlayerId;
     }
   }
+  return schedule;
+}
+
+
+function isHardByeRefereeSlot(value) {
+  const t = String(value ?? "").trim().toUpperCase();
+  return t === "BYE" || t === "BYE_EMPTY" || t === "AUTO_ADVANCE" ;
+}
+
+function isBlockedCompetitionSlot(value) {
+  return String(value ?? "").trim().toUpperCase().startsWith("BLOCKED_FROM_BOUT_");
+}
+
+function isPlayableCompetitionBout(bout) {
+  if (!bout) return false;
+  if (bout.internalOnly || bout.excludedFromFightOrder || bout.autoAdvanced === true) return false;
+  if (isHardByeRefereeSlot(bout.blueId) || isHardByeRefereeSlot(bout.greenId)) return false;
+  if (!String(bout.blueId || "").trim() || !String(bout.greenId || "").trim()) return false;
+  if (isBlockedCompetitionSlot(bout.blueId) || isBlockedCompetitionSlot(bout.greenId)) return false;
+  return true;
+}
+
+function isRefereeAllocationBout(bout) {
+  // A contestant advanced without opponent is not called to the mat in Kurash.
+  // Therefore hard BYE / auto-advance / internal-only bouts must not receive referees,
+  // must not be conflict-checked, and must not count as referee workload.
+  if (!bout) return false;
+  if (bout.internalOnly || bout.excludedFromFightOrder || bout.autoAdvanced === true) return false;
+  if (isHardByeRefereeSlot(bout.blueId) || isHardByeRefereeSlot(bout.greenId)) return false;
+  return true;
+}
+
+function cleanNonMatAssignments(schedule) {
+  if (!schedule || !Array.isArray(schedule.assignments)) return schedule;
+  const boutsByNo = new Map((schedule.bouts || []).map((b) => [String(b.boutNo), b]));
+  schedule.assignments = schedule.assignments.filter((a) => isRefereeAllocationBout(boutsByNo.get(String(a.boutNo))));
   return schedule;
 }
 
@@ -248,8 +304,119 @@ function makeMeta(src) {
     name: src.name || "",
     date: src.date || "",
     status: src.status || "idle",
+    lastSavedAt: src.lastSavedAt || null,
+    revision: Number(src.revision || 0),
+    serverVersion: APP_VERSION,
+    scheduleVersion: src.schedule?.updatedAt || src.lastSavedAt || null,
     ...normalizeTournamentMeta(src.tournamentMeta || {})
   };
+}
+
+// ---------------- v35.6.7 Patch 1: merge-safe save helpers ----------------
+// Goal: different screens can save different parts of the tournament without
+// overwriting each other. Results, referee evaluations, assignments,
+// delegation approvals, and final referee pool are preserved unless a newer
+// payload explicitly replaces them.
+
+const RUNTIME_BOUT_FIELDS = [
+  "finished", "winner", "resultType", "withdrawnSide", "noContest", "advances",
+  "autoAdvanced", "blueScore", "greenScore", "durationMs", "durationSec", "meta",
+  "savedAt", "refEvaluations", "scoreEvents", "resultSavedAt", "winnerId"
+];
+
+function asTime(value) {
+  if (!value) return 0;
+  const t = new Date(value).getTime();
+  return Number.isFinite(t) ? t : 0;
+}
+
+function sameBoutIdentity(a, b) {
+  if (!a || !b) return false;
+  if (String(a.boutNo) !== String(b.boutNo)) return false;
+  const aBlue = String(a.blueId || "");
+  const aGreen = String(a.greenId || "");
+  const bBlue = String(b.blueId || "");
+  const bGreen = String(b.greenId || "");
+  // If both versions carry player slots, only preserve runtime data when the bout is still the same bout.
+  if ((aBlue || aGreen || bBlue || bGreen) && (aBlue !== bBlue || aGreen !== bGreen)) return false;
+  return true;
+}
+
+function mergeRuntimeBoutFields(existingBout, incomingBout) {
+  const out = { ...(incomingBout || {}) };
+  if (!sameBoutIdentity(existingBout, incomingBout)) return out;
+
+  const existingSavedAt = asTime(existingBout.savedAt || existingBout.resultSavedAt);
+  const incomingSavedAt = asTime(incomingBout.savedAt || incomingBout.resultSavedAt);
+  const incomingHasResult = !!(incomingBout.finished || incomingBout.savedAt || incomingBout.resultSavedAt);
+  const existingHasResult = !!(existingBout.finished || existingBout.savedAt || existingBout.resultSavedAt);
+
+  // Protect scoreboard results from a stale full schedule sync.
+  if (existingHasResult && (!incomingHasResult || existingSavedAt >= incomingSavedAt)) {
+    for (const key of RUNTIME_BOUT_FIELDS) {
+      if (existingBout[key] !== undefined) out[key] = existingBout[key];
+    }
+  }
+
+  // Referee evaluations are independent runtime data. Preserve existing evaluations unless incoming carries a newer savedAt.
+  if (Array.isArray(existingBout.refEvaluations) && existingBout.refEvaluations.length) {
+    const incomingEvalTime = Math.max(0, ...(incomingBout.refEvaluations || []).map((x) => asTime(x.savedAt || x.date)));
+    const existingEvalTime = Math.max(0, ...existingBout.refEvaluations.map((x) => asTime(x.savedAt || x.date)));
+    if (!Array.isArray(incomingBout.refEvaluations) || existingEvalTime >= incomingEvalTime) {
+      out.refEvaluations = existingBout.refEvaluations;
+    }
+  }
+
+  return out;
+}
+
+function mergeAssignments(existingAssignments, incomingAssignments) {
+  const existing = Array.isArray(existingAssignments) ? existingAssignments : [];
+  const incoming = Array.isArray(incomingAssignments) ? incomingAssignments : [];
+  if (!existing.length) return incoming;
+  if (!incoming.length) return existing;
+
+  const map = new Map(existing.map((a) => [String(a.boutNo), { ...a }]));
+  for (const a of incoming) {
+    const key = String(a.boutNo);
+    const old = map.get(key);
+    if (!old) {
+      map.set(key, { ...a });
+      continue;
+    }
+    const oldTime = asTime(old.savedAt || old.updatedAt);
+    const newTime = asTime(a.savedAt || a.updatedAt);
+    // A Referee Management save stamps assignments. Do not let an older unstamped full schedule overwrite it.
+    if (oldTime && !newTime) continue;
+    if (oldTime && newTime && oldTime > newTime) continue;
+    map.set(key, { ...old, ...a });
+  }
+  return Array.from(map.values());
+}
+
+function mergeSchedulePreservingRuntime(existingSchedule, incomingSchedule) {
+  if (!incomingSchedule || !Array.isArray(incomingSchedule.bouts)) return existingSchedule || incomingSchedule;
+  if (!existingSchedule || !Array.isArray(existingSchedule.bouts)) return incomingSchedule;
+
+  const existingByNo = new Map(existingSchedule.bouts.map((b) => [String(b.boutNo), b]));
+  const merged = {
+    ...existingSchedule,
+    ...incomingSchedule,
+    bouts: incomingSchedule.bouts.map((b) => mergeRuntimeBoutFields(existingByNo.get(String(b.boutNo)), b)),
+    assignments: mergeAssignments(existingSchedule.assignments, incomingSchedule.assignments),
+    bracketLinks: incomingSchedule.bracketLinks || existingSchedule.bracketLinks || {}
+  };
+  merged.updatedAt = new Date().toISOString();
+  return applyAutoAdvanceFromEmptySlots(merged);
+}
+
+function mergeTournamentMeta(existingMeta, incomingMeta) {
+  const existing = normalizeTournamentMeta(existingMeta || {});
+  const incoming = normalizeTournamentMeta(incomingMeta || {});
+  const out = { ...existing, ...incoming };
+  if (existing.delegationApprovals && !incoming.delegationApprovals) out.delegationApprovals = existing.delegationApprovals;
+  if (existing.finalRefereePool && !incoming.finalRefereePool) out.finalRefereePool = existing.finalRefereePool;
+  return out;
 }
 
 function fullTournamentPayload(src) {
@@ -497,21 +664,31 @@ app.post("/api/schedule", (req, res) => {
       players: [],
       refs: [],
       schedule: null,
-      tournamentMeta: normalizeTournamentMeta(tournamentMeta || null)
+      tournamentMeta: normalizeTournamentMeta(tournamentMeta || null),
+      lastSavedAt: null,
+      revision: 0
     };
   }
 
-  store.players = Array.isArray(players) ? players : [];
-  store.refs = Array.isArray(refs) ? refs : [];
-  store.schedule = applyAutoAdvanceFromEmptySlots(schedule);
-  if (store.schedule) store.schedule.updatedAt = new Date().toISOString();
-  store.tournamentMeta = normalizeTournamentMeta(tournamentMeta || store.tournamentMeta || null);
+  // v35.6.7 merge-safe behavior:
+  // Full schedule sync may come from Main Web while scoreboards/referee screens are saving.
+  // Keep the latest runtime data already stored on the server.
+  if (Array.isArray(players)) store.players = players;
+  if (Array.isArray(refs)) store.refs = refs;
+  store.schedule = mergeSchedulePreservingRuntime(store.schedule, schedule);
+  store.tournamentMeta = mergeTournamentMeta(store.tournamentMeta, tournamentMeta || null);
 
   if (store.tournamentId) {
-    touchStore("schedule_sync");
+    touchStore("schedule_merge_safe_sync");
   }
 
-  return res.json({ ok: true, tournament: fullTournamentPayload(store) });
+  return res.json({
+    ok: true,
+    mergeSafe: true,
+    serverRevision: Number(store.revision || 0),
+    scheduleVersion: store.schedule?.updatedAt || store.lastSavedAt || null,
+    tournament: fullTournamentPayload(store)
+  });
 });
 
 app.get("/api/gillams", (req, res) => {
@@ -554,15 +731,24 @@ app.post("/api/bout/:no/save", (req, res) => {
     return res.status(404).json({ error: "Bout not found" });
   }
 
+  if (!isPlayableCompetitionBout(bout)) {
+    return res.status(409).json({ error: "Bout is not playable yet (BYE/auto-advance/waiting for result/blocked position)." });
+  }
+
   const payload = normalizeBoutResultPayload(req.body || {});
+  payload.resultSavedAt = payload.savedAt || new Date().toISOString();
   Object.assign(bout, payload, { finished: true });
-  if (store.schedule) { applyAutoAdvanceFromEmptySlots(store.schedule); store.schedule.updatedAt = new Date().toISOString(); }
+  if (store.schedule) {
+    propagateSavedBoutResult(store.schedule, bout, payload);
+    applyAutoAdvanceFromEmptySlots(store.schedule);
+    store.schedule.updatedAt = new Date().toISOString();
+  }
 
   if (store.tournamentId) {
     touchStore("bout_save");
   }
 
-  return res.json({ ok: true, bout, tournament: fullTournamentPayload(store) });
+  return res.json({ ok: true, mergeSafe: true, serverRevision: Number(store.revision || 0), bout, tournament: fullTournamentPayload(store) });
 });
 
 
@@ -577,15 +763,23 @@ app.post("/api/tournament/full-save", (req, res) => {
       name: String(payload.tournamentMeta.name || "Tournament").trim(),
       date: String(payload.tournamentMeta.date || new Date().toISOString().slice(0,10)).trim(),
       status: "active",
-      players: [], refs: [], schedule: null, tournamentMeta: null
+      players: [], refs: [], schedule: null, tournamentMeta: null,
+      lastSavedAt: null,
+      revision: 0
     };
   }
   if (Array.isArray(payload.players)) store.players = payload.players;
   if (Array.isArray(payload.refs)) store.refs = payload.refs;
-  if (payload.schedule) { store.schedule = applyAutoAdvanceFromEmptySlots(payload.schedule); store.schedule.updatedAt = new Date().toISOString(); }
-  store.tournamentMeta = normalizeTournamentMeta(payload.tournamentMeta || store.tournamentMeta || null);
-  touchStore("full_save");
-  return res.json({ ok: true, tournament: fullTournamentPayload(store) });
+  if (payload.schedule) store.schedule = mergeSchedulePreservingRuntime(store.schedule, payload.schedule);
+  store.tournamentMeta = mergeTournamentMeta(store.tournamentMeta, payload.tournamentMeta || null);
+  touchStore("full_merge_safe_save");
+  return res.json({
+    ok: true,
+    mergeSafe: true,
+    serverRevision: Number(store.revision || 0),
+    scheduleVersion: store.schedule?.updatedAt || store.lastSavedAt || null,
+    tournament: fullTournamentPayload(store)
+  });
 });
 
 app.post("/api/referee-evaluation", (req, res) => {
@@ -601,7 +795,7 @@ app.post("/api/referee-evaluation", (req, res) => {
   if (idx >= 0) bout.refEvaluations[idx] = saved; else bout.refEvaluations.push(saved);
   if (store.schedule) store.schedule.updatedAt = new Date().toISOString();
   touchStore("referee_evaluation");
-  return res.json({ ok: true, evaluation: saved, tournament: fullTournamentPayload(store) });
+  return res.json({ ok: true, mergeSafe: true, serverRevision: Number(store.revision || 0), evaluation: saved, tournament: fullTournamentPayload(store) });
 });
 
 app.get("/api/referee-stats", (req, res) => {
@@ -783,6 +977,7 @@ function validateAssignmentConflicts(assignments) {
   const slots = new Map();
   for (const a of byBout) {
     const bout = (store.schedule?.bouts || []).find((b) => String(b.boutNo) === String(a.boutNo));
+    if (!isRefereeAllocationBout(bout)) continue;
     const slotKey = String(a.timeSlot || bout?.timeSlot || bout?.round || bout?.boutNo || "");
     const gillam = String(a.gillam || bout?.gillam || "");
     if (!slotKey) continue;
@@ -815,6 +1010,7 @@ function validateAssignmentConflicts(assignments) {
   const usage = [];
   for (const a of byBout) {
     const bout = (store.schedule?.bouts || []).find((b) => String(b.boutNo) === String(a.boutNo)) || {};
+    if (!isRefereeAllocationBout(bout)) continue;
     const gillam = String(a.gillam || bout?.gillam || "");
     const wave = boutWaveNumberForConflict(store.schedule, bout);
     for (const role of ["mainRef", "judge1", "judge2"]) {
@@ -887,12 +1083,18 @@ function refereeStatsPayload() {
 }
 
 app.get("/api/referee-management", (req, res) => {
-  const schedule = ensureScheduleContainers();
+  const schedule = cleanNonMatAssignments(ensureScheduleContainers());
   return res.json({
+    players: Array.isArray(store.players) ? store.players : [],
     refs: Array.isArray(store.refs) ? store.refs : [],
     bouts: schedule.bouts,
     assignments: schedule.assignments,
+    bracketLinks: schedule.bracketLinks || {},
     finalRefereePool: store.tournamentMeta?.finalRefereePool || [],
+    specialBoutMap: store.tournamentMeta?.specialBoutMap || {},
+    refQuotaMap: store.tournamentMeta?.refQuotaMap || {},
+    refManualFilters: store.tournamentMeta?.refManualFilters || {},
+    examRefMap: store.tournamentMeta?.examRefMap || {},
     conflicts: validateAssignmentConflicts(schedule.assignments),
     stats: refereeStatsPayload(),
     meta: makeMeta(store),
@@ -916,26 +1118,63 @@ app.post("/api/referees/save", (req, res) => {
 app.post("/api/referee-assignments/save", (req, res) => {
   const assignments = req.body?.assignments;
   if (!Array.isArray(assignments)) return res.status(400).json({ error: "assignments array is required" });
+  const specialBoutMap = req.body?.specialBoutMap;
+  const refQuotaMap = req.body?.refQuotaMap;
+  const refManualFilters = req.body?.refManualFilters;
+  const examRefMap = req.body?.examRefMap;
   const schedule = ensureScheduleContainers();
-  schedule.assignments = assignments.map((a) => ({ ...a, manual: true }));
-  schedule.updatedAt = new Date().toISOString();
+  const savedAt = new Date().toISOString();
+  const boutsByNo = new Map((schedule.bouts || []).map((b) => [String(b.boutNo), b]));
+  const stamped = assignments
+    .filter((a) => isRefereeAllocationBout(boutsByNo.get(String(a.boutNo))))
+    .map((a) => ({ ...a, manual: !!a.manual, savedAt, updatedAt: savedAt }));
+  schedule.assignments = mergeAssignments(cleanNonMatAssignments(schedule).assignments, stamped);
+  schedule.updatedAt = savedAt;
+  store.tournamentMeta = mergeTournamentMeta(store.tournamentMeta, {});
+  if (specialBoutMap && typeof specialBoutMap === "object" && !Array.isArray(specialBoutMap)) store.tournamentMeta.specialBoutMap = specialBoutMap;
+  if (refQuotaMap && typeof refQuotaMap === "object" && !Array.isArray(refQuotaMap)) store.tournamentMeta.refQuotaMap = refQuotaMap;
+  if (refManualFilters && typeof refManualFilters === "object" && !Array.isArray(refManualFilters)) store.tournamentMeta.refManualFilters = refManualFilters;
+  if (examRefMap && typeof examRefMap === "object" && !Array.isArray(examRefMap)) store.tournamentMeta.examRefMap = examRefMap;
+  store.tournamentMeta.refereeAdvancedSavedAt = savedAt;
   const conflicts = validateAssignmentConflicts(schedule.assignments);
   const blocking = conflicts.filter((c) => c.blocking);
   if (blocking.length) {
     return res.status(409).json({ error: "Blocking referee assignment conflicts", conflicts, blocking });
   }
-  if (store.tournamentId) touchStore("ref_assignments_save");
-  return res.json({ ok: true, conflicts, assignments: schedule.assignments, tournament: fullTournamentPayload(store) });
+  if (store.tournamentId) touchStore("ref_assignments_merge_safe_save");
+  return res.json({
+    ok: true,
+    mergeSafe: true,
+    serverRevision: Number(store.revision || 0),
+    conflicts,
+    assignments: schedule.assignments,
+    tournament: fullTournamentPayload(store)
+  });
 });
 
 app.post("/api/final-referee-pool/save", (req, res) => {
   const finalRefereePool = req.body?.finalRefereePool;
   if (!Array.isArray(finalRefereePool)) return res.status(400).json({ error: "finalRefereePool array is required" });
-  store.tournamentMeta = normalizeTournamentMeta(store.tournamentMeta || {});
+  const specialBoutMap = req.body?.specialBoutMap;
+  const refQuotaMap = req.body?.refQuotaMap;
+  const refManualFilters = req.body?.refManualFilters;
+  const examRefMap = req.body?.examRefMap;
+  store.tournamentMeta = mergeTournamentMeta(store.tournamentMeta, {});
   store.tournamentMeta.finalRefereePool = finalRefereePool.map(String);
+  store.tournamentMeta.finalRefereePoolSavedAt = new Date().toISOString();
+  if (specialBoutMap && typeof specialBoutMap === "object" && !Array.isArray(specialBoutMap)) store.tournamentMeta.specialBoutMap = specialBoutMap;
+  if (refQuotaMap && typeof refQuotaMap === "object" && !Array.isArray(refQuotaMap)) store.tournamentMeta.refQuotaMap = refQuotaMap;
+  if (refManualFilters && typeof refManualFilters === "object" && !Array.isArray(refManualFilters)) store.tournamentMeta.refManualFilters = refManualFilters;
+  if (examRefMap && typeof examRefMap === "object" && !Array.isArray(examRefMap)) store.tournamentMeta.examRefMap = examRefMap;
   if (store.schedule) store.schedule.updatedAt = new Date().toISOString();
-  if (store.tournamentId) touchStore("final_referee_pool_save");
-  return res.json({ ok: true, finalRefereePool: store.tournamentMeta.finalRefereePool, tournament: fullTournamentPayload(store) });
+  if (store.tournamentId) touchStore("final_referee_pool_merge_safe_save");
+  return res.json({
+    ok: true,
+    mergeSafe: true,
+    serverRevision: Number(store.revision || 0),
+    finalRefereePool: store.tournamentMeta.finalRefereePool,
+    tournament: fullTournamentPayload(store)
+  });
 });
 
 
@@ -952,7 +1191,7 @@ function boutResultPriority(bout) {
   const winnerScore = bout?.winner === "blue" ? b : bout?.winner === "green" ? g : {};
   const loserScore = bout?.winner === "blue" ? g : bout?.winner === "green" ? b : {};
   if (rt === "double_withdrawal" || rt === "no_contest") return 0;
-  if (rt === "withdrawal" || rt === "walkover") return 1;
+  if (rt === "withdrawal") return 1;
   if (Number(winnerScore.H || 0) > Number(loserScore.H || 0)) return 5;
   if (Number(winnerScore.YO || 0) > Number(loserScore.YO || 0)) return 4;
   if (Number(winnerScore.CH || 0) > Number(loserScore.CH || 0)) return 3;
@@ -965,7 +1204,8 @@ function computeLeagueStandings() {
   const bouts = Array.isArray(store.schedule?.bouts) ? store.schedule.bouts : [];
 
   function isPlayableId(id) {
-    return id && id !== "BYE" && id !== "BYE_EMPTY";
+    const t = String(id || "").trim().toUpperCase();
+    return !!id && t !== "BYE" && t !== "BYE_EMPTY" && t !== "AUTO_ADVANCE" && !t.startsWith("BLOCKED_FROM_BOUT_");
   }
 
   function ensure(groupKey, pid) {
@@ -1083,12 +1323,16 @@ function refereeEvaluationSummary() {
 app.get("/api/sync/status", (req, res) => {
   res.json({
     ok: true,
+    appVersion: APP_VERSION,
     tournamentId: store.tournamentId,
     status: store.status,
     lastSavedAt: store.lastSavedAt || null,
+    revision: Number(store.revision || 0),
     scheduleVersion: store.schedule?.updatedAt || store.lastSavedAt || null,
     bouts: Array.isArray(store.schedule?.bouts) ? store.schedule.bouts.length : 0,
-    finishedBouts: Array.isArray(store.schedule?.bouts) ? store.schedule.bouts.filter((b) => b.finished).length : 0
+    finishedBouts: Array.isArray(store.schedule?.bouts) ? store.schedule.bouts.filter((b) => b.finished).length : 0,
+    assignments: Array.isArray(store.schedule?.assignments) ? store.schedule.assignments.length : 0,
+    mergeSafe: true
   });
 });
 
@@ -1113,9 +1357,12 @@ app.get("/api/referees/final-candidates", (req, res) => {
 app.get("/api/ping", (req, res) => {
   return res.json({
     ok: true,
+    appVersion: APP_VERSION,
     tournamentId: store.tournamentId || null,
     status: store.status || "idle",
-    lastSavedAt: store.lastSavedAt || null
+    lastSavedAt: store.lastSavedAt || null,
+    revision: Number(store.revision || 0),
+    mergeSafe: true
   });
 });
 

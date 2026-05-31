@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charSet="UTF-8" />
-  <title>Kurash Scoreboard v35.6.6</title>
+  <title>Kurash Scoreboard v35.6.7 Patch 4</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -167,6 +167,42 @@
       return slot;
     }
 
+    function hardByeSlot(value) {
+      const t = String(value ?? "").trim().toUpperCase();
+      return t === "BYE" || t === "BYE_EMPTY" || t === "AUTO_ADVANCE";
+    }
+    function blockedSlot(value) {
+      return String(value ?? "").trim().toUpperCase().startsWith("BLOCKED_FROM_BOUT_");
+    }
+    function trueCompetitionBout(bout) {
+      if (!bout) return false;
+      if (bout.internalOnly || bout.excludedFromFightOrder || bout.autoAdvanced === true) return false;
+      if (hardByeSlot(bout.blueId) || hardByeSlot(bout.greenId)) return false;
+      return true;
+    }
+    function waitingForResultBout(bout) {
+      if (!trueCompetitionBout(bout)) return false;
+      return !String(bout.blueId || "").trim() || !String(bout.greenId || "").trim() || blockedSlot(bout.blueId) || blockedSlot(bout.greenId);
+    }
+    function playableScoreboardBout(bout) {
+      return trueCompetitionBout(bout) && !waitingForResultBout(bout);
+    }
+    function sourceLabelForBoutSide(scheduleObj, bout, side) {
+      if (!bout || !scheduleObj?.bracketLinks) return "Waiting for result";
+      for (const [fromNo, links] of Object.entries(scheduleObj.bracketLinks || {})) {
+        const arr = Array.isArray(links) ? links : [links];
+        if (arr.some((lnk) => String(lnk?.toBoutNo || lnk?.targetBoutNo || lnk?.boutNo) === String(bout.boutNo) && String(lnk?.side || lnk?.targetSlot || lnk?.slot).toLowerCase().startsWith(side))) return `Winner of Bout ${fromNo}`;
+      }
+      return "Waiting for result";
+    }
+    function boutPlayerLabel(scheduleObj, bout, side, player) {
+      const id = side === "blue" ? bout?.blueId : bout?.greenId;
+      if (hardByeSlot(id)) return "BYE / Auto-advance";
+      if (blockedSlot(id)) return "Position blocked";
+      if (!String(id || "").trim()) return sourceLabelForBoutSide(scheduleObj, bout, side);
+      return player?.name || String(id || "");
+    }
+
     // --------------------------------------------------
     // CountryFlag component (expects flags/{code}_m.jpg or .png)
     // --------------------------------------------------
@@ -208,7 +244,7 @@
       const noAff = isNoAffiliation(player);
       const alignClass = align === "right" ? "items-end text-right" : align === "left" ? "items-start text-left" : "items-center text-center";
       return (
-        <div className={"flex flex-col justify-center gap-1 min-w-[4.5rem] md:min-w-[5.25rem] " + alignClass}>
+        <div className={"flex flex-col justify-center gap-1 min-w-[4rem] md:min-w-[4.75rem] " + alignClass} title={full}>
           {shouldShowFlag(player) ? (
             <CountryFlag code={code} />
           ) : (
@@ -217,7 +253,6 @@
             </div>
           )}
           <span className="text-xl md:text-3xl font-mono tracking-wide">{noAff ? "NA" : code}</span>
-          <span className="text-base md:text-2xl text-slate-300 max-w-[7rem] truncate" title={full}>{full}</span>
         </div>
       );
     }
@@ -416,8 +451,8 @@
       const [players, setPlayers] = useState(demoPlayers);
       const [refs, setRefs] = useState([]);
 
-      // Server sync (v35.6.5)
-      const [serverUrl, setServerUrl] = useState("");
+      // Server sync (v35.6.7)
+      const [serverUrl, setServerUrl] = useState("https://tms.kurash-tms.com");
       const [serverStatus, setServerStatus] = useState("idle");
       const [serverMsg, setServerMsg] = useState("");
       const [gillams, setGillams] = useState([]);
@@ -691,6 +726,8 @@
             throw new Error(msg);
           }
           if (data?.bout) applySavedBoutToLocalState(data.bout);
+          // v35.6.7 Patch 2: accept server merge-safe response without forcing an unsafe client overwrite.
+          // The server already protects other Gillams/referee edits; we refresh only the returned merged snapshot.
           if (data?.tournament?.schedule) {
             setSchedule(data.tournament.schedule);
           }
@@ -700,8 +737,8 @@
             setTournamentMeta(data.tournament.tournamentMeta || data.tournament.meta || tournamentMeta);
           }
           notifyExternalPagesScoreSaved(boutNo);
-          console.log("Result sent to server for bout", boutNo);
-          return { ok: true, data };
+          console.log("Merge-safe result sent to server for bout", boutNo, data?.serverRevision || data?.tournament?.meta?.revision || "");
+          return { ok: true, mergeSafe: !!data?.mergeSafe, data };
         } catch (err) {
           console.error("Failed to send result to server:", err);
           showScoreSaveNotice("Server save failed for bout #" + boutNo + ": " + err.message);
@@ -718,6 +755,7 @@
       const [timerRunning, setTimerRunning] = useState(false);
       const [withdrawalMsg, setWithdrawalMsg] = useState("");
       const [showMeta, setShowMeta] = useState(false);
+      const [showTools, setShowTools] = useState(false);
       const [isFullscreen, setIsFullscreen] = useState(false);
 
       const sbContainerRef = useRef(null);
@@ -909,12 +947,22 @@ useEffect(() => {
         }
       }
 
+      function toggleScoreboardTimer() {
+        setScoreboardDirty(true);
+        setTimerRunning((running) => !running);
+      }
+
       function selectBoutForScore(no) {
         if (!schedule) return;
+        const targetBout = schedule?.bouts?.find?.((b) => String(b.boutNo) === String(no));
+        if (targetBout && !playableScoreboardBout(targetBout)) {
+          showScoreSaveNotice("This bout is waiting for result and is not playable yet.");
+          return false;
+        }
         setActiveBoutNo(no);
         setScoreboardDirty(false);
 
-        const bout = schedule.bouts.find((b) => b.boutNo === no);
+        const bout = schedule.bouts.find((b) => String(b.boutNo) === String(no));
         let initialMs = 0;
 
         if (bout) {
@@ -1090,7 +1138,7 @@ useEffect(() => {
         if (result.ok === false) return false;
 
         setScoreboardDirty(false);
-        showScoreSaveNotice((result.offline ? "Result saved locally" : "Result saved to server") + " for bout #" + activeBoutNo);
+        showScoreSaveNotice((result.offline ? "Result saved locally" : (result.mergeSafe ? "Result saved safely to server" : "Result saved to server")) + " for bout #" + activeBoutNo);
         return true;
       }
 
@@ -1126,7 +1174,7 @@ useEffect(() => {
         const result = await sendResultToServer(activeBoutNo, payload);
         setScoreboardDirty(false);
         setWithdrawalMsg(resultType === "double_withdrawal" ? "Double withdrawal saved: no winner / no contest." : "Withdrawal saved.");
-        showScoreSaveNotice((result.ok === false ? "Withdrawal saved locally but server sync failed." : "Withdrawal saved to server."));
+        showScoreSaveNotice((result.ok === false ? "Withdrawal saved locally but server sync failed." : (result.mergeSafe ? "Withdrawal saved safely to server." : "Withdrawal saved to server.")));
       }
 
       const bouts = schedule?.bouts || [];
@@ -1141,10 +1189,10 @@ useEffect(() => {
 
       function goNext() {
         if (!bouts.length) return;
-        const target =
-          currentIdx === -1 || currentIdx >= bouts.length - 1
-            ? bouts[bouts.length - 1]
-            : bouts[currentIdx + 1];
+        const target = (() => {
+          for (let i = Math.max(0, currentIdx + 1); i < bouts.length; i++) if (playableScoreboardBout(bouts[i])) return bouts[i];
+          return null;
+        })();
         if (!target) return;
         requestSelectBoutForScore(target.boutNo);
       }
@@ -1197,7 +1245,10 @@ useEffect(() => {
       async function endAndNextBout() {
         const ok = await saveResultToBout({ silent: true });
         if (ok === false) return;
-        const next = currentIdx === -1 || currentIdx >= bouts.length - 1 ? null : bouts[currentIdx + 1];
+        const next = (() => {
+          for (let i = Math.max(0, currentIdx + 1); i < bouts.length; i++) if (playableScoreboardBout(bouts[i])) return bouts[i];
+          return null;
+        })();
         if (!next) {
           showScoreSaveNotice("Result saved. No next bout is available.");
           return;
@@ -1250,7 +1301,7 @@ useEffect(() => {
 
       const bout =
         activeBoutNo != null
-          ? bouts.find((b) => b.boutNo === activeBoutNo) || bouts[0]
+          ? bouts.find((b) => String(b.boutNo) === String(activeBoutNo)) || bouts[0]
           : bouts[0];
 
       const A = bout ? playersIndex.get(bout.blueId) : null;
@@ -1306,6 +1357,11 @@ useEffect(() => {
       const greenDActive = greenPenLevel >= 2;
       const greenGActive = greenPenLevel >= 3;
 
+      const withdrawalType = meta.resultType || bout.resultType || "";
+      const withdrawnSide = meta.withdrawnSide || bout.withdrawnSide || "";
+      const blueWithdrawalActive = withdrawalType === "double_withdrawal" || withdrawnSide === "blue" || withdrawnSide === "both";
+      const greenWithdrawalActive = withdrawalType === "double_withdrawal" || withdrawnSide === "green" || withdrawnSide === "both";
+
       const isTimeUp = timerMs === 0;
       const finalWinnerSide = decideWinner(sbComputed, isTimeUp);
       const liveWinnerSide = decideWinner(sbComputed, false);
@@ -1332,7 +1388,7 @@ useEffect(() => {
             <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
               <div>
                 <h1 className="text-xl font-semibold tracking-wide">
-                  Kurash Scoreboard – v35.6.6
+                  Kurash Scoreboard – v35.6.7 Patch 4B
                 </h1>
                 <p className="text-xs text-slate-400">
                   Blue top / Green bottom • H / YO / CH • T / D / G • Dynamic timer
@@ -1386,7 +1442,7 @@ useEffect(() => {
               <input
                 type="text"
                 className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1 min-w-[220px]"
-                placeholder="http://localhost:3000"
+                placeholder="https://tms.kurash-tms.com"
                 value={serverUrl}
                 onChange={(e) => setServerUrl(e.target.value)}
               />
@@ -1478,22 +1534,24 @@ useEffect(() => {
                 }}
               >
                 <option value="">-- choose --</option>
-                {bouts.map((b) => {
+                {bouts.filter(trueCompetitionBout).map((b) => {
                   const A = playersIndex.get(b.blueId);
                   const G = playersIndex.get(b.greenId);
                   const sexLabel = b.sex === "F" ? "Women" : "Men";
                   const meta = metaForBout(b.boutNo);
                   const finished = !!(meta && meta.winner);
+                  const waiting = waitingForResultBout(b);
                   return (
                     <option
                       key={b.boutNo}
                       value={b.boutNo}
-                      className={finished ? "text-slate-500" : "text-slate-100"}
+                      disabled={waiting}
+                      className={finished || waiting ? "text-slate-500" : "text-slate-100"}
                     >
                       {finished ? "✓ " : ""}
                       #{b.boutNo} | {b.gillam} | {sexLabel} {boutSlotLabel(b)} |{" "}
-                      {A?.name || "Blue"} ({affiliationCode(A)}) vs {G?.name || "Green"} ({affiliationCode(G)})
-                      {finished ? " (finished)" : ""}
+                      {boutPlayerLabel(schedule, b, "blue", A)} vs {boutPlayerLabel(schedule, b, "green", G)}
+                      {waiting ? " | Waiting for result" : finished ? " (finished)" : ""}
                     </option>
                   );
                 })}
@@ -1533,6 +1591,25 @@ useEffect(() => {
                   : "space-y-4"
               }
             >
+              {isFullscreen && (
+                <div className="fixed top-3 right-3 z-[70] flex items-center gap-2 opacity-20 hover:opacity-100 transition-opacity duration-200">
+                  <select
+                    className="bg-slate-950/95 border border-slate-700 rounded-xl px-3 py-1 text-xs md:text-sm max-w-[30rem] shadow-2xl"
+                    value={activeBoutNo || ""}
+                    onChange={(e) => requestSelectBoutForScore(e.target.value ? Number(e.target.value) : null)}
+                    title="Select bout"
+                  >
+                    <option value="">-- choose bout --</option>
+                    {bouts.filter(trueCompetitionBout).map((b) => {
+                      const A2 = playersIndex.get(b.blueId);
+                      const G2 = playersIndex.get(b.greenId);
+                      const waiting = waitingForResultBout(b);
+                      return <option key={b.boutNo} value={b.boutNo} disabled={waiting}>#{b.boutNo} | {b.gillam} | {boutPlayerLabel(schedule, b, "blue", A2)} vs {boutPlayerLabel(schedule, b, "green", G2)}{waiting ? " | Waiting for result" : ""}</option>;
+                    })}
+                  </select>
+                  <button onClick={exitFullscreen} className="px-3 py-1 rounded-xl bg-slate-800/95 hover:bg-slate-700 text-xs md:text-sm shadow-2xl">Exit</button>
+                </div>
+              )}
               {/* TIMER BAR */}
               <div
                 className={
@@ -1552,43 +1629,8 @@ useEffect(() => {
                           {bout.ageGroupLabel ? bout.ageGroupLabel + " • " : ""}{sexForLabel} {slotLabel} ({bout.stage || ""})
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => { setScoreboardDirty(true); setTimerRunning(true); }}
-                          className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs md:text-sm"
-                        >
-                          Start
-                        </button>
-                        <button
-                          onClick={() => setTimerRunning(false)}
-                          className="px-3 py-1 rounded-xl bg-amber-600 hover:bg-amber-500 text-xs md:text-sm"
-                        >
-                          Stop
-                        </button>
-                        <button
-                          onClick={fullResetCurrentBout}
-                          className="px-3 py-1 rounded-xl bg-red-700 hover:bg-red-600 text-xs md:text-sm"
-                        >
-                          FULL RESET
-                        </button>
-                        <button
-                          onClick={endAndNextBout}
-                          className="px-3 py-1 rounded-xl bg-violet-700 hover:bg-violet-600 text-xs md:text-sm"
-                        >
-                          End & Next
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (document.fullscreenElement) {
-                              exitFullscreen();
-                            } else {
-                              enterFullscreen();
-                            }
-                          }}
-                          className="px-3 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs md:text-sm"
-                        >
-                          {isFullscreen ? "Exit FS" : "Fullscreen"}
-                        </button>
+                      <div className="text-right text-xs text-slate-500 opacity-40 hover:opacity-80 transition-opacity pr-1">
+                        Bout #{bout.boutNo}
                       </div>
                     </div>
                     <div className="flex-1 flex items-center justify-center gap-4">
@@ -1659,30 +1701,7 @@ useEffect(() => {
                       </button>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={() => { setScoreboardDirty(true); setTimerRunning(true); }}
-                        className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-sm"
-                      >
-                        Start
-                      </button>
-                      <button
-                        onClick={() => setTimerRunning(false)}
-                        className="px-3 py-1 rounded-xl bg-amber-600 hover:bg-amber-500 text-sm"
-                      >
-                        Stop
-                      </button>
-                      <button
-                        onClick={fullResetCurrentBout}
-                        className="px-3 py-1 rounded-xl bg-red-700 hover:bg-red-600 text-sm"
-                      >
-                        FULL RESET
-                      </button>
-                      <button
-                        onClick={endAndNextBout}
-                        className="px-3 py-1 rounded-xl bg-violet-700 hover:bg-violet-600 text-sm"
-                      >
-                        End & Next
-                      </button>
+
                       <button
                         onClick={() => {
                           if (document.fullscreenElement) {
@@ -1691,7 +1710,7 @@ useEffect(() => {
                             enterFullscreen();
                           }
                         }}
-                        className="px-3 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm"
+                        className="px-3 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm opacity-20 hover:opacity-100 transition-opacity"
                       >
                         {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
                       </button>
@@ -1702,7 +1721,7 @@ useEffect(() => {
 
               {/* BLUE PLAYER (top) */}
               <div className="flex-1 space-y-4">
-                <div className="bg-sky-900/60 border border-sky-700 rounded-2xl p-4">
+                <div className={(blueWithdrawalActive ? "ring-2 ring-yellow-300 shadow-[0_0_24px_rgba(253,224,71,0.55)] " : "") + "bg-sky-900/60 border border-sky-700 rounded-2xl p-4"}>
                   <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center gap-3">
                       <span className="w-4 h-4 rounded-full bg-sky-500" />
@@ -1715,12 +1734,16 @@ useEffect(() => {
                         {A?.name || "Blue"}
                       </span>
                     </div>
-                    <div className="text-xs text-sky-100/80" title={blueAffiliation}>{blueAffiliation}</div>
                     {fightFinished && finalWinnerSide === "blue" && (
                       <span className="px-3 py-1 rounded-full bg-emerald-500 text-black text-xs md:text-sm font-bold">
                         WINNER
                       </span>
                     )}
+                  </div>
+                  <div className="mb-3 flex items-center gap-2 text-[10px] md:text-xs">
+                    <button onClick={() => saveWithdrawalResult("blue")} className="px-2 py-1 rounded-lg bg-yellow-600/85 hover:bg-yellow-500 text-black font-bold shadow">Blue WO</button>
+                    <button onClick={() => saveWithdrawalResult("both")} className="px-2 py-1 rounded-lg bg-yellow-700/85 hover:bg-yellow-600 text-black font-bold shadow">Double WO</button>
+                    <span className={(blueWithdrawalActive ? "bg-yellow-300 shadow-[0_0_18px_rgba(253,224,71,1)]" : "bg-slate-600/30") + " w-8 h-3 rounded-md inline-block"} />
                   </div>
                   <div className="flex items-stretch gap-3">
                     <div className="flex-1">
@@ -1836,7 +1859,7 @@ useEffect(() => {
                 </div>
 
                 {/* GREEN PLAYER (bottom) */}
-                <div className="bg-green-900/60 border border-green-700 rounded-2xl p-4">
+                <div className={(greenWithdrawalActive ? "ring-2 ring-yellow-300 shadow-[0_0_24px_rgba(253,224,71,0.55)] " : "") + "bg-green-900/60 border border-green-700 rounded-2xl p-4"}>
                   <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center gap-3">
                       <span className="w-4 h-4 rounded-full bg-green-500" />
@@ -1849,12 +1872,16 @@ useEffect(() => {
                         {G?.name || "Green"}
                       </span>
                     </div>
-                    <div className="text-xs text-green-100/80" title={greenAffiliation}>{greenAffiliation}</div>
                     {fightFinished && finalWinnerSide === "green" && (
                       <span className="px-3 py-1 rounded-full bg-emerald-500 text-black text-xs md:text-sm font-bold">
                         WINNER
                       </span>
                     )}
+                  </div>
+                  <div className="mb-3 flex items-center gap-2 text-[10px] md:text-xs">
+                    <button onClick={() => saveWithdrawalResult("both")} className="px-2 py-1 rounded-lg bg-yellow-700/85 hover:bg-yellow-600 text-black font-bold shadow">Double WO</button>
+                    <button onClick={() => saveWithdrawalResult("green")} className="px-2 py-1 rounded-lg bg-yellow-600/85 hover:bg-yellow-500 text-black font-bold shadow">Green WO</button>
+                    <span className={(greenWithdrawalActive ? "bg-yellow-300 shadow-[0_0_18px_rgba(253,224,71,1)]" : "bg-slate-600/30") + " w-8 h-3 rounded-md inline-block"} />
                   </div>
                   <div className="flex items-stretch gap-3">
                     <div className="flex-1">
@@ -1971,52 +1998,54 @@ useEffect(() => {
               </div>
 
               {/* Winner summary + actions */}
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="text-sm">
-                  <div>
-                    Current winner (live):{" "}
-                    <span className="font-semibold">
-                      {winnerNameLive}
-                    </span>
-                  </div>
-                  <div className="text-slate-400">
-                    Final winner (time/H):{" "}
-                    <span className="font-semibold">
-                      {winnerNameFinal}
-                    </span>
-                  </div>
-                  <div className="text-slate-500 text-xs mt-1">
-                    Base duration: {baseSeconds / 60} min • Affiliation display: {tournamentMeta?.affiliationMode || "auto"}
+              <div className="relative rounded-2xl border border-slate-800/70 bg-slate-950/40 p-3 min-h-[4.75rem]">
+                <div className="flex items-center gap-3 justify-start pr-40">
+                  <button
+                    onClick={() => saveResultToBout()}
+                    className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-sm font-bold"
+                  >
+                    Save Result
+                  </button>
+                  <button
+                    onClick={endAndNextBout}
+                    className="px-4 py-2 rounded-xl bg-sky-700 hover:bg-sky-600 text-sm font-bold"
+                  >
+                    Save & Next
+                  </button>
+                  <div className="text-xs text-slate-400 hidden lg:block">
+                    <div>Current winner: <span className="font-semibold text-slate-200">{winnerNameLive}</span></div>
+                    <div>Final winner: <span className="font-semibold text-slate-200">{winnerNameFinal}</span></div>
                   </div>
                 </div>
-                <button
-                  onClick={() => saveResultToBout()}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-sm"
-                >
-                  Save result to bout
-                </button>
-                <button
-                  onClick={endAndNextBout}
-                  className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-sm"
-                >
-                  End & Next
-                </button>
-                <button
-                  onClick={fullResetCurrentBout}
-                  className="px-4 py-2 rounded-xl bg-red-700 hover:bg-red-600 text-sm"
-                >
-                  FULL RESET
-                </button>
-                <button onClick={() => saveWithdrawalResult("blue")} className="px-4 py-2 rounded-xl bg-orange-700 hover:bg-orange-600 text-sm">Blue Withdrawal</button>
-                <button onClick={() => saveWithdrawalResult("green")} className="px-4 py-2 rounded-xl bg-orange-700 hover:bg-orange-600 text-sm">Green Withdrawal</button>
-                <button onClick={() => saveWithdrawalResult("both")} className="px-4 py-2 rounded-xl bg-red-800 hover:bg-red-700 text-sm">Double Withdrawal</button>
-                {withdrawalMsg && <span className="text-xs text-orange-300">{withdrawalMsg}</span>}
-                <button
-                  onClick={() => setShowMeta((v) => !v)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm"
-                >
-                  {showMeta ? "Hide metadata" : "Show metadata"}
-                </button>
+                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                  <button
+                    onClick={toggleScoreboardTimer}
+                    className={(timerRunning ? "bg-amber-600 hover:bg-amber-500" : "bg-emerald-600 hover:bg-emerald-500") + " px-8 py-3 rounded-2xl text-sm font-black shadow-lg"}
+                  >
+                    {timerRunning ? "STOP" : "START"}
+                  </button>
+                </div>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowTools((v) => !v)}
+                      className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm font-bold"
+                    >
+                      ⚙ Tools
+                    </button>
+                  {showTools && (
+                    <div className="absolute bottom-full mb-2 right-0 z-[80] min-w-[13rem] rounded-2xl border border-slate-700 bg-slate-950/98 p-2 shadow-2xl">
+                      <button onClick={() => { setShowMeta((v) => !v); setShowTools(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-800 text-sm">
+                        {showMeta ? "Hide Metadata" : "Show Metadata"}
+                      </button>
+                      <button onClick={() => { setShowTools(false); fullResetCurrentBout(); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-red-950/70 text-sm text-red-300">
+                        Full Reset
+                      </button>
+                    </div>
+                  )}
+                  </div>
+                </div>
+                {withdrawalMsg && <div className="absolute left-3 bottom-1 text-xs text-orange-300">{withdrawalMsg}</div>}
               </div>
 
               {/* Metadata / event log */}
@@ -2077,7 +2106,7 @@ useEffect(() => {
                 )}
               </div>
               <div className="text-slate-500">
-                Standalone scoreboard v35.6.5 – open this file directly in your browser.
+                Standalone scoreboard v35.6.7 Patch 4B – open this file directly in your browser.
               </div>
             </div>
           </footer>

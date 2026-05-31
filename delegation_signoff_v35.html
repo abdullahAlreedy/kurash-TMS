@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Kurash Delegation Sign-off v35.6.7 Patch 5T</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+  <div class="max-w-6xl mx-auto p-4 md:p-6" id="delegationApp">
+    <header class="mb-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div>
+        <h1 class="text-2xl font-bold text-sky-200">Delegation Data Review & Sign-off</h1>
+        <p class="text-slate-400 text-sm">v35.6.7 Patch 5T • Standalone/tablet page and Main Web tab use the same workflow</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button id="refreshBtn" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700">Refresh</button>
+        <button id="printBtn" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700">Print Current</button>
+      </div>
+    </header>
+
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 mb-4">
+      <label class="block text-sm text-slate-300 mb-2">Server URL</label>
+      <div class="flex flex-col md:flex-row gap-2">
+        <input id="serverUrl" class="flex-1 rounded-xl bg-slate-950 border border-slate-700 px-3 py-2" value="https://tms.kurash-tms.com" />
+        <button id="connectBtn" class="px-4 py-2 rounded-xl bg-sky-700 hover:bg-sky-600">Connect / Load</button>
+      </div>
+      <div id="status" class="text-sm text-amber-200 mt-3">Connect to load current tournament delegation data.</div>
+    </section>
+
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+        <label class="block text-sm text-slate-300 mb-2">Affiliation / Country</label>
+        <select id="affiliationSelect" class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2"></select>
+        <div id="affiliationList" class="mt-4 space-y-2 max-h-[560px] overflow-auto"></div>
+      </div>
+
+      <div class="lg:col-span-2 rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-3">
+          <div>
+            <h2 id="selectedTitle" class="text-xl font-bold text-sky-200">Select affiliation</h2>
+            <p id="selectedSub" class="text-sm text-slate-400"></p>
+          </div>
+          <button id="openDocBtn" class="hidden px-3 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-sm">Open approval document</button>
+        </div>
+
+        <div class="overflow-auto rounded-xl border border-slate-800 mb-4">
+          <table class="min-w-full text-sm">
+            <thead class="bg-slate-950 text-slate-300">
+              <tr>
+                <th class="px-3 py-2 text-center">#</th>
+                <th class="px-3 py-2 text-left">Player</th>
+                <th class="px-3 py-2 text-center">Sex</th>
+                <th class="px-3 py-2 text-center">DOB</th>
+                <th class="px-3 py-2 text-center">Age</th>
+                <th class="px-3 py-2 text-center">Actual Kg</th>
+                <th class="px-3 py-2 text-center">Class / Group</th>
+                <th class="px-3 py-2 text-center">Age Group</th>
+              </tr>
+            </thead>
+            <tbody id="playersBody"></tbody>
+          </table>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="space-y-3">
+            <label class="block text-sm text-slate-300">Representative name</label>
+            <input id="repName" class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2" placeholder="Name of coach / team official" />
+            <label class="flex items-start gap-2 text-sm text-slate-300">
+              <input id="confirmBox" type="checkbox" class="mt-1" />
+              <span>I confirm that the above data is correct before the official draw.</span>
+            </label>
+            <div class="flex flex-wrap gap-2">
+              <button id="submitBtn" class="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 font-semibold">Submit approval</button>
+              <button id="resetBtn" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700">Reset Form</button>
+            </div>
+            <p class="text-xs text-slate-500">Signed affiliations are shown greyed out but can be opened for review. Submitting again creates a new version.</p>
+          </div>
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label class="text-sm text-slate-300">Signature</label>
+              <button id="clearSigBtn" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs">Clear</button>
+            </div>
+            <canvas id="signature" width="720" height="260" class="w-full h-48 rounded-xl bg-slate-950 border border-slate-700 touch-none"></canvas>
+            <p class="mt-2 text-xs text-slate-500">Use finger, stylus, or mouse. The official approval document can be printed or saved as PDF after submission.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+<script>
+(function(){
+let state = { affiliations: [], players: [], approvals: {}, selected: '', meta: null };
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+function base(){ return (($('serverUrl')?.value || '').trim() || 'https://tms.kurash-tms.com').replace(/\/+$/, ''); }
+function playerAffiliation(p){ return String(p?.countryFull || p?.affiliation || p?.club || p?.country || 'No Affiliation').trim() || 'No Affiliation'; }
+function setStatus(msg, ok){ const el=$('status'); if(!el)return; el.textContent=msg||''; el.className='text-sm mt-3 '+(ok?'text-emerald-300':'text-amber-200'); }
+function selectedPlayers(){ return state.players.filter(p => playerAffiliation(p) === state.selected); }
+async function loadData(){
+  const url = base();
+  try{
+    setStatus('Loading delegation data...');
+    try { localStorage.setItem('kurash_delegation_signoff_server', url); } catch(e) {}
+    const res = await fetch(url + '/api/delegation-signoff?ts=' + Date.now());
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    state.meta = data.meta || null;
+    state.affiliations = Array.isArray(data.affiliations) ? data.affiliations : [];
+    state.players = Array.isArray(data.players) ? data.players : [];
+    state.approvals = data.approvals || {};
+    if(!state.selected || !state.affiliations.some(a => a.name === state.selected)) state.selected = state.affiliations[0]?.name || '';
+    render();
+    setStatus('Loaded current tournament delegation data.', true);
+  }catch(err){ console.error(err); setStatus('Could not load data: ' + err.message, false); render(); }
+}
+function render(){
+  const sel = $('affiliationSelect'); if(!sel) return;
+  sel.innerHTML = state.affiliations.map(a => `<option value="${esc(a.name)}">${state.approvals[a.name]?.signedAt ? '✓' : '○'} ${esc(a.name)} (${Number(a.count||0)})</option>`).join('');
+  sel.value = state.selected || '';
+  const list = $('affiliationList'); list.innerHTML = '';
+  state.affiliations.forEach(a => {
+    const signed = !!state.approvals[a.name]?.signedAt;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'w-full text-left px-3 py-2 rounded-xl border ' + (a.name === state.selected ? 'border-sky-500 bg-sky-950/40 ' : 'border-slate-800 bg-slate-950/60 ') + (signed ? 'opacity-60' : '');
+    btn.innerHTML = `<div class="flex items-center justify-between"><b>${esc(a.name)}</b><span class="text-xs ${signed?'text-emerald-300':'text-amber-300'}">${signed?'Signed':'Pending'}</span></div><div class="text-xs text-slate-400">${Number(a.count||0)} players</div>`;
+    btn.onclick = () => { state.selected = a.name; render(); };
+    list.appendChild(btn);
+  });
+  const players = selectedPlayers();
+  $('selectedTitle').textContent = state.selected || 'Select affiliation';
+  $('selectedSub').textContent = (state.meta?.name ? state.meta.name + ' • ' : '') + players.length + ' players';
+  const approval = state.approvals[state.selected] || null;
+  $('openDocBtn').classList.toggle('hidden', !approval?.approvalId);
+  $('openDocBtn').onclick = () => { if(approval?.approvalId) window.open(base() + '/api/delegation-signoff/document/' + encodeURIComponent(approval.approvalId), '_blank'); };
+  if(approval?.signedAt){ $('repName').value = approval.representativeName || ''; $('confirmBox').checked = true; drawSavedSignature(approval.signatureDataUrl || ''); }
+  else { $('repName').value = ''; $('confirmBox').checked = false; clearSig(); }
+  const body = $('playersBody');
+  body.innerHTML = players.length ? players.map((p, idx)=>`<tr class="border-t border-slate-800 odd:bg-slate-950/30"><td class="px-3 py-2 text-center">${idx+1}</td><td class="px-3 py-2">${esc(p.name||'')}</td><td class="px-3 py-2 text-center">${esc(p.sex||'')}</td><td class="px-3 py-2 text-center">${esc(p.dob||'-')}</td><td class="px-3 py-2 text-center">${esc(p.age||'-')}</td><td class="px-3 py-2 text-center">${esc(p.actualKg||'-')}</td><td class="px-3 py-2 text-center">${esc(p.manualGroup || p.weight || '-')}</td><td class="px-3 py-2 text-center">${esc(p.ageGroupLabel || p.ageGroup || p.ageGroupNumb || '-')}</td></tr>`).join('') : '<tr><td colspan="8" class="px-3 py-6 text-center text-slate-500">No players found.</td></tr>';
+}
+function canvasPoint(e){ const c=$('signature'), r=c.getBoundingClientRect(), p=e.touches&&e.touches[0]?e.touches[0]:e; return {x:(p.clientX-r.left)*(c.width/r.width), y:(p.clientY-r.top)*(c.height/r.height)}; }
+let drawing=false;
+function start(e){ e.preventDefault(); drawing=true; const c=$('signature'), ctx=c.getContext('2d'), p=canvasPoint(e); ctx.lineWidth=5; ctx.lineCap='round'; ctx.strokeStyle='#0057c2'; ctx.beginPath(); ctx.moveTo(p.x,p.y); }
+function move(e){ if(!drawing)return; e.preventDefault(); const c=$('signature'), ctx=c.getContext('2d'), p=canvasPoint(e); ctx.lineTo(p.x,p.y); ctx.stroke(); }
+function end(e){ if(e)e.preventDefault(); drawing=false; }
+function clearSig(){ const c=$('signature'); if(c) c.getContext('2d').clearRect(0,0,c.width,c.height); }
+function drawSavedSignature(dataUrl){ clearSig(); if(!dataUrl) return; const c=$('signature'), ctx=c.getContext('2d'), img=new Image(); img.onload=()=>{ clearSig(); const scale=Math.min(c.width/img.width, c.height/img.height, 1); const w=img.width*scale,h=img.height*scale,x=(c.width-w)/2,y=(c.height-h)/2; ctx.drawImage(img,x,y,w,h); }; img.src=dataUrl; }
+function hasSig(){ const c=$('signature'); if(!c) return false; const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data; for(let i=3;i<d.length;i+=4){ if(d[i]!==0) return true; } return false; }
+async function submitApproval(){
+  const selected = state.selected;
+  const rep = $('repName').value.trim();
+  const players = selectedPlayers();
+  if(!selected) return alert('Select affiliation first.');
+  if(!players.length) return alert('No players found for this affiliation.');
+  if(!rep) return alert('Enter representative name first.');
+  if(!$('confirmBox').checked) return alert('Please confirm that the displayed data is correct.');
+  if(!hasSig()) return alert('Please draw the representative signature first.');
+  const approval = { affiliation:selected, representativeName:rep, confirmationText:'I confirm that the above data is correct before the official draw.', signatureDataUrl:$('signature').toDataURL('image/png'), playerSnapshot:players.map(p=>({ id:p.id, name:p.name, country:p.country, countryFull:p.countryFull, sex:p.sex, dob:p.dob, age:p.age, actualKg:p.actualKg, weight:p.weight, manualGroup:p.manualGroup, ageGroupNumb:p.ageGroupNumb, ageGroupLabel:p.ageGroupLabel||p.ageGroup||'' })) };
+  try{
+    setStatus('Submitting approval...');
+    const res = await fetch(base() + '/api/delegation-signoff', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(approval)});
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(data.error || ('HTTP '+res.status));
+    state.approvals = data.approvals || { ...state.approvals, [selected]: data.approval };
+    try{ localStorage.setItem('kurash_delegation_signoff_updated_at', String(Date.now())); }catch(e){}
+    render();
+    setStatus('Approval submitted and archived for ' + selected + '.', true);
+  }catch(err){ console.error(err); setStatus('Could not submit approval: '+err.message, false); }
+}
+function resetForm(){ $('repName').value=''; $('confirmBox').checked=false; clearSig(); }
+function printCurrent(){ const approval=state.approvals[state.selected]; if(approval?.approvalId) window.open(base() + '/api/delegation-signoff/document/' + encodeURIComponent(approval.approvalId), '_blank'); else window.print(); }
+function wire(){
+  const c=$('signature'); if(c){ c.addEventListener('mousedown',start); c.addEventListener('mousemove',move); window.addEventListener('mouseup',end); c.addEventListener('touchstart',start,{passive:false}); c.addEventListener('touchmove',move,{passive:false}); window.addEventListener('touchend',end,{passive:false}); }
+  $('connectBtn').onclick=loadData; $('refreshBtn').onclick=loadData; $('submitBtn').onclick=submitApproval; $('clearSigBtn').onclick=clearSig; $('resetBtn').onclick=resetForm; $('printBtn').onclick=printCurrent;
+  $('affiliationSelect').onchange=(e)=>{ state.selected=e.target.value; render(); };
+  try{ const saved=localStorage.getItem('kurash_delegation_signoff_server'); if(saved) $('serverUrl').value=saved; }catch(e){}
+}
+wire();
+loadData().catch(()=>{});
+})();
+</script>
+</body>
+</html>

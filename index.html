@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Kurash TMS Portal v35.6.6</title>
+  <title>Kurash TMS Portal v35.6.7 Patch 4</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <style>
@@ -14,14 +14,14 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      height: 100vh;
+      min-height: 100vh;
     }
 
     .card {
       background: #111827;
       padding: 30px;
       border-radius: 12px;
-      width: 350px;
+      width: min(92vw, 430px);
       text-align: center;
       box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
@@ -78,7 +78,7 @@
   <!-- LOGIN -->
   <div id="login" class="card">
     <h2>Kurash TMS</h2>
-    <p style="color:#9ca3af;font-size:13px;margin-top:-8px;">v35.6.6</p>
+    <p style="color:#9ca3af;font-size:13px;margin-top:-8px;">v35.6.7 Patch 4</p>
     <p>Enter Password</p>
     <input id="password" type="password" placeholder="Password" />
     <button onclick="login()">Enter</button>
@@ -88,24 +88,24 @@
   <!-- DASHBOARD -->
   <div id="dashboard" class="card hidden">
     <h2>System Access</h2>
-    <p style="color:#9ca3af;font-size:13px;margin-top:-8px;">v35.6.6</p>
+    <p style="color:#9ca3af;font-size:13px;margin-top:-8px;">v35.6.7 Patch 4</p>
 
 <div class="links">
-  <a href="#" onclick="openMain()">MAIN v35</a>
+  <a href="#" onclick="openMain()">MAIN Web v35</a>
   <a href="scoreboard_v35.html">Scoreboard v35</a>
   <a href="player_screen_v35.html">Player Screen v35</a>
   <a href="referee_screen_v35.html">Referee Screen v35</a>
   <a href="referee_management_screen_v35.html">Referee Management v35</a>
   <a href="delegation_signoff_v35.html">Delegation Sign-off v35</a>
   <a href="scoreboard_offline_v35.html">Offline Scoreboard v35</a>
-  <a href="help_v35.html">Help v35</a>
+  <a href="help_v35.html">Help / Version Notes v35</a>
 </div>
 
     <button onclick="logout()" style="background:#ef4444;">Logout</button>
 
     <div class="server">
       Server Online:<br />
-      http://159.69.80.210:4010<br />Version: v35.6.6
+      https://tms.kurash-tms.com<br />Version: v35.6.7 Patch 4
     </div>
   </div>
 
@@ -149,6 +149,6 @@ function openMain() {
     }
   </script>
 
-<script>/* v35.6.6 includes delegation_signoff_v35.html for tablet signing. */</script>
+<script>/* v35.6.7 Patch 4: version/help/url cleanup finalized; delegation_signoff_v35.html retained for tablet signing. */</script>
 </body>
 </html>
